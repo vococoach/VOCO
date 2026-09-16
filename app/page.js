@@ -204,6 +204,15 @@ export default function Home() {
             <RotateCcw size={12} /> Reset progress on this device
           </button>
         )}
+
+        <div className="flex items-center justify-center gap-4 mt-6">
+          <Link href="/terms" className="text-xs text-[#6E699B]">
+            Terms of Service
+          </Link>
+          <Link href="/privacy" className="text-xs text-[#6E699B]">
+            Privacy Policy
+          </Link>
+        </div>
       </div>
     </main>
   );

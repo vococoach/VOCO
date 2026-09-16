@@ -200,6 +200,9 @@ app/
                          /review, not this route)
   unlock/                 Sales page + Stripe Checkout return destination
                          for the subscription unlock
+  terms/                  Terms of Service — reachable route, linked from
+                         the home screen footer
+  privacy/                Privacy Policy — same, cross-links to /terms
   api/verify-subscription/   POST route — given a Checkout session_id,
                          confirms it's this product's subscription and
                          trialing/active, returns the Stripe customer id
@@ -250,3 +253,19 @@ Not yet done: the redirect URL baked into the Payment Link
 at localhost — **update it in the Stripe Dashboard to the real production
 domain before/at deployment**, or Checkout will strand real buyers on a
 local URL that doesn't resolve for them.
+
+## Terms of Service & Privacy Policy
+
+`/terms` and `/privacy` are real routes (`app/terms/page.js`,
+`app/privacy/page.js`), linked from the home screen footer — not files
+sitting unused. Content is written to match how the app actually works,
+not generic boilerplate: no accounts, progress lives only in
+`localStorage` on-device (explicitly *not* synced or backed up, and lost
+on a cleared browser or new device), billing handled entirely by Stripe
+(we hold a customer id + subscription status, never card details), no
+analytics/tracking of any kind (true as of this writing — if that ever
+changes, both pages need updating to match, not just the code). Contact
+email on both: `itsowentodd@icloud.com`. If the subscription price,
+trial length, or free/paid category split ever changes, update the
+Terms' "Subscription & Billing" section to match — don't let it drift
+from `lib/purchase.js`.

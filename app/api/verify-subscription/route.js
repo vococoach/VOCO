@@ -35,6 +35,6 @@ export async function POST(request) {
       status,
     });
   } catch (e) {
-    return NextResponse.json({ error: "Could not verify subscription" }, { status: 400 });
+    return NextResponse.json({ error: "Could not verify subscription", debug: e.message, type: e.type }, { status: 400 });
   }
 }
