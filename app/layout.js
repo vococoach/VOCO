@@ -1,0 +1,21 @@
+import "./globals.css";
+
+export const metadata = {
+  title: "Voco — Vocab Coach for the SAT",
+  description:
+    "Learn SAT vocabulary before you sleep. Quiz yourself to see what stuck.",
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#1A1C3A",
+};
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  );
+}
