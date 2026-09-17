@@ -43,6 +43,15 @@ export async function POST(request) {
       status,
     });
   } catch (e) {
-    return NextResponse.json({ error: "Could not verify subscription", debug: e.message, type: e.type, name: e.name, code: e.code }, { status: 400 });
+    let cause = e.cause;
+    const causeChain = [];
+    while (cause) {
+      causeChain.push({ message: cause.message, code: cause.code, name: cause.name });
+      cause = cause.cause;
+    }
+    return NextResponse.json(
+      { error: "Could not verify subscription", debug: e.message, type: e.type, causeChain },
+      { status: 400 }
+    );
   }
 }
