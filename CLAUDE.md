@@ -223,7 +223,7 @@ lib/
                          — per-device only, see "Paid unlock" above
 ```
 
-## Paid unlock — status: built and tested end-to-end (test mode)
+## Paid unlock — status: built and verified end-to-end on production (test mode)
 
 The Stripe product already existed in this account before this round of
 work (`prod_VG6KhZ3PshOM3Q`, "Voco - Full Access", with price
@@ -231,28 +231,42 @@ work (`prod_VG6KhZ3PshOM3Q`, "Voco - Full Access", with price
 Link (`plink_1UFaEjQbCm1Y6nVS1DOPNCBi`, `PAYMENT_LINK_URL` in
 `lib/purchase.js`, `EXPECTED_PAYMENT_LINK_ID` in
 `app/api/verify-subscription/route.js`) was created for it, with a 7-day
-trial and `after_completion` redirecting to `/unlock`.
+trial. Its `after_completion` redirect points at the confirmed production
+domain, `https://voco-dusky.vercel.app/unlock?session_id={CHECKOUT_SESSION_ID}`
+— verified via the Vercel API (only domain on the project, `gitBranch:
+null`, `verified: true`), not assumed from the URL's shape.
 
-Verified for real, not simulated, all in Stripe test mode:
-- Completed an actual Checkout with test card `4242 4242 4242 4242` →
-  `/unlock` correctly verified the session, cached a real customer id
-  (`cus_...`) and `"trialing"` status, and every paid category unlocked.
+Verified for real against the **live production deployment**, not just
+locally, all in Stripe test mode:
+- Completed an actual Checkout with test card `4242 4242 4242 4242` on
+  `voco-dusky.vercel.app` → `/unlock` correctly verified the session,
+  cached a real customer id (`cus_...`) and `"trialing"` status, and
+  every paid category unlocked — both on the home screen and by
+  navigating directly to a paid category's URL.
 - Cancelled that real subscription via the Stripe API, forced the daily
-  recheck, and confirmed access genuinely revoked — the category
-  re-locked and `/sets/[setId]/study` and `/quiz` correctly redirect away
-  even mid-session.
-- Confirmed a fresh visitor (cleared `localStorage`, simulating
-  incognito) is locked out of paid categories by **direct URL**, not just
-  by hidden home-screen buttons — the gate is in the routes, not the UI.
+  recheck, and confirmed access genuinely revoked on production — the
+  category re-locked and direct URLs to `/sets/[setId]/study` and
+  `/quiz` redirect to `/unlock` again.
 - Confirmed the fail-open/fail-closed distinction: a Stripe API error
   keeps prior access (doesn't fabricate a cancellation), while Stripe
   genuinely reporting no active subscription does revoke it.
 
-Not yet done: the redirect URL baked into the Payment Link
-(`http://localhost:3002/unlock?session_id={CHECKOUT_SESSION_ID}`) points
-at localhost — **update it in the Stripe Dashboard to the real production
-domain before/at deployment**, or Checkout will strand real buyers on a
-local URL that doesn't resolve for them.
+**A real production bug was found and fixed during this verification**,
+worth knowing about if subscription verification ever breaks again: the
+`STRIPE_SECRET_KEY` value stored in Vercel's env vars had a stray
+non-ASCII character (a bullet point, U+2022) embedded in it — almost
+certainly a copy-paste artifact from when it was entered in the Vercel
+dashboard. That broke every outbound request at the HTTP
+header-encoding layer inside the serverless function, but the Stripe
+SDK reported it as a generic `StripeConnectionError` rather than the
+real `TypeError`, which briefly pointed suspicion at the Node runtime
+version and HTTP client instead — both dead ends. If this error shows up
+again, check the *literal contents* of the env var value first (e.g. by
+having a route do a raw `fetch` to `api.stripe.com` and inspect the
+error) before assuming it's a platform/runtime issue. The project's Node
+version is currently pinned to `22.x` (down from `24.x`, changed while
+chasing this bug) — harmless to leave as is, since 22.x is an LTS
+version, but not the actual fix.
 
 ## Terms of Service & Privacy Policy
 
