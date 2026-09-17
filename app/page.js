@@ -10,6 +10,7 @@ import {
   isSubscribedCached,
   shouldRefreshStatus,
   refreshSubscriptionStatus,
+  openBillingPortal,
   PRICE_LABEL,
   TRIAL_LABEL,
 } from "@/lib/purchase";
@@ -21,6 +22,7 @@ export default function Home() {
   const [dueCount, setDueCount] = useState(0);
   const [struggleCounts, setStruggleCounts] = useState({});
   const [subscribed, setSubscribed] = useState(false);
+  const [openingPortal, setOpeningPortal] = useState(false);
 
   useEffect(() => {
     setProgress(getAllProgress());
@@ -52,6 +54,16 @@ export default function Home() {
     resetProgress();
     setProgress({});
     setStreak(0);
+  }
+
+  async function handleManageSubscription() {
+    setOpeningPortal(true);
+    const opened = await openBillingPortal();
+    if (!opened) {
+      window.alert("Couldn't open subscription management right now. Try again in a moment.");
+      setOpeningPortal(false);
+    }
+    // On success the page is navigating away, so no need to reset state.
   }
 
   return (
@@ -202,6 +214,16 @@ export default function Home() {
             className="flex items-center gap-1 text-xs text-[#6E699B] mt-8 mx-auto"
           >
             <RotateCcw size={12} /> Reset progress on this device
+          </button>
+        )}
+
+        {ready && subscribed && (
+          <button
+            onClick={handleManageSubscription}
+            disabled={openingPortal}
+            className="block text-xs text-[#8B85FF] mt-3 mx-auto disabled:opacity-50"
+          >
+            {openingPortal ? "Opening..." : "Manage subscription"}
           </button>
         )}
 
