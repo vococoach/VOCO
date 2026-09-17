@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Moon, Flame, RotateCcw, Lock, Sparkles, Target } from "lucide-react";
+import { Moon, Flame, RotateCcw, Lock, Sparkles, Target, Info } from "lucide-react";
 import { categories, getAllWordsFlat, missedWordsId, DUE_FOR_REVIEW_ID } from "@/lib/wordbanks";
 import { getAllProgress, getStreak, resetProgress, getDueWordIds, getStruggleWordIds } from "@/lib/progress";
 import {
@@ -10,10 +10,15 @@ import {
   isSubscribedCached,
   shouldRefreshStatus,
   refreshSubscriptionStatus,
+  getCancelAt,
   openBillingPortal,
   PRICE_LABEL,
   TRIAL_LABEL,
 } from "@/lib/purchase";
+
+function formatDate(iso) {
+  return new Date(iso).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
 
 export default function Home() {
   const [progress, setProgress] = useState({});
@@ -22,6 +27,7 @@ export default function Home() {
   const [dueCount, setDueCount] = useState(0);
   const [struggleCounts, setStruggleCounts] = useState({});
   const [subscribed, setSubscribed] = useState(false);
+  const [cancelAt, setCancelAt] = useState(null);
   const [openingPortal, setOpeningPortal] = useState(false);
 
   useEffect(() => {
@@ -31,10 +37,18 @@ export default function Home() {
 
     // Show the cached subscription state immediately, then re-verify with
     // Stripe in the background (at most once a day) — if that comes back
-    // different (e.g. a cancellation), the UI updates to match.
+    // different (e.g. a cancellation), the UI updates to match. A
+    // subscription can be genuinely active/trialing *and* already
+    // scheduled to end (Stripe's Customer Portal cancellation keeps
+    // access through the current period/trial rather than revoking it
+    // immediately) — cancelAt surfaces that instead of leaving it silent.
     setSubscribed(isSubscribedCached());
+    setCancelAt(getCancelAt());
     if (shouldRefreshStatus()) {
-      refreshSubscriptionStatus().then(setSubscribed);
+      refreshSubscriptionStatus().then((subscribedNow) => {
+        setSubscribed(subscribedNow);
+        setCancelAt(getCancelAt());
+      });
     }
 
     const struggleIdSet = new Set(getStruggleWordIds());
@@ -106,6 +120,25 @@ export default function Home() {
                 Review
               </Link>
             </div>
+          </div>
+        )}
+
+        {ready && subscribed && cancelAt && (
+          <div className="rounded-2xl p-4 mb-6 bg-[#20223F] border border-[#FF9B5C40]">
+            <div className="flex items-center gap-2 mb-1 text-sm font-medium text-[#EDEBFF]">
+              <Info size={16} color="#FF9B5C" />
+              Your subscription ends on {formatDate(cancelAt)}
+            </div>
+            <p className="text-xs text-[#9B97C4] mb-3">
+              You'll keep access to every category until then.
+            </p>
+            <button
+              onClick={handleManageSubscription}
+              disabled={openingPortal}
+              className="text-sm text-[#8B85FF] disabled:opacity-50"
+            >
+              {openingPortal ? "Opening..." : "Manage subscription"}
+            </button>
           </div>
         )}
 
@@ -217,7 +250,7 @@ export default function Home() {
           </button>
         )}
 
-        {ready && subscribed && (
+        {ready && subscribed && !cancelAt && (
           <button
             onClick={handleManageSubscription}
             disabled={openingPortal}

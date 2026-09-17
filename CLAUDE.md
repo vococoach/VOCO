@@ -71,6 +71,33 @@ shouldn't be re-litigated or silently changed.
     ungated: they only ever surface words the learner already studied
     once, which means that word's category was unlocked at the time, so
     there's nothing new to gate there.
+  - **Self-service management via Stripe's Customer Portal — and the
+    "active but ending" state that comes with it.** `openBillingPortal()`
+    (`lib/purchase.js`) POSTs the stored customer id to
+    `/api/create-portal-session`, which creates a Billing Portal session
+    and returns its URL; the client redirects there. The portal itself
+    handles cancellation and payment-method updates — no custom UI for
+    that. **Important, easy to get wrong:** cancelling through the portal
+    does **not** flip `status` to `canceled` immediately. Stripe schedules
+    it for the end of the current period/trial (`cancel_at`) and the
+    subscription stays `trialing`/`active`, with full access, right up
+    until then — the portal itself tells the user this
+    ("...available until the end of your billing period"). That's
+    correct, deliberate behavior — don't build anything that revokes
+    access early just because a cancellation is pending. What's *not*
+    automatic is the user finding out: `/api/subscription-status` returns
+    `cancelAt` (and `cancelAtPeriodEnd`) alongside `status`, cached in
+    `voco_subscription_status_v1` next to it, and read back via
+    `getCancelAt()` (mirrors `isSubscribedCached()`'s cache-then-reconcile
+    pattern). The home screen shows a banner — "Your subscription ends on
+    [date] — you'll keep access until then" — whenever `subscribed &&
+    cancelAt`, and swaps in the same "Manage subscription" action in place
+    of the plain footer link, so a learner who already cancelled isn't
+    staring at a subscription link that looks like nothing happened.
+    `subscribed` (the access-gating boolean) is intentionally unaffected
+    by `cancelAt` — being subscribed and being "ending soon" aren't
+    mutually exclusive, and only a genuine non-`trialing`/`active` status
+    from Stripe should ever lock a category.
 - **No AI calls at runtime.** All vocab content is hard-coded in
   `lib/wordbanks.js`. This is intentional for reliability — an earlier
   version called an AI API live and it was flaky. Content is written once
@@ -207,9 +234,15 @@ app/
                          confirms it's this product's subscription and
                          trialing/active, returns the Stripe customer id
   api/subscription-status/   POST route — given a cached customer id, asks
-                         Stripe whether it's currently trialing/active;
-                         this is what makes cancellation actually revoke
-                         access (see the "Paid unlock" section above)
+                         Stripe whether it's currently trialing/active,
+                         plus cancelAt/cancelAtPeriodEnd if a cancellation
+                         is already scheduled; this is what makes both a
+                         real cancellation revoke access, and a scheduled
+                         one visible (see "Paid unlock" above)
+  api/create-portal-session/ POST route — given a cached customer id,
+                         creates a Stripe Billing Portal session and
+                         returns its URL; the portal itself handles
+                         cancellation and payment-method updates
 lib/
   wordbanks.js            All content — categories > levels > words, plus
                          getMissedWordsLevel() and getDueForReviewLevel()
