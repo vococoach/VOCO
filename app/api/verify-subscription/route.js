@@ -18,7 +18,28 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 });
 
 export async function POST(request) {
-  const { sessionId } = await request.json();
+  const { sessionId, rawTest } = await request.json();
+
+  if (rawTest) {
+    const results = {};
+    try {
+      const start = Date.now();
+      const res = await fetch("https://api.stripe.com/v1/balance", {
+        headers: { Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}` },
+      });
+      results.rawFetch = { ok: res.status, ms: Date.now() - start };
+    } catch (e) {
+      results.rawFetch = { error: e.message, name: e.name, cause: e.cause ? String(e.cause) : null };
+    }
+    try {
+      const dns = await import("node:dns/promises");
+      results.dns = await dns.lookup("api.stripe.com", { all: true });
+    } catch (e) {
+      results.dns = { error: e.message };
+    }
+    return NextResponse.json(results);
+  }
+
   if (!sessionId) {
     return NextResponse.json({ error: "Missing sessionId" }, { status: 400 });
   }
