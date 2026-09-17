@@ -7,7 +7,15 @@ import Stripe from "stripe";
 // paid Checkout Session from some other product.
 const EXPECTED_PAYMENT_LINK_ID = "plink_1UFaEjQbCm1Y6nVS1DOPNCBi";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+// Explicitly use the Node https-based client rather than Stripe SDK's
+// default (fetch-based in newer Node runtimes) — the default client threw
+// StripeConnectionError inside Vercel's serverless/Fluid Compute runtime
+// even though the exact same credentials and session worked fine from a
+// plain local script. If you ever see connection errors from these
+// routes again, this is the first thing to double-check.
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  httpClient: Stripe.createNodeHttpClient(),
+});
 
 export async function POST(request) {
   const { sessionId } = await request.json();
@@ -35,6 +43,6 @@ export async function POST(request) {
       status,
     });
   } catch (e) {
-    return NextResponse.json({ error: "Could not verify subscription", debug: e.message, type: e.type }, { status: 400 });
+    return NextResponse.json({ error: "Could not verify subscription" }, { status: 400 });
   }
 }
