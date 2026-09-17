@@ -1,16 +1,7 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 
-// Explicitly use the Node https-based client rather than Stripe SDK's
-// default (fetch-based in newer Node runtimes) — the default client threw
-// StripeConnectionError inside Vercel's serverless/Fluid Compute runtime
-// even though the exact same credentials worked fine from a plain local
-// script. Without this, every re-verification call here would fail
-// (safely, per the catch block below — but that also means a real
-// cancellation would never actually get detected).
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  httpClient: Stripe.createNodeHttpClient(),
-});
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // Given a Stripe customer id (cached client-side from a past verified
 // checkout), asks Stripe directly whether that customer currently has a
