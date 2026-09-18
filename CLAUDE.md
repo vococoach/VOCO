@@ -73,8 +73,10 @@ shouldn't be re-litigated or silently changed.
     category"), and the subscribed footer ("You have full access to every
     category."). If per-category or tiered pricing is ever added, that copy
     — and this bullet — need to change together. Legal text (`/terms` §4,
-    `/privacy` §3) and the Stripe product description ("Unlock all 6 SAT
-    vocab categories...") are separate surfaces; keep them consistent too.
+    `/privacy` §3) and the Stripe product description (currently "Full
+    access to every SAT vocab category, with spaced repetition review" —
+    deliberately no hardcoded counts, which would drift as the word bank
+    grows) are separate surfaces; keep them consistent too.
   - **The actual gate.** `getSetCategoryId(setId)` (`lib/wordbanks.js`)
     resolves any setId (real level, per-category "still learning" id, or
     `null` for `DUE_FOR_REVIEW_ID`) back to its category, and both
