@@ -159,16 +159,16 @@ export default function Home() {
                 ) : locked ? (
                   <Link
                     href="/unlock"
-                    className="rounded-2xl p-4 flex items-center justify-between bg-[#20223F] border border-[#ffffff1a]"
+                    className="rounded-2xl p-4 block bg-[#20223F] border border-[#ffffff1a]"
                   >
                     <span className="flex items-center gap-2 text-sm text-[#9B97C4]">
                       <Lock size={14} />
                       Locked — {category.levels.reduce((s, l) => s + l.words.length, 0)} words
                     </span>
-                    <span className="text-right">
-                      <span className="block text-xs font-medium text-[#8B85FF]">{PRICE_LABEL}</span>
-                      <span className="block text-[10px] text-[#6E699B]">{TRIAL_LABEL}</span>
+                    <span className="block text-xs font-medium text-[#8B85FF] mt-2">
+                      {PRICE_LABEL} for full access to every category
                     </span>
+                    <span className="block text-[10px] text-[#6E699B] mt-0.5">{TRIAL_LABEL}</span>
                   </Link>
                 ) : (
                   <div className="space-y-2">
@@ -251,13 +251,16 @@ export default function Home() {
         )}
 
         {ready && subscribed && !cancelAt && (
-          <button
-            onClick={handleManageSubscription}
-            disabled={openingPortal}
-            className="block text-xs text-[#8B85FF] mt-3 mx-auto disabled:opacity-50"
-          >
-            {openingPortal ? "Opening..." : "Manage subscription"}
-          </button>
+          <div className="text-center mt-3">
+            <p className="text-xs text-[#9B97C4]">You have full access to every category.</p>
+            <button
+              onClick={handleManageSubscription}
+              disabled={openingPortal}
+              className="text-xs text-[#8B85FF] mt-1 disabled:opacity-50"
+            >
+              {openingPortal ? "Opening..." : "Manage subscription"}
+            </button>
+          </div>
         )}
 
         <div className="flex items-center justify-center gap-4 mt-6">

@@ -59,6 +59,22 @@ shouldn't be re-litigated or silently changed.
     cleared one. A repeat subscriber on a new device goes through Checkout
     again (same subscription, new device-level verification) — that's an
     accepted MVP tradeoff, not an oversight.
+  - **One subscription = every paid category, and the copy must say so.**
+    Entitlement is a single boolean: `isCategoryLocked(categoryId,
+    subscribed)` (`lib/purchase.js`) is `false` for the one free category
+    and `!subscribed` for everything else — there is no per-category
+    purchase, and Stripe has exactly one product/price. Because each
+    locked card on the home screen sits under its own category heading, a
+    bare price next to it reads as "$1.99 to unlock *this*." So wherever
+    the price appears in the UI it's paired with its scope: locked cards
+    ("$1.99/month for full access to every category"), the `/unlock` pitch
+    and error state ("One subscription gives you full access to every
+    category", "$1.99/month after your trial, for full access to every
+    category"), and the subscribed footer ("You have full access to every
+    category."). If per-category or tiered pricing is ever added, that copy
+    — and this bullet — need to change together. Legal text (`/terms` §4,
+    `/privacy` §3) and the Stripe product description ("Unlock all 6 SAT
+    vocab categories...") are separate surfaces; keep them consistent too.
   - **The actual gate.** `getSetCategoryId(setId)` (`lib/wordbanks.js`)
     resolves any setId (real level, per-category "still learning" id, or
     `null` for `DUE_FOR_REVIEW_ID`) back to its category, and both
@@ -265,17 +281,25 @@ Link (`plink_1UFaEjQbCm1Y6nVS1DOPNCBi`, `PAYMENT_LINK_URL` in
 `lib/purchase.js`, `EXPECTED_PAYMENT_LINK_ID` in
 `app/api/verify-subscription/route.js`) was created for it, with a 7-day
 trial. Its `after_completion` redirect points at the confirmed production
-domain, `https://voco-dusky.vercel.app/unlock?session_id={CHECKOUT_SESSION_ID}`
-— verified via the Vercel API (only domain on the project, `gitBranch:
-null`, `verified: true`), not assumed from the URL's shape.
+domain, `https://voco.courses/unlock?session_id={CHECKOUT_SESSION_ID}`
+— verified via the Vercel API (`verified: true` on the project), not
+assumed from the URL's shape. The app itself never hardcodes this domain
+anywhere — redirect URLs (e.g. `app/api/create-portal-session/route.js`)
+are built from `request.nextUrl.origin`, so nothing in the code needed to
+change when the custom domain was connected; only the Stripe Payment
+Link's redirect and this doc did. Production was originally verified on
+the Vercel-assigned `voco-dusky.vercel.app` domain (still live and
+serving the same project) before `voco.courses` was connected — see the
+git history around the Payment Link's `after_completion.url` if the
+domain ever needs to be traced back.
 
 Verified for real against the **live production deployment**, not just
 locally, all in Stripe test mode:
-- Completed an actual Checkout with test card `4242 4242 4242 4242` on
-  `voco-dusky.vercel.app` → `/unlock` correctly verified the session,
-  cached a real customer id (`cus_...`) and `"trialing"` status, and
-  every paid category unlocked — both on the home screen and by
-  navigating directly to a paid category's URL.
+- Completed an actual Checkout with test card `4242 4242 4242 4242` →
+  `/unlock` correctly verified the session, cached a real customer id
+  (`cus_...`) and `"trialing"` status, and every paid category unlocked —
+  both on the home screen and by navigating directly to a paid category's
+  URL.
 - Cancelled that real subscription via the Stripe API, forced the daily
   recheck, and confirmed access genuinely revoked on production — the
   category re-locked and direct URLs to `/sets/[setId]/study` and
@@ -283,6 +307,17 @@ locally, all in Stripe test mode:
 - Confirmed the fail-open/fail-closed distinction: a Stripe API error
   keeps prior access (doesn't fabricate a cancellation), while Stripe
   genuinely reporting no active subscription does revoke it.
+
+**Re-verified end-to-end on `voco.courses`** after the custom domain was
+connected and the Payment Link's redirect was repointed at it (2026-09-18):
+completed a fresh Checkout on `voco.courses`, confirmed `/unlock` redirected
+back to `voco.courses` (not the old `voco-dusky.vercel.app` URL) and
+unlocked every category; clicked "Manage subscription" and cancelled
+through the **real Stripe Billing Portal UI** (not the API) — confirmed the
+portal's own "Cancels [date]" and the app's `cancelAt` banner showed the
+identical date after the daily recheck was forced; confirmed access was
+still genuinely present afterward (direct navigation to a paid category's
+quiz URL loaded real content, no redirect to `/unlock`).
 
 **A real production bug was found and fixed during this verification**,
 worth knowing about if subscription verification ever breaks again: the

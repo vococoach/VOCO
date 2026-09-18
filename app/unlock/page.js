@@ -112,8 +112,11 @@ export default function UnlockPage() {
               className="block w-full rounded-xl px-4 py-3 font-medium text-center mb-3"
               style={{ backgroundColor: "#8B85FF", color: "#14152B" }}
             >
-              Start {TRIAL_LABEL} — {PRICE_LABEL}
+              Start {TRIAL_LABEL}
             </a>
+            <p className="text-center text-xs text-[#6E699B] mb-3">
+              {PRICE_LABEL} after your trial, for full access to every category. Cancel anytime.
+            </p>
             <Link href="/" className="block text-center text-[#8B85FF] text-sm">
               Back home
             </Link>
@@ -136,13 +139,15 @@ export default function UnlockPage() {
               <Lock size={28} color="#8B85FF" className="mx-auto mb-3" />
               <p className="font-display text-xl text-[#EDEBFF] mb-2">Unlock the full course</p>
               <p className="text-sm text-[#9B97C4]">
-                {freeCategory ? freeCategory.title : "One category"} stays free. Unlock the other{" "}
-                {lockedCategories.length} categories — {lockedWordCount} more words — with a{" "}
-                {TRIAL_LABEL}, then {PRICE_LABEL}.
+                One subscription gives you full access to every category.{" "}
+                {freeCategory ? freeCategory.title : "One category"} stays free; the other{" "}
+                {lockedCategories.length} — {lockedWordCount} more words — all unlock together
+                with a {TRIAL_LABEL}, then {PRICE_LABEL}.
               </p>
             </div>
 
             <div className="bg-[#20223F] rounded-2xl p-4 mb-6 space-y-2">
+              <p className="text-xs text-[#9B97C4] mb-1">One subscription unlocks all of these:</p>
               {lockedCategories.map((c) => (
                 <div key={c.id} className="flex items-center gap-2 text-sm text-[#EDEBFF]">
                   <Lock size={14} color="#6E699B" />
@@ -159,7 +164,7 @@ export default function UnlockPage() {
               Start {TRIAL_LABEL}
             </a>
             <p className="text-center text-xs text-[#6E699B] mb-3">
-              {PRICE_LABEL} after your trial. Cancel anytime.
+              {PRICE_LABEL} after your trial, for full access to every category. Cancel anytime.
             </p>
             <Link href="/" className="block text-center text-[#8B85FF] text-sm">
               Not yet — back home
