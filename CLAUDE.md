@@ -138,6 +138,42 @@ shouldn't be re-litigated or silently changed.
   just take the front of that list. Anything past the cap rolls over to
   the next visit; the `/review` results screen shows "N more due — they'll
   be here next time" instead of forcing a huge session in one sitting.
+- **Every quiz result is tiered by percentage — and it's shared, not
+  per-page.** `getScoreTier(score, total)` (`lib/scoreTier.js`) is the one
+  place thresholds and colors live: **100% perfect** (the app's
+  "correct answer" green `#7BC9A0`), **70–99% good** (the positive/CTA
+  orange `#FF9B5C`), **below 70% watch** (the "incorrect answer" rose
+  `#E08A9E`). Percentages, not counts, because levels, missed-words
+  sessions and review sessions all differ in length; the 70% line is
+  inclusive and uses integer math (`score * 100 >= total * 70`).
+  `components/QuizResults.js` renders the end-of-quiz card for all three
+  quiz types (level quizzes and missed-words sessions in
+  `sets/[setId]/quiz`, review sessions in `review`) with one structure —
+  disc, label, headline, score, note — recolored per tier; each page
+  passes `copy: { perfect, good, watch }` (`{headline, note}` each)
+  because what's true differs by quiz type. A `note` may be an array to
+  put each entry on its own line.
+  **The "watch" tier must never read as a bad grade.** This is a study app
+  for teens, not a report card: the label is "Worth another look", the
+  headline "These are the ones to watch.", and the note says what really
+  happens next (missed words are flagged and return via review / "still
+  learning"). Keep the copy true per type: a *review* miss lands in box 1
+  and is due immediately ("right back in your next review" — not
+  "tomorrow"), a *missed-words* miss stays under "still learning", and a
+  *level quiz* miss does both. Don't write copy that promises something
+  the SRS doesn't do. Small text on the cream card uses each tier's
+  darker `deep` shade (the accents are too pale to read at that size).
+  Motion is one gentle fade/rise and a soft settle on the disc
+  (`.voco-rise` / `.voco-settle` in `globals.css`), disabled under
+  `prefers-reduced-motion`; deliberately no confetti or sound.
+  **Home screen:** each quizzed level shows a tier disc (check /
+  trending-up / bookmark, the same glyphs as the results card) and a
+  status line in the tier color with the tier's word — "Perfect score",
+  "Almost there", "Worth another look" — plus the score, so color is never
+  the only signal. Only the perfect tier also gets the green ring. It
+  tracks the **most recent** quiz (like the old "Last score"), not a
+  lifetime best, so a later retake can move a level between tiers; a
+  sticky "best ever" badge would need a new field in `voco_progress_v1`.
 - **The due-for-review card also has a Study option**, not just Review.
   `DUE_FOR_REVIEW_ID = "due-for-review"` (`lib/wordbanks.js`) special-cases
   `/sets/[setId]/study` the same way the per-category courses do, via
@@ -234,7 +270,8 @@ app/
   page.js                Home screen — categories, due-for-review card
                          (Study + Review), each category's own "still
                          learning" card (Study + Quiz)
-  globals.css             Fonts + Tailwind
+  globals.css             Fonts + Tailwind + the results card's one-time
+                         entrance animation
   review/                 Spaced-repetition review session (capped at 20)
   sets/[setId]/study/     Study flow — setId is a real level id (e.g.
                          "agreement-support-2"), a per-category "still
@@ -261,7 +298,13 @@ app/
                          creates a Stripe Billing Portal session and
                          returns its URL; the portal itself handles
                          cancellation and payment-method updates
+components/
+  QuizResults.js          End-of-quiz card shared by level quizzes,
+                         missed-words sessions and review sessions —
+                         one structure, recolored by score tier
 lib/
+  scoreTier.js            Tier thresholds (100 / 70 / below) + colors,
+                         shared by QuizResults and the home screen
   wordbanks.js            All content — categories > levels > words, plus
                          getMissedWordsLevel() and getDueForReviewLevel()
                          for the dynamic study courses, and

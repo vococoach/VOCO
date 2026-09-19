@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Check, X, ArrowLeft, Sparkles } from "lucide-react";
 import { getAllWordsFlat } from "@/lib/wordbanks";
 import { getDueWordIds, recordWordResult, REVIEW_SESSION_CAP } from "@/lib/progress";
+import QuizResults from "@/components/QuizResults";
 
 // The word bank always lists the correct option first (correctIndex: 0).
 // Shuffling the display order here — instead of in the data — fixes every
@@ -142,22 +143,27 @@ export default function ReviewPage() {
           </div>
         ) : (
           <div className="text-center">
-            <div className="bg-[#FFF9F2] rounded-2xl p-8 mb-5">
-              <Sparkles size={28} color="#FF9B5C" className="mx-auto mb-3" />
-              <p className="font-display text-2xl text-[#3D2B4F]">
-                {score} / {dueWords.length}
-              </p>
-              <p className="text-sm mt-1 text-[#8A6E7D]">
-                {score === dueWords.length
-                  ? "Every word came back stronger."
-                  : "Missed words will come right back tomorrow."}
-              </p>
+            <QuizResults
+              score={score}
+              total={dueWords.length}
+              copy={{
+                perfect: { headline: "Perfect. Nothing missed.", note: "Every word came back stronger." },
+                good: {
+                  headline: "Most of these came back strong.",
+                  note: "The ones you missed will be right back in your next review.",
+                },
+                watch: {
+                  headline: "These are the ones to watch.",
+                  note: "The words you missed are flagged now. They'll be right back in your next review, and that's how they stick.",
+                },
+              }}
+            >
               {overflowCount > 0 && (
                 <p className="text-sm mt-3 text-[#8A6E7D]">
                   {overflowCount} more due — they'll be here next time.
                 </p>
               )}
-            </div>
+            </QuizResults>
             <Link
               href="/"
               className="block w-full rounded-xl px-4 py-3 font-medium text-white text-center"

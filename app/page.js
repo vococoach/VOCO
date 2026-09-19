@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Moon, Flame, RotateCcw, Lock, Sparkles, Target, Info } from "lucide-react";
+import { getScoreTier, TIERS } from "@/lib/scoreTier";
+import { TIER_ICONS } from "@/components/QuizResults";
 import { categories, getAllWordsFlat, missedWordsId, DUE_FOR_REVIEW_ID } from "@/lib/wordbanks";
 import { getAllProgress, getStreak, resetProgress, getDueWordIds, getStruggleWordIds } from "@/lib/progress";
 import {
@@ -176,16 +178,38 @@ export default function Home() {
                       const p = progress[level.id] || {};
                       const studied = Boolean(p.studiedAt);
                       const quizzed = Boolean(p.lastQuizAt);
+                      // Tier of the most recent quiz (same tiers and colors as
+                      // the end-of-quiz card); null until the level is quizzed.
+                      const tier = quizzed && p.lastQuizTotal > 0 ? getScoreTier(p.lastScore, p.lastQuizTotal) : null;
+                      const tierStyle = tier ? TIERS[tier] : null;
+                      const TierIcon = tier ? TIER_ICONS[tier] : null;
 
                       return (
-                        <div key={level.id} className="bg-[#20223F] rounded-2xl p-4">
+                        <div
+                          key={level.id}
+                          className={`bg-[#20223F] rounded-2xl p-4 ${tier === "perfect" ? "ring-1 ring-[#7BC9A066]" : ""}`}
+                        >
                           <div className="flex items-center justify-between mb-1">
-                            <span className="text-sm font-medium text-[#EDEBFF]">{level.label}</span>
+                            <span className="flex items-center gap-2 text-sm font-medium text-[#EDEBFF]">
+                              {tier && (
+                                <span
+                                  aria-hidden="true"
+                                  className="w-4 h-4 rounded-full flex items-center justify-center"
+                                  style={{ backgroundColor: tierStyle.accent }}
+                                >
+                                  <TierIcon size={11} color="#14152B" strokeWidth={3} />
+                                </span>
+                              )}
+                              {level.label}
+                            </span>
                             <span className="text-xs text-[#6E699B]">{level.words.length} words</span>
                           </div>
-                          <p className="text-xs text-[#6E699B] mb-3">
-                            {quizzed
-                              ? `Last score: ${p.lastScore}/${p.lastQuizTotal}`
+                          <p
+                            className={`text-xs mb-3 ${tier ? "font-medium" : "text-[#6E699B]"}`}
+                            style={tier ? { color: tierStyle.accent } : undefined}
+                          >
+                            {tier
+                              ? `${tierStyle.label} — ${p.lastScore}/${p.lastQuizTotal}`
                               : studied
                               ? "Studied — quiz whenever you're ready"
                               : "Not started"}

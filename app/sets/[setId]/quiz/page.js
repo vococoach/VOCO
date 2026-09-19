@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Check, X, ArrowLeft, BookOpen, Sparkles } from "lucide-react";
+import { Check, X, ArrowLeft, Sparkles } from "lucide-react";
 import {
   findLevel,
   wordId,
@@ -13,6 +13,7 @@ import {
 } from "@/lib/wordbanks";
 import { recordQuizResult, recordWordResult, getStruggleWordIds } from "@/lib/progress";
 import { isCategoryLocked, isSubscribedCached, shouldRefreshStatus, refreshSubscriptionStatus } from "@/lib/purchase";
+import QuizResults from "@/components/QuizResults";
 
 // The word bank always lists the correct option first (correctIndex: 0).
 // Shuffling the display order here — instead of in the data — fixes every
@@ -195,13 +196,41 @@ export default function QuizPage() {
           </div>
         ) : (
           <div className="text-center">
-            <div className="bg-[#FFF9F2] rounded-2xl p-8 mb-5">
-              <BookOpen size={28} color="#FF9B5C" className="mx-auto mb-3" />
-              <p className="font-display text-2xl text-[#3D2B4F]">
-                {score} / {words.length}
-              </p>
-              <p className="text-sm mt-1 text-[#8A6E7D]">words remembered</p>
-            </div>
+            <QuizResults
+              score={score}
+              total={words.length}
+              copy={
+                isMissedWords
+                  ? {
+                      perfect: {
+                        headline: "Every tricky word, right this time.",
+                        note: `Nothing left to catch up on in ${category.title}.`,
+                      },
+                      good: {
+                        headline: "Most of these are sticking now.",
+                        note: "The ones still slipping stay under “still learning” until they do.",
+                      },
+                      watch: {
+                        headline: "These are the ones to watch.",
+                        note: "That's exactly what this session is for. The words you missed stay under “still learning” until they stick.",
+                      },
+                    }
+                  : {
+                      perfect: {
+                        headline: "Every word remembered.",
+                        note: `${category.title} · ${level.label}. Not a single miss.`,
+                      },
+                      good: {
+                        headline: "Most of these are sticking.",
+                        note: [`${category.title} · ${level.label}.`, "The ones you missed will come back for review."],
+                      },
+                      watch: {
+                        headline: "These are the ones to watch.",
+                        note: "The words you missed are flagged now. They'll come back for review, and that's how they stick.",
+                      },
+                    }
+              }
+            />
             <Link
               href="/"
               className="block w-full rounded-xl px-4 py-3 font-medium text-white text-center"
