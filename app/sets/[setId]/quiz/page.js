@@ -23,6 +23,9 @@ import {
 import { getPhase, findLastNightsLevel } from "@/lib/timeOfDay";
 import { isCategoryLocked, isSubscribedCached, shouldRefreshStatus, refreshSubscriptionStatus } from "@/lib/purchase";
 import QuizResults from "@/components/QuizResults";
+import MilestoneCards from "@/components/MilestoneCards";
+import ShareButton from "@/components/ShareButton";
+import { checkNewMilestones, describeMilestone, streakCard } from "@/lib/milestones";
 
 // The word bank always lists the correct option first (correctIndex: 0).
 // Shuffling the display order here — instead of in the data — fixes every
@@ -53,6 +56,9 @@ export default function QuizPage() {
   const [cycleEligible, setCycleEligible] = useState(false);
   const [cycleStreak, setCycleStreak] = useState(0);
   const cycleChecked = useRef(false);
+  // One-time milestone celebrations crossed by finishing this quiz (already
+  // marked as shown, so they never repeat) — see lib/milestones.js.
+  const [milestones, setMilestones] = useState([]);
   // Start with the identity order so server-rendered HTML and the first
   // client render match exactly; shuffle only after mount (client-only),
   // which avoids a hydration mismatch from Math.random() running on both
@@ -171,6 +177,9 @@ export default function QuizPage() {
         recordNightToMorning();
         setCycleStreak(getNightToMorningStreak());
       }
+      // After everything above is recorded, so a streak / mastery / words
+      // threshold crossed by THIS quiz is seen. Shown once, ever.
+      setMilestones(checkNewMilestones(categories).map(describeMilestone));
       setDone(true);
     }
   }
@@ -267,13 +276,23 @@ export default function QuizPage() {
               }
             >
               {cycleStreak > 0 && (
-                <p className="mt-4 flex items-center justify-center gap-2 text-sm text-[#8A6E7D]">
+                <div className="mt-4 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-sm text-[#8A6E7D]">
                   <Sunrise size={16} color="#D9772F" />
-                  Night-to-morning complete —{" "}
-                  {cycleStreak === 1 ? "your streak starts here." : `${cycleStreak} days in a row.`}
-                </p>
+                  <span>
+                    Night-to-morning complete —{" "}
+                    {cycleStreak === 1 ? "your streak starts here." : `${cycleStreak} days in a row.`}
+                  </span>
+                  <ShareButton
+                    card={streakCard("streak", cycleStreak)}
+                    className="underline text-[#A9501A]"
+                    ariaLabel="Share your night-to-morning streak"
+                  >
+                    Share
+                  </ShareButton>
+                </div>
               )}
             </QuizResults>
+            <MilestoneCards milestones={milestones} />
             <Link
               href="/"
               className="block w-full rounded-xl px-4 py-3 font-medium text-white text-center"

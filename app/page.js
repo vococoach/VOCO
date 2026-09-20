@@ -7,6 +7,8 @@ import { getScoreTier, TIERS } from "@/lib/scoreTier";
 import { TIER_ICONS } from "@/components/QuizResults";
 import NightThemeExplainer from "@/components/NightThemeExplainer";
 import Onboarding from "@/components/Onboarding";
+import ShareButton from "@/components/ShareButton";
+import { streakCard } from "@/lib/milestones";
 import { hasOnboarded, markOnboarded } from "@/lib/onboarding";
 import { getPhase, findLastNightsLevel, getTonight } from "@/lib/timeOfDay";
 import { categories, getAllWordsFlat, missedWordsId, DUE_FOR_REVIEW_ID } from "@/lib/wordbanks";
@@ -161,23 +163,28 @@ export default function Home() {
             <NightThemeExplainer />
           </div>
           <div className="flex flex-col items-end gap-1">
+            {/* Tap either streak to share it as an image (components/ShareButton.js). */}
             {streak > 0 && (
-              <div
-                className="flex items-center gap-1 text-sm text-[#9B97C4]"
-                title="Consecutive days you completed a quiz"
+              <ShareButton
+                card={streakCard("daily", streak)}
+                className="flex items-center gap-1 text-sm text-[#9B97C4] hover:text-[#EDEBFF]"
+                title="Consecutive days you completed a quiz — tap to share"
+                ariaLabel={`${streak} day streak — share`}
               >
                 <Flame size={16} color="#FF9B5C" />
                 {streak} day streak
-              </div>
+              </ShareButton>
             )}
             {nightToMorningStreak > 0 && (
-              <div
-                className="flex items-center gap-1 text-sm text-[#9B97C4]"
-                title="Consecutive mornings you quizzed the words you studied the night before"
+              <ShareButton
+                card={streakCard("streak", nightToMorningStreak)}
+                className="flex items-center gap-1 text-sm text-[#9B97C4] hover:text-[#EDEBFF]"
+                title="Consecutive mornings you quizzed the words you studied the night before — tap to share"
+                ariaLabel={`${nightToMorningStreak} day night-to-morning streak — share`}
               >
                 <Sunrise size={16} color="#FFB27D" />
                 {nightToMorningStreak} day night-to-morning streak
-              </div>
+              </ShareButton>
             )}
           </div>
         </div>
@@ -301,19 +308,25 @@ export default function Home() {
                     <Lock size={14} /> Coming soon
                   </div>
                 ) : locked ? (
-                  <Link
-                    href="/unlock"
-                    className="rounded-2xl p-4 block bg-[#20223F] border border-[#ffffff1a]"
-                  >
-                    <span className="flex items-center gap-2 text-sm text-[#9B97C4]">
-                      <Lock size={14} />
-                      Locked — {category.levels.reduce((s, l) => s + l.words.length, 0)} words
-                    </span>
-                    <span className="block text-xs font-medium text-[#8B85FF] mt-2">
-                      {PRICE_LABEL} for full access to every category
-                    </span>
-                    <span className="block text-[10px] text-[#6E699B] mt-0.5">{TRIAL_LABEL}</span>
-                  </Link>
+                  <div className="rounded-2xl p-4 bg-[#20223F] border border-[#ffffff1a]">
+                    <Link href="/unlock" className="block">
+                      <span className="flex items-center gap-2 text-sm text-[#9B97C4]">
+                        <Lock size={14} />
+                        Locked — {category.levels.reduce((s, l) => s + l.words.length, 0)} words
+                      </span>
+                      <span className="block text-xs font-medium text-[#8B85FF] mt-2">
+                        {PRICE_LABEL} for full access to every category
+                      </span>
+                      <span className="block text-[10px] text-[#6E699B] mt-0.5">{TRIAL_LABEL}</span>
+                    </Link>
+                    {/* One real sample question — shows the format before paying (app/preview). */}
+                    <Link
+                      href={`/preview/${category.id}`}
+                      className="mt-3 inline-flex items-center min-h-[40px] rounded-xl px-3.5 text-xs font-medium text-[#8B85FF] border border-[#8B85FF66]"
+                    >
+                      Try a sample question
+                    </Link>
+                  </div>
                 ) : (
                   <div className="space-y-2">
                     {category.levels.map((level) => {

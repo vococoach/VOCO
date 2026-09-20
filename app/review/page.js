@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Check, X, ArrowLeft, Sparkles } from "lucide-react";
-import { getAllWordsFlat } from "@/lib/wordbanks";
+import { getAllWordsFlat, categories } from "@/lib/wordbanks";
 import { getDueWordIds, recordWordResult, REVIEW_SESSION_CAP } from "@/lib/progress";
 import QuizResults from "@/components/QuizResults";
+import MilestoneCards from "@/components/MilestoneCards";
+import { checkNewMilestones, describeMilestone } from "@/lib/milestones";
 
 // The word bank always lists the correct option first (correctIndex: 0).
 // Shuffling the display order here — instead of in the data — fixes every
@@ -26,6 +28,9 @@ export default function ReviewPage() {
   const [selected, setSelected] = useState(null);
   const [score, setScore] = useState(0);
   const [done, setDone] = useState(false);
+  // One-time milestones crossed by this session (only "words learned" can
+  // move here) — already marked as shown, so they never repeat.
+  const [milestones, setMilestones] = useState([]);
   // Start with the identity order so server-rendered HTML and the first
   // client render match exactly; shuffle only after mount (client-only),
   // which avoids a hydration mismatch from Math.random() running on both
@@ -81,6 +86,7 @@ export default function ReviewPage() {
       setStep(step + 1);
       setSelected(null);
     } else {
+      setMilestones(checkNewMilestones(categories).map(describeMilestone));
       setDone(true);
     }
   }
@@ -164,6 +170,7 @@ export default function ReviewPage() {
                 </p>
               )}
             </QuizResults>
+            <MilestoneCards milestones={milestones} />
             <Link
               href="/"
               className="block w-full rounded-xl px-4 py-3 font-medium text-white text-center"

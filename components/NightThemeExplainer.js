@@ -66,7 +66,7 @@ export default function NightThemeExplainer() {
             <p>
               Two different streaks: the flame counts days you completed any quiz; the sunrise is
               your night-to-morning streak — consecutive mornings you quizzed the words you
-              studied the night before.
+              studied the night before. Tap either one to share it as an image.
             </p>
             <p className="text-xs text-[#9B97C4]">{SLEEP_SCIENCE.hedge}</p>
           </div>

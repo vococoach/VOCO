@@ -146,7 +146,8 @@ shouldn't be re-litigated or silently changed.
   `#E08A9E`). Percentages, not counts, because levels, missed-words
   sessions and review sessions all differ in length; the 70% line is
   inclusive and uses integer math (`score * 100 >= total * 70`).
-  `components/QuizResults.js` renders the end-of-quiz card for all three
+  `components/QuizResults.js` (a thin wrapper over the shared
+  `components/CelebrationCard.js`) renders the end-of-quiz card for all three
   quiz types (level quizzes and missed-words sessions in
   `sets/[setId]/quiz`, review sessions in `review`) with one structure —
   disc, label, headline, score, note — recolored per tier; each page
@@ -275,6 +276,68 @@ shouldn't be re-litigated or silently changed.
   migration was written. (`lib/purchase.js` keeps its own UTC `todayStr()`
   for the once-a-day subscription recheck; that's a cadence, not a
   learner-facing date, so it was left alone.)
+- **One-time milestones, shown once ever, on the results screen**
+  (`lib/milestones.js`, `components/MilestoneCards.js`). Three kinds, each
+  with fixed thresholds: **streak** — the *night-to-morning* streak (never the
+  daily one) reaching 3 / 7 / 30 days; **mastery** — categories mastered, at
+  the 1st / 3rd / all-6 (a category is mastered once *every* level in it has
+  been completed at 100% at least once); **words** — distinct words that have
+  ever reached spaced-repetition box 3+ (`LEARNED_BOX`; i.e. answered
+  correctly twice in a row, not merely seen), at 25 / 50 / 100 / 200.
+  Two sticky fields exist purely for this, because the old records only kept
+  the latest state: `perfectAt` on a level record (set on the first 100%;
+  `lastScore` alone forgets it after a worse retake) and `maxBox` on a word
+  record (`box` drops to 1 on a miss). Legacy records fall back to their
+  latest score / current box. "Words learned" is therefore monotonic — a
+  later miss never un-learns a word — so a milestone can't be un-crossed.
+  `checkNewMilestones()` runs at the end of a level quiz, missed-words session
+  or review session (after everything else is recorded), marks what it returns
+  as shown in `voco_milestones_shown_v1`, and returns only the **highest**
+  newly crossed threshold per kind (a jump from 0 to 7 days shows one card,
+  not 3 then 7; the skipped 3 never surfaces later). Up to three cards can
+  appear at once (one per kind), rendered *under* the score card as inline
+  cards — never a modal or popup. Reset progress clears the shown-list (it is
+  progress); the onboarding flag is separate and survives. The cards are the
+  same `CelebrationCard` recipe as the score tiers (`QuizResults` renders
+  through it too); colors reuse the palette (streak dawn-orange, mastery
+  green, words lavender) and mastery deliberately has its own award glyph,
+  because it can only fire on a perfect quiz and would otherwise sit under a
+  green "Perfect score" card with the identical check.
+- **Shareable image cards, generated client-side** (`lib/shareCard.js`,
+  `components/ShareButton.js`). A canvas draws the same celebration card on
+  the night background with the Voco wordmark, the tagline and a
+  `voco.courses` watermark — 1080×1350 PNG, from a descriptor
+  (`describeMilestone()` / `streakCard()` in `lib/milestones.js`, the single
+  source of copy for both the in-app card and the image), so it always shows
+  real numbers. The dialog offers what the device supports: **Share** (Web
+  Share API with the PNG file, most phones), else **Copy image**
+  (`navigator.clipboard.write`), and always **Download image**. Entry points:
+  "Share this" on every milestone card, a "Share" link beside
+  "Night-to-morning complete…" on results, and the **header streaks
+  themselves** (tap the flame or sunrise streak) so it's reachable any time.
+  Gotchas already hit: the big figure is drawn at a small font size and
+  scaled up, because at 200px+ Fraunces switches to a hairline display cut in
+  which a "4" is barely legible; glyphs use lucide's own path data so they
+  match the app; font loading is capped at 2.5s so slow/blocked fonts fall
+  back to system fonts instead of hanging the dialog; and the dialog ignores
+  a stale native `close` event if it was reopened in the meantime. Native
+  share can't be exercised in desktop/headless browsers — it was verified by
+  stubbing `navigator.share` and checking the file, name, type and text it is
+  handed; copy and download were verified for real.
+- **Try one real question in a locked category before paying**
+  (`/preview/[categoryId]`, `lib/preview.js`; a "Try a sample question" link
+  on each locked card *beside* the price, which stays and still links to
+  `/unlock`). It is one **fixed** question per category — the first word of
+  the first level — in the real words-in-context format, not a mockup, and
+  deliberately **unmetered**: no login, no tracking, no limit; revisiting shows
+  the same question. It records nothing (no progress, no spaced-repetition
+  history) and grants nothing: the category stays locked and
+  `/sets/[setId]/study|quiz` still redirect to `/unlock`. After answering, a
+  "$1.99/month for full access" prompt links straight to the Stripe Payment
+  Link (plus "See what's included" → `/unlock`). Unknown ids, the free
+  category, and already-subscribed visitors are redirected home. (All content
+  ships in the client bundle regardless — the paywall is UI-level, per the
+  notes above — so previews reveal nothing new.)
 - **The due-for-review card also has a Study option**, not just Review.
   `DUE_FOR_REVIEW_ID = "due-for-review"` (`lib/wordbanks.js`) special-cases
   `/sets/[setId]/study` the same way the per-category courses do, via
@@ -374,6 +437,8 @@ app/
   globals.css             Fonts + Tailwind + the results card's one-time
                          entrance animation
   review/                 Spaced-repetition review session (capped at 20)
+  preview/[categoryId]/   One sample question from a locked category, with the
+                         "$1.99/month for full access" prompt after answering
   sets/[setId]/study/     Study flow — setId is a real level id (e.g.
                          "agreement-support-2"), a per-category "still
                          learning" id (missedWordsId()), or
@@ -400,6 +465,10 @@ app/
                          returns its URL; the portal itself handles
                          cancellation and payment-method updates
 components/
+  CelebrationCard.js      The one celebration-card recipe (disc, label,
+                         headline, figure, note) — score tiers AND milestones
+  MilestoneCards.js       One-time milestone cards under the score card
+  ShareButton.js          Trigger + dialog: share/copy/download the image
   Onboarding.js           First-visit onboarding (2 skippable screens)
   StudyClose.js           Closing screen after "Done studying"
   NightThemeExplainer.js  Info icon by the logo + the dismissible "why the
@@ -408,6 +477,10 @@ components/
                          missed-words sessions and review sessions —
                          one structure, recolored by score tier
 lib/
+  milestones.js           Milestone thresholds, once-only bookkeeping, and the
+                         card copy shared by the in-app card and the image
+  shareCard.js            Canvas renderer for the shareable PNG
+  preview.js              The one sample question per locked category
   sleepScience.js         The ONLY place sleep/memory claims are written
                          (see the accuracy rules in "Project context")
   onboarding.js           The one-time "seen onboarding" flag
