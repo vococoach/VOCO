@@ -14,6 +14,8 @@ import {
 } from "@/lib/wordbanks";
 import { markStudied, getStruggleWordIds, getDueWordIds, REVIEW_SESSION_CAP } from "@/lib/progress";
 import { isCategoryLocked, isSubscribedCached, shouldRefreshStatus, refreshSubscriptionStatus } from "@/lib/purchase";
+import { getPhase } from "@/lib/timeOfDay";
+import StudyClose from "@/components/StudyClose";
 
 export default function StudyPage() {
   const router = useRouter();
@@ -27,6 +29,8 @@ export default function StudyPage() {
   const [dueIds, setDueIds] = useState(null); // null = not loaded yet (due-for-review only)
   const [subscribed, setSubscribed] = useState(null); // null = not checked yet
   const [index, setIndex] = useState(0);
+  // null while studying; set on "Done studying" to show the closing screen.
+  const [closing, setClosing] = useState(null);
 
   useEffect(() => {
     if (isMissedWords) {
@@ -120,7 +124,14 @@ export default function StudyPage() {
 
   function finish() {
     markStudied(level.id);
-    router.push("/");
+    // Not straight home: a brief closing screen first (components/StudyClose.js)
+    // that says why to let sleep do its part before quizzing. Still just a
+    // suggestion — "Back home" is one tap and nothing is locked.
+    setClosing({ evening: getPhase(new Date()) === "evening" });
+  }
+
+  if (closing) {
+    return <StudyClose evening={closing.evening} />;
   }
 
   return (

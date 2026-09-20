@@ -24,6 +24,9 @@ To keep this MVP simple and reliable, based on what we decided:
   3 levels (12/12/10 words) — see `lib/wordbanks.js`.
 - **No unlock timer.** The quiz is available any time, even right after
   studying. That's intentional for now, so it's easy to test and demo.
+  The home screen does adapt to the time of day (evenings suggest tonight's
+  study, mornings surface last night's words), but that's only a suggestion —
+  nothing is ever locked by the clock.
 - **No payments, no ads.** Just the core study → quiz loop.
 
 Because there's no backend, hosting this costs **$0** — it's a fully static

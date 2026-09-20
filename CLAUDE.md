@@ -174,6 +174,107 @@ shouldn't be re-litigated or silently changed.
   tracks the **most recent** quiz (like the old "Last score"), not a
   lifetime best, so a later retake can move a level between tiers; a
   sticky "best ever" badge would need a new field in `voco_progress_v1`.
+- **The home screen is time-aware — framing only, never gating.** The
+  night/dawn look is the app's premise made visible (study = night blues,
+  quiz = warm dawn), so the home screen follows the learner's **local
+  device clock** (`lib/timeOfDay.js`, read on the client after mount — the
+  page is prerendered, so the server has no meaningful "now"): **evening**
+  18:00–04:59 shows a "Tonight's study" card (a suggested next level, or
+  "Tonight's study is done" once one was finished since 18:00 — after
+  midnight is still "tonight"); **morning** 05:00–11:59 features "Last
+  night's words — quiz yourself now" *above* the due-for-review card if a
+  level was studied today or yesterday; **midday** is the plain neutral
+  view. **Nothing is ever locked or hidden by the clock** — the quiz stays
+  available at any hour (see the README's "No unlock timer"); this only
+  changes what's suggested. Rules worth knowing before touching it:
+  the morning card skips levels already quizzed since 05:00 (the point is
+  the *post-sleep* quiz, so it retires itself once done), skips locked
+  categories (a lapsed subscription would just bounce to `/unlock`), and
+  picks the most recently studied level. `studiedAt`/`lastQuizAt` are **UTC**
+  dates (9pm in California is already "tomorrow" in UTC), so this feature
+  uses the exact `studiedTs`/`lastQuizTs` epoch-ms timestamps that
+  `markStudied()`/`recordQuizResult()` now also write, and compares in
+  local time; records from before the timestamps existed fall back to the
+  date strings. The page also re-reads the clock and progress on
+  `visibilitychange`/`focus`, so a tab left open overnight shows the
+  morning state at breakfast. A small info icon next to the logo opens
+  `components/NightThemeExplainer.js` — a native `<dialog>` (Esc, backdrop
+  click, X and "Got it" all dismiss it) explaining the sleep/memory
+  rationale; keep its claims hedged, since how much sleep helps varies by
+  person. Its tap target is 44px on purpose (the visible icon is 16px).
+- **All sleep-and-memory wording lives in one file — `lib/sleepScience.js` —
+  and has hard accuracy rules.** The closing screen, the onboarding and the
+  "why the night theme?" explainer all import from it, so a claim is checked
+  once and can't drift between screens. The rules (they exist because this
+  is the app's credibility): (1) say only the well-established general
+  finding — sleep, including hippocampus–cortex replay, *helps* stabilize
+  and strengthen memories formed while awake; (2) **never name a study,
+  researcher, institution or year** — a vague, correct sentence beats a
+  precise citation that might be wrong; (3) **never suggest new information
+  is absorbed while asleep** (a debunked claim) — sleep works on what was
+  already learned, and the copy says "memories formed while you're awake";
+  (4) prefer "helps" over "is when / is where" (consolidation also happens
+  while awake, so sleep is not the *only* time), and avoid "lock it in"
+  (it oversells what sleep or a quiz does — "help it stick" is the house
+  phrase); (5) always keep the hedge ("how much it helps varies from
+  person to person"). Retrieval practice (quizzing strengthens memory more
+  than rereading) is a separate, also well-established effect and is kept
+  as its own sentence. The same rules apply to any sleep line written
+  outside that file (the home subtitles, the morning/evening cards).
+- **Finishing a study session ends on a brief closing screen, not an
+  instant redirect** (`components/StudyClose.js`, shown by
+  `sets/[setId]/study` when "Done studying" is clicked; `markStudied()` still
+  runs first). It says why to stop here — "Sleep helps your brain make it
+  last" plus the shared consolidation/replay lines and the short hedge — and
+  its wording follows the clock ("come back in the morning" in the evening
+  phase, "after tonight's sleep, come back tomorrow morning" otherwise). It
+  is **only a suggestion**: "Back home" is one tap, it never auto-advances,
+  and the quiz is still available immediately (the "no unlock timer"
+  decision stands). It also appears after missed-words and due-for-review
+  study sessions, since they share the study page.
+- **First-visit onboarding: two skippable screens, shown once**
+  (`components/Onboarding.js`, gated in `app/page.js`). The one-time flag is
+  its own localStorage key, `voco_onboarded_v1` (`lib/onboarding.js`) —
+  deliberately **not** derived from progress data, and **not** cleared by
+  "Reset progress on this device", so resetting or an empty progress store
+  never re-triggers it. (Consequence: everyone who used the app before it
+  shipped sees it once too.) The home page is server-rendered with
+  `invisible` on `<main>` until the client has read the flag, so a
+  first-timer never glimpses the category list first. If localStorage is
+  blocked it is skipped rather than shown on every visit.
+- **The night-to-morning streak is a second, separate counter** (header,
+  sunrise icon, "N day night-to-morning streak"; the flame "N day streak"
+  is unchanged and counts any quiz on any day). One *cycle* = a level
+  studied last night, quizzed the next morning. Detection is **not
+  duplicated**: the quiz page calls the same `findLastNightsLevel()` the
+  "Last night's words" card uses, when the quiz opens (it must be then —
+  once the result is recorded the level counts as "already quizzed this
+  morning" and stops being featured), and if the level being quizzed is the
+  one the card would feature it counts, whichever button opened it. Not for
+  missed-words sessions or midday/evening quizzes. The results screen says
+  "Night-to-morning complete — N days in a row." The name is deliberate:
+  "sleep cycle" is also the sleep-science term for the ~90-minute loop of
+  sleep stages, which this is not.
+  `recordNightToMorning()` / `getNightToMorningStreak()` (`lib/progress.js`,
+  key `voco_night_to_morning_v1`, cleared by Reset) and the daily
+  `getStreak()` both count through one shared `consecutiveDayStreak()`:
+  consecutive days, today may still be pending, a missed day resets to 0.
+- **Every date in `lib/progress.js` is the learner's LOCAL calendar day —
+  keep it that way.** `todayStr()` used to be UTC (`toISOString()`), and
+  `addDays()` parsed local but formatted UTC. That made a 9pm quiz in
+  California count as "tomorrow" (skewing the daily streak) and, worse,
+  scheduled spaced-repetition reviews on the wrong day — for zones east of
+  UTC *every* review date was wrong. It was fixed at the root (streak,
+  `studiedAt`/`lastQuizAt` and `nextReviewDate` all local now) and verified
+  against an independent oracle over hundreds of randomized histories in five
+  time zones (old code: 20–57% wrong in the Americas, ~100% wrong for review
+  dates in Tokyo/Auckland; new code: 0 wrong). Streaks step by `setDate()`,
+  not by subtracting 24h, so daylight-saving days (23/25h) can't skip or
+  repeat a day. Any date written under the old UTC convention is off by at
+  most a day, once — there were no real users when this was fixed, so no
+  migration was written. (`lib/purchase.js` keeps its own UTC `todayStr()`
+  for the once-a-day subscription recheck; that's a cadence, not a
+  learner-facing date, so it was left alone.)
 - **The due-for-review card also has a Study option**, not just Review.
   `DUE_FOR_REVIEW_ID = "due-for-review"` (`lib/wordbanks.js`) special-cases
   `/sets/[setId]/study` the same way the per-category courses do, via
@@ -299,10 +400,20 @@ app/
                          returns its URL; the portal itself handles
                          cancellation and payment-method updates
 components/
+  Onboarding.js           First-visit onboarding (2 skippable screens)
+  StudyClose.js           Closing screen after "Done studying"
+  NightThemeExplainer.js  Info icon by the logo + the dismissible "why the
+                         night theme?" dialog (native <dialog>)
   QuizResults.js          End-of-quiz card shared by level quizzes,
                          missed-words sessions and review sessions —
                          one structure, recolored by score tier
 lib/
+  sleepScience.js         The ONLY place sleep/memory claims are written
+                         (see the accuracy rules in "Project context")
+  onboarding.js           The one-time "seen onboarding" flag
+  timeOfDay.js            Local-time phases (morning/midday/evening) and the
+                         "last night's words" / "tonight's study" selection
+                         for the home screen
   scoreTier.js            Tier thresholds (100 / 70 / below) + colors,
                          shared by QuizResults and the home screen
   wordbanks.js            All content — categories > levels > words, plus

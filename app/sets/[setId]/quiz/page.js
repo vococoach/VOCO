@@ -1,17 +1,26 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Check, X, ArrowLeft, Sparkles } from "lucide-react";
+import { Check, X, ArrowLeft, Sparkles, Sunrise } from "lucide-react";
 import {
   findLevel,
   wordId,
   getMissedWordsLevel,
   missedWordsCategoryId,
   getSetCategoryId,
+  categories,
 } from "@/lib/wordbanks";
-import { recordQuizResult, recordWordResult, getStruggleWordIds } from "@/lib/progress";
+import {
+  recordQuizResult,
+  recordWordResult,
+  getStruggleWordIds,
+  getAllProgress,
+  recordNightToMorning,
+  getNightToMorningStreak,
+} from "@/lib/progress";
+import { getPhase, findLastNightsLevel } from "@/lib/timeOfDay";
 import { isCategoryLocked, isSubscribedCached, shouldRefreshStatus, refreshSubscriptionStatus } from "@/lib/purchase";
 import QuizResults from "@/components/QuizResults";
 
@@ -39,6 +48,11 @@ export default function QuizPage() {
   const [selected, setSelected] = useState(null);
   const [score, setScore] = useState(0);
   const [done, setDone] = useState(false);
+  // Night-to-morning tracking: whether finishing THIS quiz completes a cycle
+  // (decided once, when the quiz opens), and the resulting streak to show.
+  const [cycleEligible, setCycleEligible] = useState(false);
+  const [cycleStreak, setCycleStreak] = useState(0);
+  const cycleChecked = useRef(false);
   // Start with the identity order so server-rendered HTML and the first
   // client render match exactly; shuffle only after mount (client-only),
   // which avoids a hydration mismatch from Math.random() running on both
@@ -65,6 +79,23 @@ export default function QuizPage() {
   useEffect(() => {
     if (locked) router.replace("/unlock");
   }, [locked, router]);
+
+  // A completed quiz counts as one night-to-morning cycle when it's the very level the
+  // home screen's "Last night's words" card would feature right now — the
+  // exact same detection (findLastNightsLevel), not a second copy of it. It
+  // has to be decided here, on open: once this quiz's result is recorded,
+  // the level counts as "already quizzed this morning" and the card would
+  // stop featuring it. Never for missed-words sessions (not real levels).
+  useEffect(() => {
+    if (cycleChecked.current || subscribed === null || isMissedWords) return;
+    cycleChecked.current = true;
+    const now = new Date();
+    if (getPhase(now) !== "morning") return;
+    const featured = findLastNightsLevel(categories, getAllProgress(), now, (id) =>
+      isCategoryLocked(id, subscribed)
+    );
+    if (featured && featured.level.id === params.setId) setCycleEligible(true);
+  }, [subscribed, isMissedWords, params.setId]);
 
   useEffect(() => {
     setOrder(shuffledIndices(4));
@@ -136,6 +167,10 @@ export default function QuizPage() {
       setSelected(null);
     } else {
       recordQuizResult(level.id, score, words.length);
+      if (cycleEligible) {
+        recordNightToMorning();
+        setCycleStreak(getNightToMorningStreak());
+      }
       setDone(true);
     }
   }
@@ -230,7 +265,15 @@ export default function QuizPage() {
                       },
                     }
               }
-            />
+            >
+              {cycleStreak > 0 && (
+                <p className="mt-4 flex items-center justify-center gap-2 text-sm text-[#8A6E7D]">
+                  <Sunrise size={16} color="#D9772F" />
+                  Night-to-morning complete —{" "}
+                  {cycleStreak === 1 ? "your streak starts here." : `${cycleStreak} days in a row.`}
+                </p>
+              )}
+            </QuizResults>
             <Link
               href="/"
               className="block w-full rounded-xl px-4 py-3 font-medium text-white text-center"

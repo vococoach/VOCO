@@ -2,11 +2,22 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Moon, Flame, RotateCcw, Lock, Sparkles, Target, Info } from "lucide-react";
+import { Moon, Flame, RotateCcw, Lock, Sparkles, Target, Info, Sunrise } from "lucide-react";
 import { getScoreTier, TIERS } from "@/lib/scoreTier";
 import { TIER_ICONS } from "@/components/QuizResults";
+import NightThemeExplainer from "@/components/NightThemeExplainer";
+import Onboarding from "@/components/Onboarding";
+import { hasOnboarded, markOnboarded } from "@/lib/onboarding";
+import { getPhase, findLastNightsLevel, getTonight } from "@/lib/timeOfDay";
 import { categories, getAllWordsFlat, missedWordsId, DUE_FOR_REVIEW_ID } from "@/lib/wordbanks";
-import { getAllProgress, getStreak, resetProgress, getDueWordIds, getStruggleWordIds } from "@/lib/progress";
+import {
+  getAllProgress,
+  getStreak,
+  getNightToMorningStreak,
+  resetProgress,
+  getDueWordIds,
+  getStruggleWordIds,
+} from "@/lib/progress";
 import {
   isCategoryLocked,
   isSubscribedCached,
@@ -25,16 +36,47 @@ function formatDate(iso) {
 export default function Home() {
   const [progress, setProgress] = useState({});
   const [streak, setStreak] = useState(0);
+  // Consecutive mornings a full night-to-morning cycle was completed — a
+  // different thing from `streak` (any quiz, any day). See lib/progress.js.
+  const [nightToMorningStreak, setNightToMorningStreak] = useState(0);
+  // null = not known yet (localStorage is client-only), true = show the
+  // first-visit onboarding, false = normal home screen.
+  const [onboarding, setOnboarding] = useState(null);
   const [ready, setReady] = useState(false);
   const [dueCount, setDueCount] = useState(0);
   const [struggleCounts, setStruggleCounts] = useState({});
   const [subscribed, setSubscribed] = useState(false);
   const [cancelAt, setCancelAt] = useState(null);
   const [openingPortal, setOpeningPortal] = useState(false);
+  // Local device time, read on the client only (the page is prerendered, so
+  // the server has no meaningful "now"). null until mounted.
+  const [now, setNow] = useState(null);
+
+  // A tab left open overnight shouldn't keep showing last night's evening
+  // framing at breakfast — re-read the clock and progress on coming back.
+  useEffect(() => {
+    function refresh() {
+      if (document.visibilityState !== "visible") return;
+      setNow(new Date());
+      setProgress(getAllProgress());
+      setStreak(getStreak());
+      setNightToMorningStreak(getNightToMorningStreak());
+      setDueCount(getDueWordIds().length);
+    }
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("focus", refresh);
+    };
+  }, []);
 
   useEffect(() => {
+    setOnboarding(!hasOnboarded());
+    setNow(new Date());
     setProgress(getAllProgress());
     setStreak(getStreak());
+    setNightToMorningStreak(getNightToMorningStreak());
     setDueCount(getDueWordIds().length);
 
     // Show the cached subscription state immediately, then re-verify with
@@ -70,6 +112,7 @@ export default function Home() {
     resetProgress();
     setProgress({});
     setStreak(0);
+    setNightToMorningStreak(0);
   }
 
   async function handleManageSubscription() {
@@ -82,25 +125,124 @@ export default function Home() {
     // On success the page is navigating away, so no need to reset state.
   }
 
+  // Time-of-day framing (see lib/timeOfDay.js). Evening: tonight's study.
+  // Morning: last night's words, if any. Midday / anything else: the neutral
+  // view. Only framing — nothing here ever locks or hides the quiz.
+  const phase = now ? getPhase(now) : null;
+  const isLocked = (categoryId) => isCategoryLocked(categoryId, subscribed);
+  const lastNight = ready && phase === "morning" ? findLastNightsLevel(categories, progress, now, isLocked) : null;
+  const tonight = ready && phase === "evening" ? getTonight(categories, progress, now, isLocked) : null;
+
+  let subtitle = "Study a level before bed. Quiz yourself whenever you're ready.";
+  if (tonight && tonight.kind === "suggest") subtitle = "Good evening. Study a level before bed — sleep helps it stick.";
+  else if (tonight && tonight.kind === "done") subtitle = "Good evening. Sleep will help what you studied settle in.";
+  else if (lastNight) subtitle = "Good morning. A quiz now shows what stuck overnight.";
+
+  if (onboarding) {
+    return (
+      <Onboarding
+        onFinish={() => {
+          markOnboarded();
+          setOnboarding(false);
+        }}
+      />
+    );
+  }
+
   return (
-    <main className="min-h-dvh bg-[#1A1C3A] px-4 py-8">
+    // Hidden (not removed) until we know whether this is a first visit, so a
+    // first-timer never glimpses the category list before the onboarding.
+    <main className={`min-h-dvh bg-[#1A1C3A] px-4 py-8 ${onboarding === null ? "invisible" : ""}`}>
       <div className="max-w-md mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-2">
             <Moon size={22} color="#8B85FF" />
             <span className="font-display text-xl text-[#EDEBFF]">Voco</span>
+            <NightThemeExplainer />
           </div>
-          {streak > 0 && (
-            <div className="flex items-center gap-1 text-sm text-[#9B97C4]">
-              <Flame size={16} color="#FF9B5C" />
-              {streak} day streak
-            </div>
-          )}
+          <div className="flex flex-col items-end gap-1">
+            {streak > 0 && (
+              <div
+                className="flex items-center gap-1 text-sm text-[#9B97C4]"
+                title="Consecutive days you completed a quiz"
+              >
+                <Flame size={16} color="#FF9B5C" />
+                {streak} day streak
+              </div>
+            )}
+            {nightToMorningStreak > 0 && (
+              <div
+                className="flex items-center gap-1 text-sm text-[#9B97C4]"
+                title="Consecutive mornings you quizzed the words you studied the night before"
+              >
+                <Sunrise size={16} color="#FFB27D" />
+                {nightToMorningStreak} day night-to-morning streak
+              </div>
+            )}
+          </div>
         </div>
 
-        <p className="text-sm text-[#9B97C4] mb-6">
-          Study a level before bed. Quiz yourself whenever you're ready.
-        </p>
+        {/* Hidden (not removed) until the clock is read, so the greeting never visibly swaps text. */}
+        <p className={`text-sm text-[#9B97C4] mb-6 ${ready ? "" : "invisible"}`}>{subtitle}</p>
+
+        {lastNight && (
+          <div
+            className="rounded-2xl p-4 mb-6"
+            style={{ background: "linear-gradient(to bottom, #FFD9B0, #FFEFDD)" }}
+          >
+            <div className="flex items-start gap-2 mb-1 text-[#3D2B4F] font-medium text-balance">
+              <Sunrise size={18} color="#D9772F" className="mt-0.5 shrink-0" />
+              Last night's words&nbsp;— quiz yourself now
+            </div>
+            <p className="text-xs text-[#8A6E7D] mb-3">
+              {lastNight.category.title} · {lastNight.level.label} · {lastNight.level.words.length} words
+            </p>
+            <div className="flex gap-2">
+              <Link
+                href={`/sets/${lastNight.level.id}/quiz`}
+                className="flex-1 text-center text-sm rounded-xl px-3 py-2 font-medium"
+                style={{ backgroundColor: "#FF9B5C", color: "#14152B" }}
+              >
+                Take the quiz
+              </Link>
+              <Link
+                href={`/sets/${lastNight.level.id}/study`}
+                className="flex-1 text-center text-sm rounded-xl px-3 py-2 border border-[#3D2B4F33] text-[#3D2B4F]"
+              >
+                Restudy
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {tonight && (
+          <div className="rounded-2xl p-4 mb-6 bg-[#20223F] border border-[#8B85FF40]">
+            <div className="flex items-center gap-2 mb-1 text-sm font-medium text-[#EDEBFF]">
+              <Moon size={16} color="#8B85FF" />
+              {tonight.kind === "done" ? "Tonight's study is done" : "Tonight's study"}
+            </div>
+            {tonight.kind === "done" ? (
+              <p className="text-xs text-[#9B97C4]">
+                You studied {tonight.category.title} · {tonight.level.label}. Sleep on it — quiz
+                yourself in the morning to see what stuck.
+              </p>
+            ) : (
+              <>
+                <p className="text-xs text-[#9B97C4] mb-3">
+                  {tonight.category.title} · {tonight.level.label} · {tonight.level.words.length} words.
+                  Study it before bed, then quiz yourself in the morning.
+                </p>
+                <Link
+                  href={`/sets/${tonight.level.id}/study`}
+                  className="block text-center text-sm rounded-xl px-3 py-2 font-medium"
+                  style={{ backgroundColor: "#8B85FF", color: "#14152B" }}
+                >
+                  Start studying
+                </Link>
+              </>
+            )}
+          </div>
+        )}
 
         {ready && dueCount > 0 && (
           <div className="rounded-2xl p-4 mb-6" style={{ backgroundColor: "#8B85FF" }}>
