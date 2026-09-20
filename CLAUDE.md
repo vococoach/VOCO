@@ -236,10 +236,15 @@ decisions already made, so they shouldn't be re-litigated or silently changed.
   (`components/ScienceNote.js`, under the subtitle, home only). Always
   present on every visit — not a one-time tip, not a modal, nothing to tap or
   dismiss; the "why the night theme?" dialog stays the deeper, opt-in
-  explanation. It is deliberately a *footnote, not a card*: `text-xs` in a
-  muted `#8E8AB5` (5.1:1 on the background, so it stays readable), a faint
-  outline and no fill, so the daily-habit cards keep the attention (worst case
-  on a 375px phone is four lines). The facts are `SCIENCE_FACTS` in
+  explanation. It is deliberately a *footnote, not a card*: `text-xs`, a faint
+  outline and no fill, so the daily-habit cards keep the attention (three lines
+  on desktop, worst case four on a 375px phone). Its **color follows the fact's
+  kind**, the same night/day split as its icon: night indigo `#8B85FF` + moon for
+  a sleep fact, dawn orange `#FF9B5C` + sunrise for a retrieval fact (it started
+  as one flat muted lavender, which was too easy to miss). Both pass WCAG AA for
+  small text on the actual background (`#1A1C3A`, the note has no fill): 5.43:1
+  and 7.94:1. Re-check that if either color or the background ever changes —
+  never trade readability for a livelier color. The facts are `SCIENCE_FACTS` in
   `lib/sleepScience.js`, in two **separate categories**: `sleep` (memory
   consolidation) and `retrieval` (the testing effect — self-quizzing
   strengthens memory more than rereading). `pickScienceFact(phase, now)` ties
