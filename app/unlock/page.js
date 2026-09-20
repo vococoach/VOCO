@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Moon, Lock, Check, X, Sparkles } from "lucide-react";
-import { categories } from "@/lib/wordbanks";
+import { courses } from "@/lib/wordbanks";
 import {
-  FREE_CATEGORY_ID,
+  isFreeCategory,
   PAYMENT_LINK_URL,
   PRICE_LABEL,
   TRIAL_LABEL,
@@ -55,12 +55,17 @@ export default function UnlockPage() {
     }
   }, []);
 
-  const freeCategory = categories.find((c) => c.id === FREE_CATEGORY_ID);
-  const lockedCategories = categories.filter((c) => c.id !== FREE_CATEGORY_ID);
+  // Each course has one free category; everything else unlocks together.
+  const freeCategories = courses.flatMap((course) => course.categories.filter((c) => isFreeCategory(c.id)));
+  const lockedByCourse = courses
+    .map((course) => ({ course, categories: course.categories.filter((c) => !isFreeCategory(c.id)) }))
+    .filter((group) => group.categories.length > 0);
+  const lockedCategories = lockedByCourse.flatMap((group) => group.categories);
   const lockedWordCount = lockedCategories.reduce(
     (sum, c) => sum + c.levels.reduce((s, l) => s + l.words.length, 0),
     0
   );
+  const freeTitles = freeCategories.map((c) => c.title).join(" and ");
 
   return (
     <main className="min-h-dvh bg-[#1A1C3A] px-4 py-8 flex items-center justify-center">
@@ -86,7 +91,7 @@ export default function UnlockPage() {
             </div>
             <p className="font-display text-xl text-[#EDEBFF] mb-2">You're unlocked</p>
             <p className="text-sm text-[#9B97C4] mb-6">
-              Every category is now available on this device.
+              Every course is now available on this device.
             </p>
             <Link
               href="/"
@@ -115,7 +120,7 @@ export default function UnlockPage() {
               Start {TRIAL_LABEL}
             </a>
             <p className="text-center text-xs text-[#6E699B] mb-3">
-              {PRICE_LABEL} after your trial, for full access to every category. Cancel anytime.
+              {PRICE_LABEL} after your trial, for full access to every course. Cancel anytime.
             </p>
             <Link href="/" className="block text-center text-[#8B85FF] text-sm">
               Back home
@@ -137,21 +142,26 @@ export default function UnlockPage() {
           <div>
             <div className="text-center mb-6">
               <Lock size={28} color="#8B85FF" className="mx-auto mb-3" />
-              <p className="font-display text-xl text-[#EDEBFF] mb-2">Unlock the full course</p>
+              <p className="font-display text-xl text-[#EDEBFF] mb-2">Unlock every course</p>
               <p className="text-sm text-[#9B97C4]">
-                One subscription gives you full access to every category.{" "}
-                {freeCategory ? freeCategory.title : "One category"} stays free; the other{" "}
-                {lockedCategories.length} — {lockedWordCount} more words — all unlock together
+                One subscription gives you full access to every course.{" "}
+                {freeTitles || "One category in each course"} stay{freeCategories.length === 1 ? "s" : ""} free; the
+                other {lockedCategories.length} — {lockedWordCount} more words — all unlock together
                 with a {TRIAL_LABEL}, then {PRICE_LABEL}.
               </p>
             </div>
 
-            <div className="bg-[#20223F] rounded-2xl p-4 mb-6 space-y-2">
-              <p className="text-xs text-[#9B97C4] mb-1">One subscription unlocks all of these:</p>
-              {lockedCategories.map((c) => (
-                <div key={c.id} className="flex items-center gap-2 text-sm text-[#EDEBFF]">
-                  <Lock size={14} color="#6E699B" />
-                  {c.title}
+            <div className="bg-[#20223F] rounded-2xl p-4 mb-6 space-y-3">
+              <p className="text-xs text-[#9B97C4]">One subscription unlocks all of these:</p>
+              {lockedByCourse.map(({ course, categories: locked }) => (
+                <div key={course.id} className="space-y-2">
+                  <p className="text-xs uppercase tracking-wide text-[#8B85FF]">{course.title}</p>
+                  {locked.map((c) => (
+                    <div key={c.id} className="flex items-center gap-2 text-sm text-[#EDEBFF]">
+                      <Lock size={14} color="#6E699B" />
+                      {c.title}
+                    </div>
+                  ))}
                 </div>
               ))}
             </div>
@@ -164,7 +174,7 @@ export default function UnlockPage() {
               Start {TRIAL_LABEL}
             </a>
             <p className="text-center text-xs text-[#6E699B] mb-3">
-              {PRICE_LABEL} after your trial, for full access to every category. Cancel anytime.
+              {PRICE_LABEL} after your trial, for full access to every course. Cancel anytime.
             </p>
             <Link href="/" className="block text-center text-[#8B85FF] text-sm">
               Not yet — back home

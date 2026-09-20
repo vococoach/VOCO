@@ -10,7 +10,9 @@ import {
   getMissedWordsLevel,
   missedWordsCategoryId,
   getSetCategoryId,
+  getCategoryCourse,
   categories,
+  courses,
 } from "@/lib/wordbanks";
 import {
   recordQuizResult,
@@ -45,6 +47,9 @@ export default function QuizPage() {
   const missedCategoryId = missedWordsCategoryId(params.setId);
   const isMissedWords = missedCategoryId !== null;
   const categoryId = getSetCategoryId(params.setId);
+  // "Back" returns to the course this level belongs to (its category list).
+  const course = categoryId ? getCategoryCourse(categoryId) : null;
+  const backHref = course ? `/courses/${course.id}` : "/";
   const [struggleIds, setStruggleIds] = useState(null); // null = not loaded yet (missed-words only)
   const [subscribed, setSubscribed] = useState(null); // null = not checked yet
   const [step, setStep] = useState(0);
@@ -179,7 +184,7 @@ export default function QuizPage() {
       }
       // After everything above is recorded, so a streak / mastery / words
       // threshold crossed by THIS quiz is seen. Shown once, ever.
-      setMilestones(checkNewMilestones(categories).map(describeMilestone));
+      setMilestones(checkNewMilestones(courses).map(describeMilestone));
       setDone(true);
     }
   }
@@ -187,7 +192,7 @@ export default function QuizPage() {
   return (
     <main className="min-h-dvh bg-gradient-to-b from-[#FFD9B0] to-[#FFEFDD] px-4 py-8">
       <div className="max-w-md mx-auto">
-        <Link href="/" className="flex items-center gap-1 text-xs text-[#8A6E7D] mb-6">
+        <Link href={backHref} className="flex items-center gap-1 text-xs text-[#8A6E7D] mb-6">
           <ArrowLeft size={14} /> Back
         </Link>
 

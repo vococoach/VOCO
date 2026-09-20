@@ -10,6 +10,7 @@ import {
   missedWordsCategoryId,
   getDueForReviewLevel,
   getSetCategoryId,
+  getCategoryCourse,
   DUE_FOR_REVIEW_ID,
 } from "@/lib/wordbanks";
 import { markStudied, getStruggleWordIds, getDueWordIds, REVIEW_SESSION_CAP } from "@/lib/progress";
@@ -25,6 +26,10 @@ export default function StudyPage() {
   const isDueForReview = params.setId === DUE_FOR_REVIEW_ID;
   const isDynamic = isMissedWords || isDueForReview;
   const categoryId = getSetCategoryId(params.setId);
+  // "Back" returns to the course this level belongs to (its category list);
+  // the due-for-review set spans every course, so that one goes home.
+  const course = categoryId ? getCategoryCourse(categoryId) : null;
+  const backHref = course ? `/courses/${course.id}` : "/";
   const [struggleIds, setStruggleIds] = useState(null); // null = not loaded yet (missed-words only)
   const [dueIds, setDueIds] = useState(null); // null = not loaded yet (due-for-review only)
   const [subscribed, setSubscribed] = useState(null); // null = not checked yet
@@ -137,7 +142,7 @@ export default function StudyPage() {
   return (
     <main className="min-h-dvh bg-[#14152B] px-4 py-8">
       <div className="max-w-md mx-auto">
-        <Link href="/" className="flex items-center gap-1 text-xs text-[#9B97C4] mb-6">
+        <Link href={backHref} className="flex items-center gap-1 text-xs text-[#9B97C4] mb-6">
           <ArrowLeft size={14} /> Back
         </Link>
 

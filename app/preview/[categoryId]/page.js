@@ -45,7 +45,7 @@ export default function PreviewPage() {
 
   if (subscribed === null || !sample || subscribed) return null;
 
-  const { category, word, totalQuestions } = sample;
+  const { course, category, word, totalQuestions } = sample;
   const q = word.quiz;
   const answered = selected !== null;
 
@@ -57,7 +57,9 @@ export default function PreviewPage() {
         </Link>
 
         <p className="text-xs uppercase tracking-wide text-[#8A6E7D] mb-1">Sample question — {category.title}</p>
-        <p className="text-xs text-[#8A6E7D] mb-4">One real question from the course. No sign-up needed.</p>
+        <p className="text-xs text-[#8A6E7D] mb-4">
+          One real question from {course ? course.title : "the course"}. No sign-up needed.
+        </p>
 
         <div className="bg-[#FFF9F2] rounded-2xl p-6 mb-5">
           <p className="text-xs text-[#8A6E7D] mb-2">Which word best completes the sentence?</p>
@@ -92,7 +94,7 @@ export default function PreviewPage() {
             <p className="font-display text-xl text-[#3D2B4F] mb-1">{PRICE_LABEL} for full access</p>
             <p className="text-sm text-[#8A6E7D] mb-4">
               That was 1 of {totalQuestions} questions in {category.title}. One subscription unlocks every
-              category — {TRIAL_LABEL}, cancel anytime.
+              course — {TRIAL_LABEL}, cancel anytime.
             </p>
             <a
               href={PAYMENT_LINK_URL}

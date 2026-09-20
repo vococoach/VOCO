@@ -5,7 +5,7 @@ import { Moon, Sunrise } from "lucide-react";
 import { SLEEP_SCIENCE } from "@/lib/sleepScience";
 
 // First-visit onboarding, shown once (see lib/onboarding.js) before the
-// category list: two short screens that frame the app's premise up front —
+// home screen: two short screens that frame the app's premise up front —
 // study before bed, get quizzed after waking, because sleep is when memory
 // consolidates. Skippable on either screen. The science wording comes from
 // the shared, vetted lib/sleepScience.js.

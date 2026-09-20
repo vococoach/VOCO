@@ -18,7 +18,7 @@ export default function PrivacyPage() {
           <span className="font-display text-lg text-[#EDEBFF]">Voco</span>
         </div>
         <h1 className="font-display text-2xl text-[#EDEBFF] mb-1">Privacy Policy</h1>
-        <p className="text-xs text-[#6E699B] mb-8">Last updated September 16, 2026</p>
+        <p className="text-xs text-[#6E699B] mb-8">Last updated September 20, 2026</p>
 
         <div className="space-y-6 text-sm text-[#9B97C4] leading-relaxed">
           <section>
@@ -45,7 +45,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-[#EDEBFF] font-medium mb-2">3. Subscribing (Paid Categories)</h2>
             <p className="mb-2">
-              If you subscribe to unlock the other 5 categories, checkout is handled entirely by
+              If you subscribe to unlock the paid categories, checkout is handled entirely by
               Stripe, our payment processor. Stripe collects your email and payment details
               directly — we never see or store your card number.
             </p>
@@ -92,8 +92,8 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-[#EDEBFF] font-medium mb-2">6. Children's Privacy</h2>
             <p>
-              Voco is a study tool aimed at students preparing for the SAT, many of whom are
-              minors. Because we don't collect personal information for the free content, there's
+              Voco is a vocabulary study tool that includes SAT vocabulary, so many of its
+              learners are students, many of whom are minors. Because we don't collect personal information for the free content, there's
               nothing for us to knowingly collect from children under 13. Subscribing requires a
               payment method, which Stripe's own terms require the account holder to be able to
               legally provide.

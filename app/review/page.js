@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Check, X, ArrowLeft, Sparkles } from "lucide-react";
-import { getAllWordsFlat, categories } from "@/lib/wordbanks";
+import { getAllWordsFlat, courses } from "@/lib/wordbanks";
 import { getDueWordIds, recordWordResult, REVIEW_SESSION_CAP } from "@/lib/progress";
 import QuizResults from "@/components/QuizResults";
 import MilestoneCards from "@/components/MilestoneCards";
@@ -86,7 +86,7 @@ export default function ReviewPage() {
       setStep(step + 1);
       setSelected(null);
     } else {
-      setMilestones(checkNewMilestones(categories).map(describeMilestone));
+      setMilestones(checkNewMilestones(courses).map(describeMilestone));
       setDone(true);
     }
   }

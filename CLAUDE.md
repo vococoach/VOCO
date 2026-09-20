@@ -1,8 +1,10 @@
 # Voco — Project Context
 
-Vocab Coach for the SAT. Study before bed, quiz yourself whenever you're ready. Read this
-file before making changes — it captures decisions already made, so they
-shouldn't be re-litigated or silently changed.
+A vocabulary-learning platform. Study before bed, quiz yourself whenever you're ready.
+Voco has multiple courses under one subscription — **SAT Vocab** (the original
+course, matched to the Digital SAT) and **Everyday Vocabulary** (general audience, no
+exam) — see "Courses" below. Read this file before making changes — it captures
+decisions already made, so they shouldn't be re-litigated or silently changed.
 
 ## Stack & architecture (deliberate choices, not defaults)
 
@@ -12,7 +14,9 @@ shouldn't be re-litigated or silently changed.
   scope decision, not an oversight — don't add auth/Supabase/a database
   without discussing it first.
 - **Paid unlock via a Stripe subscription — still no accounts or database.**
-  `Agreement & Support` is free forever; the other 5 categories require an
+  One category in each course is free forever (`FREE_CATEGORY_BY_COURSE` in
+  `lib/purchase.js`: Agreement & Support in SAT Vocab, Precise Description in
+  Everyday Vocabulary); every other category, in every course, requires an
   active or trialing subscription (`PRICE_LABEL` = "$1.99/month",
   `TRIAL_LABEL` = "7-day free trial", both in `lib/purchase.js`, backed by
   a recurring Payment Link in the Stripe Dashboard). This is deliberately
@@ -59,24 +63,27 @@ shouldn't be re-litigated or silently changed.
     cleared one. A repeat subscriber on a new device goes through Checkout
     again (same subscription, new device-level verification) — that's an
     accepted MVP tradeoff, not an oversight.
-  - **One subscription = every paid category, and the copy must say so.**
-    Entitlement is a single boolean: `isCategoryLocked(categoryId,
-    subscribed)` (`lib/purchase.js`) is `false` for the one free category
-    and `!subscribed` for everything else — there is no per-category
-    purchase, and Stripe has exactly one product/price. Because each
+  - **One subscription = every paid category in every course, and the copy
+    must say so.** Entitlement is a single boolean: `isCategoryLocked(categoryId,
+    subscribed)` (`lib/purchase.js`) is `false` for a free category
+    (`isFreeCategory()` — one per course) and `!subscribed` for everything
+    else — there is no per-category or per-course purchase, and Stripe has
+    exactly one product/price. Because each
     locked card on the home screen sits under its own category heading, a
     bare price next to it reads as "$1.99 to unlock *this*." So wherever
-    the price appears in the UI it's paired with its scope: locked cards
-    ("$1.99/month for full access to every category"), the `/unlock` pitch
-    and error state ("One subscription gives you full access to every
-    category", "$1.99/month after your trial, for full access to every
-    category"), and the subscribed footer ("You have full access to every
-    category."). If per-category or tiered pricing is ever added, that copy
-    — and this bullet — need to change together. Legal text (`/terms` §4,
-    `/privacy` §3) and the Stripe product description (currently "Full
-    access to every SAT vocab category, with spaced repetition review" —
-    deliberately no hardcoded counts, which would drift as the word bank
-    grows) are separate surfaces; keep them consistent too.
+    the price appears in the UI it's paired with its scope — "every
+    course" now that there are several: locked cards ("$1.99/month for full
+    access to every course"), the `/unlock` pitch and error state ("One
+    subscription gives you full access to every course", "$1.99/month after
+    your trial, for full access to every course"), the sample-question
+    prompt, the cancellation banner, and the subscribed footer ("You have
+    full access to every course."). If per-category, per-course or tiered
+    pricing is ever added, that copy — and this bullet — need to change
+    together. Legal text (`/terms` §4, `/privacy` §3) and the Stripe product
+    description (updated 2026-09-20 to "Full access to every Voco course,
+    with spaced repetition review" — deliberately no hardcoded counts, which
+    would drift as the word bank grows) are separate surfaces; keep them
+    consistent too.
   - **The actual gate.** `getSetCategoryId(setId)` (`lib/wordbanks.js`)
     resolves any setId (real level, per-category "still learning" id, or
     `null` for `DUE_FOR_REVIEW_ID`) back to its category, and both
@@ -117,7 +124,8 @@ shouldn't be re-litigated or silently changed.
     mutually exclusive, and only a genuine non-`trialing`/`active` status
     from Stripe should ever lock a category.
 - **No AI calls at runtime.** All vocab content is hard-coded in
-  `lib/wordbanks.js`. This is intentional for reliability — an earlier
+  `lib/wordbanks.js` (SAT Vocab) and `lib/everydayVocabulary.js` (Everyday
+  Vocabulary). This is intentional for reliability — an earlier
   version called an AI API live and it was flaky. Content is written once
   (by a human or AI-assisted, then reviewed), then baked in as static data.
 - No quiz-unlock timer — study and quiz are both available anytime. Also
@@ -128,7 +136,7 @@ shouldn't be re-litigated or silently changed.
   from level-level progress. Missing a word resets it to box 1 (due again
   immediately); answering correctly advances it and pushes the next review
   further out (intervals: 0, 1, 3, 7, 16 days). The `/review` route pulls
-  every word across every category that's currently due — this is the
+  every word across every course and category that's currently due — this is the
   feature that's supposed to differentiate Voco from plain flashcard apps,
   so don't remove or weaken it without discussing first.
 - **Review sessions are capped at 20 words** (`REVIEW_SESSION_CAP` in
@@ -180,8 +188,9 @@ shouldn't be re-litigated or silently changed.
   quiz = warm dawn), so the home screen follows the learner's **local
   device clock** (`lib/timeOfDay.js`, read on the client after mount — the
   page is prerendered, so the server has no meaningful "now"): **evening**
-  18:00–04:59 shows a "Tonight's study" card (a suggested next level, or
-  "Tonight's study is done" once one was finished since 18:00 — after
+  18:00–04:59 shows a "Tonight's study" card (a suggested next level, a
+  "pick a course" prompt when there's nothing to follow yet — see "Courses" —
+  or "Tonight's study is done" once one was finished since 18:00 — after
   midnight is still "tonight"); **morning** 05:00–11:59 features "Last
   night's words — quiz yourself now" *above* the due-for-review card if a
   level was studied today or yesterday; **midday** is the plain neutral
@@ -241,7 +250,7 @@ shouldn't be re-litigated or silently changed.
   never re-triggers it. (Consequence: everyone who used the app before it
   shipped sees it once too.) The home page is server-rendered with
   `invisible` on `<main>` until the client has read the flag, so a
-  first-timer never glimpses the category list first. If localStorage is
+  first-timer never glimpses the home screen first. If localStorage is
   blocked it is skipped rather than shown on every visit.
 - **The night-to-morning streak is a second, separate counter** (header,
   sunrise icon, "N day night-to-morning streak"; the flame "N day streak"
@@ -279,11 +288,18 @@ shouldn't be re-litigated or silently changed.
 - **One-time milestones, shown once ever, on the results screen**
   (`lib/milestones.js`, `components/MilestoneCards.js`). Three kinds, each
   with fixed thresholds: **streak** — the *night-to-morning* streak (never the
-  daily one) reaching 3 / 7 / 30 days; **mastery** — categories mastered, at
-  the 1st / 3rd / all-6 (a category is mastered once *every* level in it has
-  been completed at 100% at least once); **words** — distinct words that have
-  ever reached spaced-repetition box 3+ (`LEARNED_BOX`; i.e. answered
-  correctly twice in a row, not merely seen), at 25 / 50 / 100 / 200.
+  daily one) reaching 3 / 7 / 30 days; **mastery** — categories mastered *per
+  course*, at that course's 1st / 3rd / whole-course (`masteryThresholds(n)`:
+  SAT Vocab 1/3/6, Everyday Vocabulary 1/3; a category is mastered once
+  *every* level in it has been completed at 100% at least once); **words** —
+  distinct words, across every course, that have ever reached
+  spaced-repetition box 3+ (`LEARNED_BOX`; i.e. answered correctly twice in a
+  row, not merely seen), at 25 / 50 / 100 / 200. A mastery id names its course
+  (`mastery-<courseId>-<N>`) and the card says which course was mastered.
+  **Legacy ids are migrated, not dropped:** before courses existed the ids
+  were `mastery-N`; `readShown()` maps those to `mastery-sat-vocab-N` (SAT was
+  the only course), so a learner who already saw "first category mastered"
+  isn't shown it again.
   Two sticky fields exist purely for this, because the old records only kept
   the latest state: `perfectAt` on a level record (set on the first 100%;
   `lastScore` alone forgets it after a worse retake) and `maxBox` on a word
@@ -309,7 +325,10 @@ shouldn't be re-litigated or silently changed.
   `voco.courses` watermark — 1080×1350 PNG, from a descriptor
   (`describeMilestone()` / `streakCard()` in `lib/milestones.js`, the single
   source of copy for both the in-app card and the image), so it always shows
-  real numbers. The dialog offers what the device supports: **Share** (Web
+  real numbers. A mastery card names its course in the image's label line
+  ("EVERYDAY VOCABULARY MASTERY") and in the in-app card's `figure`; its `unit`
+  stays short ("of 3 categories mastered") because the image draws it on a
+  single unforgiving line. The dialog offers what the device supports: **Share** (Web
   Share API with the PNG file, most phones), else **Copy image**
   (`navigator.clipboard.write`), and always **Download image**. Entry points:
   "Share this" on every milestone card, a "Share" link beside
@@ -327,22 +346,23 @@ shouldn't be re-litigated or silently changed.
 - **Try one real question in a locked category before paying**
   (`/preview/[categoryId]`, `lib/preview.js`; a "Try a sample question" link
   on each locked card *beside* the price, which stays and still links to
-  `/unlock`). It is one **fixed** question per category — the first word of
-  the first level — in the real words-in-context format, not a mockup, and
+  `/unlock`). It is one **fixed** question per locked category (in either course) — the
+  first word of the first level — in the real words-in-context format, not a
+  mockup (the page names the course it's from), and
   deliberately **unmetered**: no login, no tracking, no limit; revisiting shows
   the same question. It records nothing (no progress, no spaced-repetition
   history) and grants nothing: the category stays locked and
   `/sets/[setId]/study|quiz` still redirect to `/unlock`. After answering, a
   "$1.99/month for full access" prompt links straight to the Stripe Payment
-  Link (plus "See what's included" → `/unlock`). Unknown ids, the free
-  category, and already-subscribed visitors are redirected home. (All content
+  Link (plus "See what's included" → `/unlock`). Unknown ids, a course's
+  free category, and already-subscribed visitors are redirected home. (All content
   ships in the client bundle regardless — the paywall is UI-level, per the
   notes above — so previews reveal nothing new.)
 - **The due-for-review card also has a Study option**, not just Review.
   `DUE_FOR_REVIEW_ID = "due-for-review"` (`lib/wordbanks.js`) special-cases
   `/sets/[setId]/study` the same way the per-category courses do, via
   `getDueForReviewLevel(dueWordIds)` — but pooled globally across every
-  category (not per-category) and using the same priority order + cap as
+  course and category (not per-category) and using the same priority order + cap as
   `/review`, so studying previews exactly what that quiz session will
   cover. `/review` itself is untouched — the home screen's "Review" button
   still links there directly; "Study" is the only new path.
@@ -358,8 +378,13 @@ shouldn't be re-litigated or silently changed.
   per-category rather than one global list pooled from everywhere — lets a
   learner drill the specific area they're weak in. Not listed in
   `categories`, so each shows up as its own "N words you're still
-  learning" card at the bottom of that category's level list on the home
-  screen (visible only when count > 0), not as a regular level card.
+  learning" card at the bottom of that category's level list on its course
+  page (visible only when count > 0), not as a regular level card. The home
+  screen's top layer ALSO gathers these across every course into one
+  "words you're still learning" card — one Study/Quiz row per category that
+  has any, each naming its course — so the daily loop doesn't require picking
+  a course first. That card links to the same per-category ids; there is
+  deliberately still no single mixed-bag global set.
   Answering a question here updates the word's *real* box (each entry
   carries its true source id as `srsId`, used instead of recomputing
   `wordId(level.id, word)` — the level id here is the synthetic
@@ -369,14 +394,96 @@ shouldn't be re-litigated or silently changed.
   empty progress data — reading it synchronously during render caused a
   hydration mismatch.
 
+## Courses — Voco is a multi-course platform
+
+Voco began as SAT-vocab-only. It is now a vocabulary-learning platform with
+**SAT Vocab** as one course among others, all under the one subscription.
+
+**Why Everyday Vocabulary exists.** SAT Vocab is exam-shaped: its content and its
+organization exist to match the real Digital SAT. That's a narrow audience. Everyday
+Vocabulary is the same loop (study at night → quiz in the morning → spaced
+repetition) for anyone — evergreen words for reading, writing and conversation, with
+no exam behind them — so the app doesn't only make sense to someone with a test date.
+
+**Why it is organized differently.** SAT Vocab is organized by *argumentative
+function* (Agreement & Support, Tone & Attitude…) because that's what the SAT's Words
+in Context questions actually test — that structure was justified by matching the real
+exam's format, and doesn't apply where there is no exam. Everyday Vocabulary is
+organized by *theme* (Precise Description, Emotional Nuance, Persuasion & Influence),
+in groupings a curious general reader would recognize. The quiz format is kept
+(sentence with a blank, 4 options, one precisely correct) but for a different
+reason: it teaches how a word is *used*, not just what it means, which is worth doing
+with or without an exam. Same 3 levels, distractor difficulty escalating with level.
+
+**Data model** (`lib/wordbanks.js`): `courses = [{ id, title, description, categories }]`
+above the unchanged category > level > word shape. `categories` is still exported as
+the flat list across every course, so anything that only cares about categories
+(paywall, preview, milestones' word totals, time-of-day) didn't need to know courses
+exist. `findLevel()` returns `{ course, category, level }`; `getAllWordsFlat()` returns
+every word of every course (with `courseId`/`courseTitle` added) because spaced
+repetition and review deliberately see everything; `getCategoryCourse(categoryId)` maps
+back. **The restructure was a wrapping, not a regeneration**: the SAT data literal is
+untouched (the array was only renamed and nested — proven byte-identical by hash), and
+**no level id or word id may ever change** — `voco_progress_v1`, `voco_word_srs_v1` and
+the milestone list key on them directly, and changing one silently orphans that data.
+Ids must stay unique across courses (level `<category>-<1|2|3>`, word
+`<levelId>::<slug>`), and a word may appear in only one course.
+
+**Entitlement: one free category per course** (a decision made when the second course
+was added, so each course can be genuinely tried before paying):
+`FREE_CATEGORY_BY_COURSE` in `lib/purchase.js` — Agreement & Support (SAT Vocab) and
+Precise Description (Everyday Vocabulary, its first category). Everything else, in
+every course, is one subscription. When adding a course, give it a free category there
+and update the terms/privacy text; when adding a category, nothing else changes.
+
+**The home screen has two layers.** *Top, unscoped to any course:* the daily habit loop
+— last night's words (morning), tonight's study (evening), due for review, words
+you're still learning (one drill row per category, across courses), the streaks. These
+pull from every course's words together so nobody has to pick a course first just to
+see what's due. *Below:* a card per course with its own progress summary
+(`CourseProgress` / `getCourseProgress()`: "X of N categories mastered · Y of M levels
+completed", where a level is completed once it has ever been perfect — the same rule
+as the mastery milestone), leading to `/courses/[courseId]`, which shows that course's
+category list (the old home screen, scoped). "Back" from a level's study/quiz page
+returns to its course page; the due-for-review set spans courses, so it goes home.
+
+**"Tonight's study" has no default course, on purpose.** `getTonight(courses, …)`:
+(1) `done` if a level was studied since 18:00, as before; (2) otherwise `suggest`s the
+first unstudied *unlocked* level (course order, then category order) in the course
+studied **most recently** — so the suggestion follows what the learner is working
+through, and a legacy SAT learner keeps getting SAT; (3) if nothing has been started
+(or every started course has nothing left unlocked), `choose`: a "pick a course"
+prompt listing the unstarted courses, with no course pre-selected — the decision was
+explicit that the app must not guess which course a brand-new learner wants. "Started"
+means a level was *studied* (a quiz alone doesn't count). Everything unlocked studied →
+revisit the level studied longest ago. Locked levels are never suggested.
+
+**Milestones and share cards are course-aware** (see the milestones bullet above);
+sample-question previews work per locked category in either course and name the course.
+
+**Adding a course:** new `lib/<name>.js` exporting its categories; add it to `courses`
+in `wordbanks.js` (id, title, description); give it a free category in
+`FREE_CATEGORY_BY_COURSE`; keep every id unique and every word new to the library;
+validate like the others (4 distinct options, one `______`, `correctIndex` 0–3, no
+duplicate words, no `a`/`an` before the blank that gives the answer away); then update
+the terms/privacy free-category sentence and the Stripe product description if its
+wording would no longer be true.
+
 ## Content rules — these matter a lot, please follow them exactly
 
-1. **Categories are organized by function, not topic.** The real Digital
+1. **Categories are organized per course's own logic — don't mix them.**
+   **SAT Vocab is organized by function, not topic.** The real Digital
    SAT tests vocab through "Words in Context" questions that hinge on
    argumentative function (does this word support, refute, intensify,
    soften, describe tone, etc.) — not by theme like "science words" or
-   "people words." Keep new categories function-based, matching the
+   "people words." Keep new SAT categories function-based, matching the
    existing pattern (Agreement & Support, Disagreement & Refutation, etc).
+   **Everyday Vocabulary is organized by theme** (Precise Description,
+   Emotional Nuance, Persuasion & Influence) — the function-based structure
+   was justified specifically by matching the real SAT's test format, which
+   doesn't apply to a course with no exam behind it. Keep new Everyday
+   categories theme-based, in groupings a curious general reader would
+   recognize, not an exam-prep structure. (Rules 2–6 apply to every course.)
 
 2. **Quiz format = fill-in-the-blank sentence, not "define this word."**
    Each `quiz` object has a `sentence` (a full sentence with `______` where
@@ -410,20 +517,31 @@ shouldn't be re-litigated or silently changed.
 
 ## Content status
 
-All 6 categories are fully built: 204 words total, each with 3 levels
-(12 Foundational / 12 Intermediate / 10 Advanced).
+All 9 categories across both courses are fully built: 306 words total, each
+category with 3 levels (12 Foundational / 12 Intermediate / 10 Advanced).
 
-- ✅ `agreement-support`
+**SAT Vocab** (`sat-vocab`, `lib/wordbanks.js`) — 204 words:
+- ✅ `agreement-support` (free)
 - ✅ `disagreement-refutation`
 - ✅ `degree-intensity`
 - ✅ `change-consequence`
 - ✅ `certainty-doubt`
 - ✅ `tone-attitude`
 
-Validated: no duplicate words within or across categories, every quiz has
-exactly 4 options with a `______` blank and a `correctIndex` of 0–3. An
-unbuilt category would have an empty `levels: []` array in
-`lib/wordbanks.js`, which makes the home screen show it as "Coming soon" —
+**Everyday Vocabulary** (`everyday-vocabulary`, `lib/everydayVocabulary.js`) —
+102 words, started with 3 categories (more can be added once this batch has
+proven itself, the same way the SAT course was built up):
+- ✅ `precise-description` (free)
+- ✅ `emotional-nuance`
+- ✅ `persuasion-influence`
+
+Validated: no duplicate words anywhere in the library (within a category,
+across categories, or across courses — a word appearing in two courses would
+give it two spaced-repetition identities), every quiz has exactly 4 distinct
+options with a `______` blank and a `correctIndex` of 0–3, one correct answer
+that no distractor could also fill, and no `a`/`an` before the blank that
+would give the answer away. An unbuilt category would have an empty
+`levels: []` array, which makes its course page show it as "Coming soon" —
 there are none of those left.
 
 ## File structure
@@ -431,9 +549,12 @@ there are none of those left.
 ```
 app/
   layout.js              Root layout + metadata
-  page.js                Home screen — categories, due-for-review card
-                         (Study + Review), each category's own "still
-                         learning" card (Study + Quiz)
+  page.js                Home screen, two layers: the unscoped daily-habit
+                         cards (last night's words, tonight's study,
+                         due-for-review, "still learning" across courses,
+                         streaks), then a card per course
+  courses/[courseId]/     One course's category list (locked cards, levels,
+                         each category's own "still learning" card)
   globals.css             Fonts + Tailwind + the results card's one-time
                          entrance animation
   review/                 Spaced-repetition review session (capped at 20)
@@ -465,6 +586,10 @@ app/
                          returns its URL; the portal itself handles
                          cancellation and payment-method updates
 components/
+  CategoryList.js         A course's categories: levels, locked cards with the
+                         sample-question link, per-category "still learning"
+  CourseProgress.js       The per-course "X of N categories mastered · Y of M
+                         levels completed" line (home cards + course page)
   CelebrationCard.js      The one celebration-card recipe (disc, label,
                          headline, figure, note) — score tiers AND milestones
   MilestoneCards.js       One-time milestone cards under the score card
@@ -477,8 +602,13 @@ components/
                          missed-words sessions and review sessions —
                          one structure, recolored by score tier
 lib/
-  milestones.js           Milestone thresholds, once-only bookkeeping, and the
-                         card copy shared by the in-app card and the image
+  milestones.js           Milestone thresholds (mastery is per course),
+                         once-only bookkeeping with legacy-id migration,
+                         getCourseProgress(), and the card copy shared by the
+                         in-app card and the image
+  useLearnerState.js      Shared client hooks/helpers: subscription state
+                         (cached, then reconciled) and per-category struggle
+                         counts
   shareCard.js            Canvas renderer for the shareable PNG
   preview.js              The one sample question per locked category
   sleepScience.js         The ONLY place sleep/memory claims are written
@@ -489,14 +619,19 @@ lib/
                          for the home screen
   scoreTier.js            Tier thresholds (100 / 70 / below) + colors,
                          shared by QuizResults and the home screen
-  wordbanks.js            All content — categories > levels > words, plus
-                         getMissedWordsLevel() and getDueForReviewLevel()
-                         for the dynamic study courses, and
-                         getSetCategoryId() for paywall gating
+  wordbanks.js            The `courses` layer (courses > categories > levels >
+                         words), the SAT Vocab content, and the helpers that
+                         work across every course (findLevel(),
+                         getAllWordsFlat(), getCategoryCourse()), plus
+                         getMissedWordsLevel() / getDueForReviewLevel() for
+                         the dynamic study sets and getSetCategoryId() for
+                         paywall gating
+  everydayVocabulary.js   The Everyday Vocabulary course's categories
   progress.js             localStorage helpers: streaks, scores, and the
                          Leitner-system spaced repetition tracker
                          (REVIEW_SESSION_CAP lives here)
-  purchase.js              Subscription constants + localStorage helpers
+  purchase.js              Subscription constants (incl. the free category
+                         in each course) + localStorage helpers
                          (voco_customer_id_v1, voco_subscription_status_v1)
                          — per-device only, see "Paid unlock" above
 ```
@@ -548,6 +683,12 @@ identical date after the daily recheck was forced; confirmed access was
 still genuinely present afterward (direct navigation to a paid category's
 quiz URL loaded real content, no redirect to `/unlock`).
 
+The Stripe product's description was updated on 2026-09-20, when Everyday
+Vocabulary became a second course, from "Full access to every SAT vocab
+category, with spaced repetition review" to "Full access to every Voco course,
+with spaced repetition review" (via the Stripe API; the price, Payment Link and
+their ids are unchanged — there is still exactly one product and one price).
+
 **A real production bug was found and fixed during this verification**,
 worth knowing about if subscription verification ever breaks again: the
 `STRIPE_SECRET_KEY` value stored in Vercel's env vars had a stray
@@ -579,4 +720,6 @@ changes, both pages need updating to match, not just the code). Contact
 email on both: `itsowentodd@icloud.com`. If the subscription price,
 trial length, or free/paid category split ever changes, update the
 Terms' "Subscription & Billing" section to match — don't let it drift
-from `lib/purchase.js`.
+from `lib/purchase.js`. (Both pages were updated on 2026-09-20 for the
+second course: one free category per course, and "the paid categories"
+instead of a hardcoded count.)

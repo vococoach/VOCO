@@ -2,39 +2,36 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Moon, Flame, RotateCcw, Lock, Sparkles, Target, Info, Sunrise } from "lucide-react";
-import { getScoreTier, TIERS } from "@/lib/scoreTier";
-import { TIER_ICONS } from "@/components/QuizResults";
+import { Moon, Flame, RotateCcw, Sparkles, Target, Info, Sunrise, ChevronRight } from "lucide-react";
 import NightThemeExplainer from "@/components/NightThemeExplainer";
 import Onboarding from "@/components/Onboarding";
 import ShareButton from "@/components/ShareButton";
+import CourseProgress from "@/components/CourseProgress";
 import { streakCard } from "@/lib/milestones";
 import { hasOnboarded, markOnboarded } from "@/lib/onboarding";
 import { getPhase, findLastNightsLevel, getTonight } from "@/lib/timeOfDay";
-import { categories, getAllWordsFlat, missedWordsId, DUE_FOR_REVIEW_ID } from "@/lib/wordbanks";
-import {
-  getAllProgress,
-  getStreak,
-  getNightToMorningStreak,
-  resetProgress,
-  getDueWordIds,
-  getStruggleWordIds,
-} from "@/lib/progress";
-import {
-  isCategoryLocked,
-  isSubscribedCached,
-  shouldRefreshStatus,
-  refreshSubscriptionStatus,
-  getCancelAt,
-  openBillingPortal,
-  PRICE_LABEL,
-  TRIAL_LABEL,
-} from "@/lib/purchase";
+import { courses, categories, getCategoryCourse, missedWordsId, DUE_FOR_REVIEW_ID } from "@/lib/wordbanks";
+import { getAllProgress, getStreak, getNightToMorningStreak, resetProgress, getDueWordIds } from "@/lib/progress";
+import { isCategoryLocked, openBillingPortal } from "@/lib/purchase";
+import { useSubscription, computeStruggleCounts } from "@/lib/useLearnerState";
 
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
+// "SAT Vocab · Agreement & Support · Foundational" — which course a suggested
+// level belongs to matters now that there's more than one.
+function levelLabel(category, level) {
+  const course = getCategoryCourse(category.id);
+  return [course && course.title, category.title, level.label].filter(Boolean).join(" · ");
+}
+
+// The home screen has two layers. The top is the daily habit loop — due for
+// review, tonight's study, last night's words, words still being learned, the
+// streaks — and it is deliberately NOT scoped to any course: it pulls from
+// every course's words together, so nobody has to pick a course just to see
+// what's due. Below it, a card per course leads to that course's own category
+// list (app/courses/[courseId]/page.js).
 export default function Home() {
   const [progress, setProgress] = useState({});
   const [streak, setStreak] = useState(0);
@@ -47,8 +44,7 @@ export default function Home() {
   const [ready, setReady] = useState(false);
   const [dueCount, setDueCount] = useState(0);
   const [struggleCounts, setStruggleCounts] = useState({});
-  const [subscribed, setSubscribed] = useState(false);
-  const [cancelAt, setCancelAt] = useState(null);
+  const { subscribed, cancelAt } = useSubscription();
   const [openingPortal, setOpeningPortal] = useState(false);
   // Local device time, read on the client only (the page is prerendered, so
   // the server has no meaningful "now"). null until mounted.
@@ -64,6 +60,7 @@ export default function Home() {
       setStreak(getStreak());
       setNightToMorningStreak(getNightToMorningStreak());
       setDueCount(getDueWordIds().length);
+      setStruggleCounts(computeStruggleCounts());
     }
     document.addEventListener("visibilitychange", refresh);
     window.addEventListener("focus", refresh);
@@ -80,32 +77,7 @@ export default function Home() {
     setStreak(getStreak());
     setNightToMorningStreak(getNightToMorningStreak());
     setDueCount(getDueWordIds().length);
-
-    // Show the cached subscription state immediately, then re-verify with
-    // Stripe in the background (at most once a day) — if that comes back
-    // different (e.g. a cancellation), the UI updates to match. A
-    // subscription can be genuinely active/trialing *and* already
-    // scheduled to end (Stripe's Customer Portal cancellation keeps
-    // access through the current period/trial rather than revoking it
-    // immediately) — cancelAt surfaces that instead of leaving it silent.
-    setSubscribed(isSubscribedCached());
-    setCancelAt(getCancelAt());
-    if (shouldRefreshStatus()) {
-      refreshSubscriptionStatus().then((subscribedNow) => {
-        setSubscribed(subscribedNow);
-        setCancelAt(getCancelAt());
-      });
-    }
-
-    const struggleIdSet = new Set(getStruggleWordIds());
-    const counts = {};
-    getAllWordsFlat().forEach((w) => {
-      if (struggleIdSet.has(w.id)) {
-        counts[w.categoryId] = (counts[w.categoryId] || 0) + 1;
-      }
-    });
-    setStruggleCounts(counts);
-
+    setStruggleCounts(computeStruggleCounts());
     setReady(true);
   }, []);
 
@@ -115,6 +87,7 @@ export default function Home() {
     setProgress({});
     setStreak(0);
     setNightToMorningStreak(0);
+    setStruggleCounts({});
   }
 
   async function handleManageSubscription() {
@@ -133,10 +106,20 @@ export default function Home() {
   const phase = now ? getPhase(now) : null;
   const isLocked = (categoryId) => isCategoryLocked(categoryId, subscribed);
   const lastNight = ready && phase === "morning" ? findLastNightsLevel(categories, progress, now, isLocked) : null;
-  const tonight = ready && phase === "evening" ? getTonight(categories, progress, now, isLocked) : null;
+  const tonight = ready && phase === "evening" ? getTonight(courses, progress, now, isLocked) : null;
+
+  // Words still being learned, one drill per category (the per-category design
+  // is deliberate — see lib/wordbanks.js), gathered across every course.
+  const stillLearning = ready
+    ? categories
+        .filter((category) => struggleCounts[category.id] > 0 && !isLocked(category.id))
+        .map((category) => ({ category, course: getCategoryCourse(category.id), count: struggleCounts[category.id] }))
+    : [];
+  const stillLearningTotal = stillLearning.reduce((n, row) => n + row.count, 0);
 
   let subtitle = "Study a level before bed. Quiz yourself whenever you're ready.";
-  if (tonight && tonight.kind === "suggest") subtitle = "Good evening. Study a level before bed — sleep helps it stick.";
+  if (tonight && (tonight.kind === "suggest" || tonight.kind === "choose"))
+    subtitle = "Good evening. Study a level before bed — sleep helps it stick.";
   else if (tonight && tonight.kind === "done") subtitle = "Good evening. Sleep will help what you studied settle in.";
   else if (lastNight) subtitle = "Good morning. A quiz now shows what stuck overnight.";
 
@@ -153,7 +136,7 @@ export default function Home() {
 
   return (
     // Hidden (not removed) until we know whether this is a first visit, so a
-    // first-timer never glimpses the category list before the onboarding.
+    // first-timer never glimpses the home screen before the onboarding.
     <main className={`min-h-dvh bg-[#1A1C3A] px-4 py-8 ${onboarding === null ? "invisible" : ""}`}>
       <div className="max-w-md mx-auto">
         <div className="flex items-center justify-between mb-8">
@@ -202,7 +185,7 @@ export default function Home() {
               Last night's words&nbsp;— quiz yourself now
             </div>
             <p className="text-xs text-[#8A6E7D] mb-3">
-              {lastNight.category.title} · {lastNight.level.label} · {lastNight.level.words.length} words
+              {levelLabel(lastNight.category, lastNight.level)} · {lastNight.level.words.length} words
             </p>
             <div className="flex gap-2">
               <Link
@@ -230,14 +213,34 @@ export default function Home() {
             </div>
             {tonight.kind === "done" ? (
               <p className="text-xs text-[#9B97C4]">
-                You studied {tonight.category.title} · {tonight.level.label}. Sleep on it — quiz
-                yourself in the morning to see what stuck.
+                You studied {levelLabel(tonight.category, tonight.level)}. Sleep on it — quiz yourself in the
+                morning to see what stuck.
               </p>
+            ) : tonight.kind === "choose" ? (
+              // Nothing to follow yet (no course started), and no default course
+              // on purpose: the learner picks where tonight's study happens.
+              <>
+                <p className="text-xs text-[#9B97C4] mb-3">
+                  Pick a course to study tonight, then quiz yourself in the morning.
+                </p>
+                <div className="flex flex-col gap-2">
+                  {tonight.courses.map((course) => (
+                    <Link
+                      key={course.id}
+                      href={`/courses/${course.id}`}
+                      className="block text-center text-sm rounded-xl px-3 py-2 font-medium"
+                      style={{ backgroundColor: "#8B85FF", color: "#14152B" }}
+                    >
+                      {course.title}
+                    </Link>
+                  ))}
+                </div>
+              </>
             ) : (
               <>
                 <p className="text-xs text-[#9B97C4] mb-3">
-                  {tonight.category.title} · {tonight.level.label} · {tonight.level.words.length} words.
-                  Study it before bed, then quiz yourself in the morning.
+                  {levelLabel(tonight.category, tonight.level)} · {tonight.level.words.length} words. Study it
+                  before bed, then quiz yourself in the morning.
                 </p>
                 <Link
                   href={`/sets/${tonight.level.id}/study`}
@@ -274,15 +277,52 @@ export default function Home() {
           </div>
         )}
 
+        {stillLearning.length > 0 && (
+          <div className="rounded-2xl p-4 mb-6 bg-[#20223F] border border-[#ffffff1a]">
+            <div className="flex items-center gap-2 mb-3">
+              <Target size={18} color="#FF9B5C" />
+              <span className="text-sm font-medium text-[#EDEBFF]">
+                {stillLearningTotal} word{stillLearningTotal !== 1 ? "s" : ""} you're still learning
+              </span>
+            </div>
+            <div className="space-y-3">
+              {stillLearning.map(({ category, course, count }) => (
+                <div key={category.id} className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm text-[#EDEBFF] truncate">{category.title}</p>
+                    <p className="text-xs text-[#6E699B]">
+                      {course ? `${course.title} · ` : ""}
+                      {count} word{count !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <Link
+                      href={`/sets/${missedWordsId(category.id)}/study`}
+                      className="text-center text-xs rounded-lg px-3 py-2 border border-[#ffffff26] text-[#EDEBFF]"
+                    >
+                      Study
+                    </Link>
+                    <Link
+                      href={`/sets/${missedWordsId(category.id)}/quiz`}
+                      className="text-center text-xs rounded-lg px-3 py-2 font-medium"
+                      style={{ backgroundColor: "#FF9B5C", color: "#14152B" }}
+                    >
+                      Quiz
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {ready && subscribed && cancelAt && (
           <div className="rounded-2xl p-4 mb-6 bg-[#20223F] border border-[#FF9B5C40]">
             <div className="flex items-center gap-2 mb-1 text-sm font-medium text-[#EDEBFF]">
               <Info size={16} color="#FF9B5C" />
               Your subscription ends on {formatDate(cancelAt)}
             </div>
-            <p className="text-xs text-[#9B97C4] mb-3">
-              You'll keep access to every category until then.
-            </p>
+            <p className="text-xs text-[#9B97C4] mb-3">You'll keep access to every course until then.</p>
             <button
               onClick={handleManageSubscription}
               disabled={openingPortal}
@@ -293,131 +333,22 @@ export default function Home() {
           </div>
         )}
 
-        <div className="space-y-7">
-          {categories.map((category) => {
-            const struggleCount = struggleCounts[category.id] || 0;
-            const locked = ready && isCategoryLocked(category.id, subscribed);
-
-            return (
-              <div key={category.id}>
-                <h2 className="font-display text-lg text-[#EDEBFF]">{category.title}</h2>
-                <p className="text-xs text-[#9B97C4] mt-1 mb-3">{category.description}</p>
-
-                {category.levels.length === 0 ? (
-                  <div className="rounded-2xl p-4 flex items-center gap-2 text-xs text-[#6E699B] border border-dashed border-[#ffffff1a]">
-                    <Lock size={14} /> Coming soon
-                  </div>
-                ) : locked ? (
-                  <div className="rounded-2xl p-4 bg-[#20223F] border border-[#ffffff1a]">
-                    <Link href="/unlock" className="block">
-                      <span className="flex items-center gap-2 text-sm text-[#9B97C4]">
-                        <Lock size={14} />
-                        Locked — {category.levels.reduce((s, l) => s + l.words.length, 0)} words
-                      </span>
-                      <span className="block text-xs font-medium text-[#8B85FF] mt-2">
-                        {PRICE_LABEL} for full access to every category
-                      </span>
-                      <span className="block text-[10px] text-[#6E699B] mt-0.5">{TRIAL_LABEL}</span>
-                    </Link>
-                    {/* One real sample question — shows the format before paying (app/preview). */}
-                    <Link
-                      href={`/preview/${category.id}`}
-                      className="mt-3 inline-flex items-center min-h-[40px] rounded-xl px-3.5 text-xs font-medium text-[#8B85FF] border border-[#8B85FF66]"
-                    >
-                      Try a sample question
-                    </Link>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {category.levels.map((level) => {
-                      const p = progress[level.id] || {};
-                      const studied = Boolean(p.studiedAt);
-                      const quizzed = Boolean(p.lastQuizAt);
-                      // Tier of the most recent quiz (same tiers and colors as
-                      // the end-of-quiz card); null until the level is quizzed.
-                      const tier = quizzed && p.lastQuizTotal > 0 ? getScoreTier(p.lastScore, p.lastQuizTotal) : null;
-                      const tierStyle = tier ? TIERS[tier] : null;
-                      const TierIcon = tier ? TIER_ICONS[tier] : null;
-
-                      return (
-                        <div
-                          key={level.id}
-                          className={`bg-[#20223F] rounded-2xl p-4 ${tier === "perfect" ? "ring-1 ring-[#7BC9A066]" : ""}`}
-                        >
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="flex items-center gap-2 text-sm font-medium text-[#EDEBFF]">
-                              {tier && (
-                                <span
-                                  aria-hidden="true"
-                                  className="w-4 h-4 rounded-full flex items-center justify-center"
-                                  style={{ backgroundColor: tierStyle.accent }}
-                                >
-                                  <TierIcon size={11} color="#14152B" strokeWidth={3} />
-                                </span>
-                              )}
-                              {level.label}
-                            </span>
-                            <span className="text-xs text-[#6E699B]">{level.words.length} words</span>
-                          </div>
-                          <p
-                            className={`text-xs mb-3 ${tier ? "font-medium" : "text-[#6E699B]"}`}
-                            style={tier ? { color: tierStyle.accent } : undefined}
-                          >
-                            {tier
-                              ? `${tierStyle.label} — ${p.lastScore}/${p.lastQuizTotal}`
-                              : studied
-                              ? "Studied — quiz whenever you're ready"
-                              : "Not started"}
-                          </p>
-                          <div className="flex gap-2">
-                            <Link
-                              href={`/sets/${level.id}/study`}
-                              className="flex-1 text-center text-sm rounded-xl px-3 py-2 border border-[#ffffff26] text-[#EDEBFF]"
-                            >
-                              {studied ? "Restudy" : "Study"}
-                            </Link>
-                            <Link
-                              href={`/sets/${level.id}/quiz`}
-                              className="flex-1 text-center text-sm rounded-xl px-3 py-2 font-medium"
-                              style={{ backgroundColor: "#8B85FF", color: "#14152B" }}
-                            >
-                              {quizzed ? "Retake quiz" : "Take quiz"}
-                            </Link>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {ready && !locked && struggleCount > 0 && (
-                  <div className="rounded-2xl p-4 mt-2 bg-[#20223F] border border-[#ffffff1a]">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Target size={18} color="#FF9B5C" />
-                      <span className="text-sm font-medium text-[#EDEBFF]">
-                        {struggleCount} word{struggleCount !== 1 ? "s" : ""} you're still learning
-                      </span>
-                    </div>
-                    <div className="flex gap-2">
-                      <Link
-                        href={`/sets/${missedWordsId(category.id)}/study`}
-                        className="flex-1 text-center text-sm rounded-xl px-3 py-2 border border-[#ffffff26] text-[#EDEBFF]"
-                      >
-                        Study
-                      </Link>
-                      <Link
-                        href={`/sets/${missedWordsId(category.id)}/quiz`}
-                        className="flex-1 text-center text-sm rounded-xl px-3 py-2 font-medium"
-                        style={{ backgroundColor: "#FF9B5C", color: "#14152B" }}
-                      >
-                        Quiz
-                      </Link>
-                    </div>
-                  </div>
-                )}
+        <h2 className="font-display text-lg text-[#EDEBFF] mb-3">Courses</h2>
+        <div className="space-y-3">
+          {courses.map((course) => (
+            <Link
+              key={course.id}
+              href={`/courses/${course.id}`}
+              className="block bg-[#20223F] rounded-2xl p-4 border border-[#ffffff14] hover:border-[#8B85FF66]"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="font-display text-lg text-[#EDEBFF]">{course.title}</h3>
+                <ChevronRight size={18} color="#8B85FF" className="shrink-0" />
               </div>
-            );
-          })}
+              <p className="text-xs text-[#9B97C4] mt-1 mb-3">{course.description}</p>
+              <CourseProgress course={course} progress={progress} />
+            </Link>
+          ))}
         </div>
 
         {ready && (
@@ -431,7 +362,7 @@ export default function Home() {
 
         {ready && subscribed && !cancelAt && (
           <div className="text-center mt-3">
-            <p className="text-xs text-[#9B97C4]">You have full access to every category.</p>
+            <p className="text-xs text-[#9B97C4]">You have full access to every course.</p>
             <button
               onClick={handleManageSubscription}
               disabled={openingPortal}

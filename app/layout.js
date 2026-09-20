@@ -1,9 +1,9 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "Voco — Vocab Coach for the SAT",
+  title: "Voco — Vocab Coach",
   description:
-    "Learn SAT vocabulary before you sleep. Quiz yourself to see what stuck.",
+    "Learn vocabulary before you sleep — SAT vocab and everyday words. Quiz yourself to see what stuck.",
 };
 
 export const viewport = {
