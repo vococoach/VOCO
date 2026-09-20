@@ -32,9 +32,9 @@ export default function TermsPage() {
           <section>
             <h2 className="text-[#EDEBFF] font-medium mb-2">2. What Voco Is</h2>
             <p>
-              Voco is a vocabulary study tool, with courses for SAT vocabulary and everyday
-              vocabulary, built around spaced repetition and words-in-context quizzes. It's meant
-              for personal study use — we don't guarantee any particular test score or outcome.
+              Voco is a vocabulary study tool with several courses, built around spaced
+              repetition and words-in-context quizzes. It's meant for personal study use — we
+              don't guarantee any particular test score or outcome.
             </p>
           </section>
 
@@ -49,8 +49,9 @@ export default function TermsPage() {
           <section>
             <h2 className="text-[#EDEBFF] font-medium mb-2">4. Subscription & Billing</h2>
             <p className="mb-2">
-              One category in each course is free forever: Agreement &amp; Support in SAT Vocab
-              and Precise Description in Everyday Vocabulary.
+              One category in each course is free forever: Agreement &amp; Support in SAT Vocab,
+              Precise Description in Everyday Vocabulary, and Meetings &amp; Negotiation in
+              Professional Vocabulary.
             </p>
             <p className="mb-2">
               Every other category, in every course, requires an active subscription: $1.99/month,

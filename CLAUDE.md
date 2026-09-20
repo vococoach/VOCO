@@ -2,8 +2,9 @@
 
 A vocabulary-learning platform. Study before bed, quiz yourself whenever you're ready.
 Voco has multiple courses under one subscription — **SAT Vocab** (the original
-course, matched to the Digital SAT) and **Everyday Vocabulary** (general audience, no
-exam) — see "Courses" below. Read this file before making changes — it captures
+course, matched to the Digital SAT), **Everyday Vocabulary** (general audience, no
+exam) and **Professional Vocabulary** (working adults, set in real workplace
+situations) — see "Courses" below. Read this file before making changes — it captures
 decisions already made, so they shouldn't be re-litigated or silently changed.
 
 ## Stack & architecture (deliberate choices, not defaults)
@@ -16,7 +17,8 @@ decisions already made, so they shouldn't be re-litigated or silently changed.
 - **Paid unlock via a Stripe subscription — still no accounts or database.**
   One category in each course is free forever (`FREE_CATEGORY_BY_COURSE` in
   `lib/purchase.js`: Agreement & Support in SAT Vocab, Precise Description in
-  Everyday Vocabulary); every other category, in every course, requires an
+  Everyday Vocabulary, Meetings & Negotiation in Professional Vocabulary); every
+  other category, in every course, requires an
   active or trialing subscription (`PRICE_LABEL` = "$1.99/month",
   `TRIAL_LABEL` = "7-day free trial", both in `lib/purchase.js`, backed by
   a recurring Payment Link in the Stripe Dashboard). This is deliberately
@@ -124,8 +126,9 @@ decisions already made, so they shouldn't be re-litigated or silently changed.
     mutually exclusive, and only a genuine non-`trialing`/`active` status
     from Stripe should ever lock a category.
 - **No AI calls at runtime.** All vocab content is hard-coded in
-  `lib/wordbanks.js` (SAT Vocab) and `lib/everydayVocabulary.js` (Everyday
-  Vocabulary). This is intentional for reliability — an earlier
+  `lib/wordbanks.js` (SAT Vocab), `lib/everydayVocabulary.js` (Everyday
+  Vocabulary) and `lib/professionalVocabulary.js` (Professional Vocabulary).
+  This is intentional for reliability — an earlier
   version called an AI API live and it was flaky. Content is written once
   (by a human or AI-assisted, then reviewed), then baked in as static data.
 - No quiz-unlock timer — study and quiz are both available anytime. Also
@@ -346,7 +349,7 @@ decisions already made, so they shouldn't be re-litigated or silently changed.
   with fixed thresholds: **streak** — the *night-to-morning* streak (never the
   daily one) reaching 3 / 7 / 30 days; **mastery** — categories mastered *per
   course*, at that course's 1st / 3rd / whole-course (`masteryThresholds(n)`:
-  SAT Vocab 1/3/6, Everyday Vocabulary 1/3; a category is mastered once
+  SAT Vocab 1/3/6, Everyday Vocabulary and Professional Vocabulary 1/3; a category is mastered once
   *every* level in it has been completed at 100% at least once); **words** —
   distinct words, across every course, that have ever reached
   spaced-repetition box 3+ (`LEARNED_BOX`; i.e. answered correctly twice in a
@@ -384,7 +387,17 @@ decisions already made, so they shouldn't be re-litigated or silently changed.
   real numbers. A mastery card names its course in the image's label line
   ("EVERYDAY VOCABULARY MASTERY") and in the in-app card's `figure`; its `unit`
   stays short ("of 3 categories mastered") because the image draws it on a
-  single unforgiving line. The dialog offers what the device supports: **Share** (Web
+  single unforgiving line. **The text under the figure is laid out before the
+  card is drawn** (`layoutText()` in `lib/shareCard.js`): a long headline — a
+  category like "Leadership & Workplace Dynamics" — wraps onto extra lines, and
+  the original fixed-height card let the note spill out of its bottom edge (it
+  did so for existing titles too, e.g. "Agreement & Support"; it only went
+  unnoticed because nobody had rendered one). Preference order: keep the
+  standard sizes; else shrink the headline (54→48→44→40px); else the note
+  (30→27px); only then grow the card (up to 966px tall, with the tagline and
+  watermark following its bottom edge). A card whose text already fits takes the
+  exact old path — verified byte-identical for every streak, words and short-title
+  card. Render any new long title before shipping a course. The dialog offers what the device supports: **Share** (Web
   Share API with the PNG file, most phones), else **Copy image**
   (`navigator.clipboard.write`), and always **Download image**. Entry points:
   "Share this" on every milestone card, a "Share" link beside
@@ -402,7 +415,7 @@ decisions already made, so they shouldn't be re-litigated or silently changed.
 - **Try one real question in a locked category before paying**
   (`/preview/[categoryId]`, `lib/preview.js`; a "Try a sample question" link
   on each locked card *beside* the price, which stays and still links to
-  `/unlock`). It is one **fixed** question per locked category (in either course) — the
+  `/unlock`). It is one **fixed** question per locked category (in any course) — the
   first word of the first level — in the real words-in-context format, not a
   mockup (the page names the course it's from), and
   deliberately **unmetered**: no login, no tracking, no limit; revisiting shows
@@ -487,10 +500,11 @@ Ids must stay unique across courses (level `<category>-<1|2|3>`, word
 
 **Entitlement: one free category per course** (a decision made when the second course
 was added, so each course can be genuinely tried before paying):
-`FREE_CATEGORY_BY_COURSE` in `lib/purchase.js` — Agreement & Support (SAT Vocab) and
-Precise Description (Everyday Vocabulary, its first category). Everything else, in
-every course, is one subscription. When adding a course, give it a free category there
-and update the terms/privacy text; when adding a category, nothing else changes.
+`FREE_CATEGORY_BY_COURSE` in `lib/purchase.js` — Agreement & Support (SAT Vocab),
+Precise Description (Everyday Vocabulary) and Meetings & Negotiation (Professional
+Vocabulary); each is its course's first category. Everything else, in every course, is
+one subscription. When adding a course, give it a free category there and update the
+terms free-category sentence; when adding a category, nothing else changes.
 
 **The home screen has two layers.** *Top, unscoped to any course:* the daily habit loop
 — last night's words (morning), tonight's study (evening), due for review, words
@@ -514,16 +528,47 @@ explicit that the app must not guess which course a brand-new learner wants. "St
 means a level was *studied* (a quiz alone doesn't count). Everything unlocked studied →
 revisit the level studied longest ago. Locked levels are never suggested.
 
-**Milestones and share cards are course-aware** (see the milestones bullet above);
-sample-question previews work per locked category in either course and name the course.
+**Professional Vocabulary** (the third course) is for working adults — a different
+audience from exam prep (SAT Vocab) and from general reading and conversation
+(Everyday Vocabulary). It is organized by *theme / context of use* (Meetings &
+Negotiation, Strategy & Decision-Making, Leadership & Workplace Dynamics), not by
+function, for the same reason as Everyday: there is no exam whose format the
+structure has to match. What makes it distinct is its **setting, not its format**:
+the quiz mechanic, the 3 levels and the escalating distractors are the same, but every
+example and quiz sentence is set in a real workplace situation (emails, meetings,
+negotiations, performance reviews, reports, budgets), so the words are learned where
+they are used. A fourth category, Professional Writing & Tone, was deliberately left
+for later (it would overlap SAT Vocab's Tone & Attitude, so it needs care).
 
-**Adding a course:** new `lib/<name>.js` exporting its categories; add it to `courses`
-in `wordbanks.js` (id, title, description); give it a free category in
-`FREE_CATEGORY_BY_COURSE`; keep every id unique and every word new to the library;
-validate like the others (4 distinct options, one `______`, `correctIndex` 0–3, no
-duplicate words, no `a`/`an` before the blank that gives the answer away); then update
-the terms/privacy free-category sentence and the Stripe product description if its
-wording would no longer be true.
+**Milestones and share cards are course-aware** (see the milestones bullet above);
+sample-question previews work per locked category in any course and name the course.
+
+**Adding a course** — what it really takes (the third course tested the claim that this
+is "close to a one-line change"; the *code* is generic — nothing indexes into `courses`
+or assumes a count — but registration is not literally one line, and three things were
+not generic):
+1. **Content:** new `lib/<name>.js` exporting its categories (every id unique across
+   the library, every word new to it).
+2. **Register:** one import + one entry (id, title, description) in `courses` in
+   `lib/wordbanks.js`, and **one line in `FREE_CATEGORY_BY_COURSE`** in
+   `lib/purchase.js` — forget the second and the course has no free category.
+3. **Things that were NOT generic, fixed while adding Professional Vocabulary:** the
+   `/unlock` page joined free-category titles with " and " ("A and B and C stay free") —
+   now `joinList()`; the share image assumed a one-line headline (see the share-card
+   bullet above); and copy that *enumerated* course names went stale (site metadata,
+   terms §2 and §4) — metadata and terms §2 no longer name courses at all, terms §4
+   names each course's free category because a legal list should be specific.
+4. **Copy to re-check:** terms §4's free-category list (and its date), the README and
+   this file's counts. The Stripe product description needs no change as long as it
+   names no course or count ("Full access to every Voco course…").
+5. **Validate** like the others: 4 distinct options, one `______`, `correctIndex` 0–3,
+   no duplicate words anywhere in the library, no `a`/`an` before the blank that gives
+   the answer away — and **read every sentence for a defensible second answer**, which a
+   script can't catch (a dozen were rewritten for Everyday, three for Professional).
+6. **Then test for real:** the course on the home selector, a free-category preview and
+   a locked one, a real mastery card and its share image (render the longest category
+   title), the daily cards pulling words from every course, and a subscription unlocking
+   every locked category across all courses.
 
 ## Content rules — these matter a lot, please follow them exactly
 
@@ -534,12 +579,20 @@ wording would no longer be true.
    soften, describe tone, etc.) — not by theme like "science words" or
    "people words." Keep new SAT categories function-based, matching the
    existing pattern (Agreement & Support, Disagreement & Refutation, etc).
-   **Everyday Vocabulary is organized by theme** (Precise Description,
-   Emotional Nuance, Persuasion & Influence) — the function-based structure
-   was justified specifically by matching the real SAT's test format, which
+   **Everyday Vocabulary and Professional Vocabulary are organized by theme**
+   (Everyday: Precise Description, Emotional Nuance, Persuasion & Influence;
+   Professional: Meetings & Negotiation, Strategy & Decision-Making,
+   Leadership & Workplace Dynamics) — the function-based structure was
+   justified specifically by matching the real SAT's test format, which
    doesn't apply to a course with no exam behind it. Keep new Everyday
    categories theme-based, in groupings a curious general reader would
-   recognize, not an exam-prep structure. (Rules 2–6 apply to every course.)
+   recognize, and new Professional categories theme- and context-based, in
+   groupings a working adult would recognize — neither an exam-prep
+   structure. **Professional Vocabulary has one extra rule: every example and
+   quiz sentence is set in a real workplace situation** (an email, a meeting,
+   a negotiation, a review, a report), not in a generic voice — that setting
+   is what distinguishes it from Everyday Vocabulary. (Rules 2–6 apply to every
+   course.)
 
 2. **Quiz format = fill-in-the-blank sentence, not "define this word."**
    Each `quiz` object has a `sentence` (a full sentence with `______` where
@@ -573,7 +626,7 @@ wording would no longer be true.
 
 ## Content status
 
-All 9 categories across both courses are fully built: 306 words total, each
+All 12 categories across all three courses are fully built: 408 words total, each
 category with 3 levels (12 Foundational / 12 Intermediate / 10 Advanced).
 
 **SAT Vocab** (`sat-vocab`, `lib/wordbanks.js`) — 204 words:
@@ -590,6 +643,13 @@ proven itself, the same way the SAT course was built up):
 - ✅ `precise-description` (free)
 - ✅ `emotional-nuance`
 - ✅ `persuasion-influence`
+
+**Professional Vocabulary** (`professional-vocabulary`, `lib/professionalVocabulary.js`)
+— 102 words, started with 3 categories the same way; every sentence set in a workplace
+context:
+- ✅ `meetings-negotiation` (free)
+- ✅ `strategy-decisions`
+- ✅ `leadership-workplace`
 
 Validated: no duplicate words anywhere in the library (within a category,
 across categories, or across courses — a word appearing in two courses would
@@ -688,6 +748,7 @@ lib/
                          the dynamic study sets and getSetCategoryId() for
                          paywall gating
   everydayVocabulary.js   The Everyday Vocabulary course's categories
+  professionalVocabulary.js The Professional Vocabulary course's categories
   progress.js             localStorage helpers: streaks, scores, and the
                          Leitner-system spaced repetition tracker
                          (REVIEW_SESSION_CAP lives here)
@@ -783,4 +844,5 @@ trial length, or free/paid category split ever changes, update the
 Terms' "Subscription & Billing" section to match — don't let it drift
 from `lib/purchase.js`. (Both pages were updated on 2026-09-20 for the
 second course: one free category per course, and "the paid categories"
-instead of a hardcoded count.)
+instead of a hardcoded count. Terms §2 and §4 were updated again for the third
+course: §2 no longer names the courses, §4 lists each course's free category.)

@@ -3,8 +3,10 @@
 A vocabulary-learning platform. Study before bed, quiz yourself whenever you're ready.
 
 Voco has multiple courses, all under one subscription: **SAT Vocab** (matched to the
-Digital SAT's Words in Context questions) and **Everyday Vocabulary** (evergreen words
-for reading, writing and conversation, organized by theme — no exam required).
+Digital SAT's Words in Context questions), **Everyday Vocabulary** (evergreen words
+for reading, writing and conversation, organized by theme — no exam required), and
+**Professional Vocabulary** (words for meetings, decisions, and leading people, set in
+real workplace situations).
 
 ## What's in this version (and what isn't)
 
@@ -14,22 +16,26 @@ To keep this MVP simple and reliable, based on what we decided:
   device you're using. It won't sync between your phone and laptop — that's a
   deliberate tradeoff for v1, not a bug.
 - **No backend, no database.** All content is hard-coded in `lib/wordbanks.js`
-  (plus `lib/everydayVocabulary.js`), organized as courses > categories >
+  (plus `lib/everydayVocabulary.js` and `lib/professionalVocabulary.js`), organized as courses > categories >
   3 difficulty levels > words. Nothing calls an AI API at runtime, so there's
   nothing that can go down or return a bad response while someone's using the
   app.
 - **Quiz format is words in context, in every course.** A sentence with a
   blank, and several plausible-looking words where only one is precisely
   correct — not plain "define this word" questions. For SAT Vocab this matches
-  the real Digital SAT's "Words in Context" questions; for Everyday Vocabulary
-  it's kept because it teaches how a word is actually used.
-- **Content status:** 306 words in 9 categories, each with 3 levels
+  the real Digital SAT's "Words in Context" questions; for Everyday and
+  Professional Vocabulary it's kept because it teaches how a word is actually
+  used (Professional sets every sentence in a real workplace situation).
+- **Content status:** 408 words in 12 categories, each with 3 levels
   (12/12/10 words).
   - **SAT Vocab** (204 words): organized by function — Agreement & Support,
     Disagreement & Refutation, Degree & Intensity, Change & Consequence,
     Certainty & Doubt, and Tone & Attitude.
   - **Everyday Vocabulary** (102 words): organized by theme — Precise
     Description, Emotional Nuance, and Persuasion & Influence.
+  - **Professional Vocabulary** (102 words): organized by theme and setting —
+    Meetings & Negotiation, Strategy & Decision-Making, and Leadership &
+    Workplace Dynamics.
 - **No unlock timer.** The quiz is available any time, even right after
   studying. That's intentional for now, so it's easy to test and demo.
   The home screen does adapt to the time of day (evenings suggest tonight's
@@ -57,7 +63,7 @@ Then open `http://localhost:3000` in your browser.
 
 Open this folder in Claude Code (desktop app's Code tab, or run `claude` from
 a terminal inside this folder) and describe what you want next — e.g. "add a
-4th Everyday Vocabulary category" or "add a third course." Claude Code
+4th Professional Vocabulary category" or "add a fourth course." Claude Code
 can edit these files directly, run the dev server, and catch its own mistakes
 as it goes, which this chat can't do.
 
@@ -102,6 +108,7 @@ lib/
   wordbanks.js           Courses, the SAT Vocab content, and the helpers that
                          work across every course
   everydayVocabulary.js  The Everyday Vocabulary course's categories
+  professionalVocabulary.js  The Professional Vocabulary course's categories
   progress.js            localStorage helpers: streaks, scores, and the
                          Leitner-system spaced repetition tracker
 ```

@@ -15,6 +15,13 @@ import {
   refreshSubscriptionStatus,
 } from "@/lib/purchase";
 
+// "A", "A and B", "A, B, and C" — the free categories (one per course) read
+// correctly however many courses there are.
+function joinList(items) {
+  if (items.length <= 2) return items.join(" and ");
+  return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
+}
+
 // "checking" (deciding which state to show) -> "pitch" | "already", or,
 // coming back from Stripe with ?session_id=... -> "verifying" -> "success" | "error"
 export default function UnlockPage() {
@@ -65,7 +72,7 @@ export default function UnlockPage() {
     (sum, c) => sum + c.levels.reduce((s, l) => s + l.words.length, 0),
     0
   );
-  const freeTitles = freeCategories.map((c) => c.title).join(" and ");
+  const freeTitles = joinList(freeCategories.map((c) => c.title));
 
   return (
     <main className="min-h-dvh bg-[#1A1C3A] px-4 py-8 flex items-center justify-center">
