@@ -7,13 +7,14 @@ import NightThemeExplainer from "@/components/NightThemeExplainer";
 import Onboarding from "@/components/Onboarding";
 import ShareButton from "@/components/ShareButton";
 import CourseProgress from "@/components/CourseProgress";
+import ScienceNote from "@/components/ScienceNote";
 import { streakCard } from "@/lib/milestones";
-import { hasOnboarded, markOnboarded } from "@/lib/onboarding";
 import { getPhase, findLastNightsLevel, getTonight } from "@/lib/timeOfDay";
+import { pickScienceFact } from "@/lib/sleepScience";
 import { courses, categories, getCategoryCourse, missedWordsId, DUE_FOR_REVIEW_ID } from "@/lib/wordbanks";
 import { getAllProgress, getStreak, getNightToMorningStreak, resetProgress, getDueWordIds } from "@/lib/progress";
 import { isCategoryLocked, openBillingPortal } from "@/lib/purchase";
-import { useSubscription, computeStruggleCounts } from "@/lib/useLearnerState";
+import { useSubscription, useOnboarding, computeStruggleCounts } from "@/lib/useLearnerState";
 
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
@@ -40,7 +41,7 @@ export default function Home() {
   const [nightToMorningStreak, setNightToMorningStreak] = useState(0);
   // null = not known yet (localStorage is client-only), true = show the
   // first-visit onboarding, false = normal home screen.
-  const [onboarding, setOnboarding] = useState(null);
+  const { onboarding, finishOnboarding } = useOnboarding();
   const [ready, setReady] = useState(false);
   const [dueCount, setDueCount] = useState(0);
   const [struggleCounts, setStruggleCounts] = useState({});
@@ -71,7 +72,6 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    setOnboarding(!hasOnboarded());
     setNow(new Date());
     setProgress(getAllProgress());
     setStreak(getStreak());
@@ -124,14 +124,7 @@ export default function Home() {
   else if (lastNight) subtitle = "Good morning. A quiz now shows what stuck overnight.";
 
   if (onboarding) {
-    return (
-      <Onboarding
-        onFinish={() => {
-          markOnboarded();
-          setOnboarding(false);
-        }}
-      />
-    );
+    return <Onboarding onFinish={finishOnboarding} />;
   }
 
   return (
@@ -173,7 +166,12 @@ export default function Home() {
         </div>
 
         {/* Hidden (not removed) until the clock is read, so the greeting never visibly swaps text. */}
-        <p className={`text-sm text-[#9B97C4] mb-6 ${ready ? "" : "invisible"}`}>{subtitle}</p>
+        <p className={`text-sm text-[#9B97C4] mb-4 ${ready ? "" : "invisible"}`}>{subtitle}</p>
+
+        {/* Always present, every visit (not a one-time tip, nothing to dismiss): one short
+            science fact matched to the time of day — sleep in the evening, retrieval
+            practice in the morning. See lib/sleepScience.js. */}
+        {ready && phase && <ScienceNote fact={pickScienceFact(phase, now)} />}
 
         {lastNight && (
           <div

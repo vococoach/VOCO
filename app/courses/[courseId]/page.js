@@ -6,19 +6,26 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import CategoryList from "@/components/CategoryList";
 import CourseProgress from "@/components/CourseProgress";
+import Onboarding from "@/components/Onboarding";
 import { getCourse } from "@/lib/wordbanks";
 import { getAllProgress } from "@/lib/progress";
-import { useSubscription, computeStruggleCounts } from "@/lib/useLearnerState";
+import { useSubscription, useOnboarding, computeStruggleCounts } from "@/lib/useLearnerState";
 
 // One course's category list — what the home screen showed before Voco had
 // more than one course, scoped to this course's categories. The daily-habit
 // cards (due for review, tonight's study, streaks) stay on the home screen,
 // unscoped to any course.
+//
+// A course page can be a visitor's very first page (a shared or bookmarked
+// link), so it shows the first-visit onboarding too — and afterwards stays on
+// this URL, i.e. the course they came for, rather than sending them to the home
+// screen. See useOnboarding() in lib/useLearnerState.js.
 export default function CoursePage() {
   const params = useParams();
   const router = useRouter();
   const course = getCourse(params.courseId);
   const { subscribed } = useSubscription();
+  const { onboarding, finishOnboarding } = useOnboarding();
   const [progress, setProgress] = useState({});
   const [struggleCounts, setStruggleCounts] = useState({});
   const [ready, setReady] = useState(false);
@@ -35,8 +42,14 @@ export default function CoursePage() {
 
   if (!course) return null;
 
+  if (onboarding) {
+    return <Onboarding onFinish={finishOnboarding} />;
+  }
+
   return (
-    <main className="min-h-dvh bg-[#1A1C3A] px-4 py-8">
+    // Hidden (not removed) until we know whether this is a first visit, so a
+    // first-timer never glimpses the course before the onboarding.
+    <main className={`min-h-dvh bg-[#1A1C3A] px-4 py-8 ${onboarding === null ? "invisible" : ""}`}>
       <div className="max-w-md mx-auto">
         <Link href="/" className="flex items-center gap-1 text-xs text-[#9B97C4] mb-6">
           <ArrowLeft size={14} /> Back

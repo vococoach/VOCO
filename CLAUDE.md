@@ -213,9 +213,10 @@ decisions already made, so they shouldn't be re-litigated or silently changed.
   rationale; keep its claims hedged, since how much sleep helps varies by
   person. Its tap target is 44px on purpose (the visible icon is 16px).
 - **All sleep-and-memory wording lives in one file — `lib/sleepScience.js` —
-  and has hard accuracy rules.** The closing screen, the onboarding and the
-  "why the night theme?" explainer all import from it, so a claim is checked
-  once and can't drift between screens. The rules (they exist because this
+  and has hard accuracy rules.** The closing screen, the onboarding, the
+  "why the night theme?" explainer and the home screen's always-on science
+  note all import from it, so a claim is checked once and can't drift between
+  screens. The rules (they exist because this
   is the app's credibility): (1) say only the well-established general
   finding — sleep, including hippocampus–cortex replay, *helps* stabilize
   and strengthen memories formed while awake; (2) **never name a study,
@@ -231,6 +232,45 @@ decisions already made, so they shouldn't be re-litigated or silently changed.
   than rereading) is a separate, also well-established effect and is kept
   as its own sentence. The same rules apply to any sleep line written
   outside that file (the home subtitles, the morning/evening cards).
+- **A permanent, quiet science note on the home screen**
+  (`components/ScienceNote.js`, under the subtitle, home only). Always
+  present on every visit — not a one-time tip, not a modal, nothing to tap or
+  dismiss; the "why the night theme?" dialog stays the deeper, opt-in
+  explanation. It is deliberately a *footnote, not a card*: `text-xs` in a
+  muted `#8E8AB5` (5.1:1 on the background, so it stays readable), a faint
+  outline and no fill, so the daily-habit cards keep the attention (worst case
+  on a 375px phone is four lines). The facts are `SCIENCE_FACTS` in
+  `lib/sleepScience.js`, in two **separate categories**: `sleep` (memory
+  consolidation) and `retrieval` (the testing effect — self-quizzing
+  strengthens memory more than rereading). `pickScienceFact(phase, now)` ties
+  it to the time-of-day system: **evening → a sleep fact** (why you're
+  studying now), **morning → a retrieval fact** (why you're being quizzed
+  now), **midday → the two interleaved**, alternating day to day. It is a
+  function of the phase and the learner's local calendar day — deterministic,
+  not random — so it doesn't jump when the tab regains focus and re-reads the
+  clock; it advances to the next fact each day. Rules for adding a fact, on
+  top of the five above: one or two short sentences (well under ~170
+  characters); it must say something the others don't; **no digits, years or
+  names** ("researchers found" counts); retrieval facts stay to the
+  well-replicated general findings about self-testing — no effect sizes, no
+  claim that this app's quiz format is optimal — and use "tends to" /
+  "usually" / "is thought to" instead of "always" / "never" / "proves". **The
+  hedge is never written into a fact by hand:** `pickScienceFact()` always
+  attaches the category's hedge (`SCIENCE_HEDGES`, named for what it hedges —
+  "How much sleep helps…" / "How much self-testing helps…"), so a new fact can't
+  ship without one. Read every new line for accuracy before it ships (a lint
+  over these rules — no digits, no attribution, no absorb-while-asleep, no
+  oversell phrasing, sentence count, near-duplicate overlap — was run when they
+  were written). Don't add a sleep fact that merely restates the app's own
+  study-then-sleep premise ("studying before bed keeps it fresh") — that is
+  the premise, not a finding; an earlier fact like that was replaced. Mind the
+  direction of the interference fact: the evidence is that memories are more
+  resistant to interference from things learned *after* a period of sleep — not
+  that sleep shields them from what you learn between studying and going to
+  bed, which can still disrupt them. It is also worded neutrally about
+  mechanism ("tend to be more resistant"), because researchers still debate
+  whether sleep actively strengthens memories or mainly protects them from new
+  input; don't rewrite it to take a side.
 - **Finishing a study session ends on a brief closing screen, not an
   instant redirect** (`components/StudyClose.js`, shown by
   `sets/[setId]/study` when "Done studying" is clicked; `markStudied()` still
@@ -243,15 +283,26 @@ decisions already made, so they shouldn't be re-litigated or silently changed.
   decision stands). It also appears after missed-words and due-for-review
   study sessions, since they share the study page.
 - **First-visit onboarding: two skippable screens, shown once**
-  (`components/Onboarding.js`, gated in `app/page.js`). The one-time flag is
+  (`components/Onboarding.js`, gated by the shared `useOnboarding()` hook in
+  `lib/useLearnerState.js`, used by both `app/page.js` and
+  `app/courses/[courseId]/page.js`). The one-time flag is
   its own localStorage key, `voco_onboarded_v1` (`lib/onboarding.js`) —
   deliberately **not** derived from progress data, and **not** cleared by
   "Reset progress on this device", so resetting or an empty progress store
   never re-triggers it. (Consequence: everyone who used the app before it
-  shipped sees it once too.) The home page is server-rendered with
+  shipped sees it once too.) Those two pages are server-rendered with
   `invisible` on `<main>` until the client has read the flag, so a
-  first-timer never glimpses the home screen first. If localStorage is
-  blocked it is skipped rather than shown on every visit.
+  first-timer never glimpses the page first (verified by comparing browser
+  first-paint time with the DOM state: nothing but the intro is ever painted).
+  If localStorage is blocked it is skipped rather than shown on every visit.
+  **A course page can be a visitor's first page** (a shared/bookmarked link),
+  so it shows the intro too — and because finishing just re-renders the page in
+  place, they then land on the course they came for, not the home screen. An
+  unknown course id redirects to `/`, which shows the intro. **Only those two
+  pages gate**: a deep link into `/sets/...`, `/preview/...`, `/review`,
+  `/unlock`, `/terms` or `/privacy` does not show the intro (same as before
+  courses existed). If another page becomes a plausible first landing spot, use
+  the same hook rather than copying the logic.
 - **The night-to-morning streak is a second, separate counter** (header,
   sunrise icon, "N day night-to-morning streak"; the flame "N day streak"
   is unchanged and counts any quiz on any day). One *cycle* = a level
@@ -596,6 +647,8 @@ components/
   ShareButton.js          Trigger + dialog: share/copy/download the image
   Onboarding.js           First-visit onboarding (2 skippable screens)
   StudyClose.js           Closing screen after "Done studying"
+  ScienceNote.js          The permanent, quiet science footnote on the home
+                         screen (one fact + its hedge; nothing interactive)
   NightThemeExplainer.js  Info icon by the logo + the dismissible "why the
                          night theme?" dialog (native <dialog>)
   QuizResults.js          End-of-quiz card shared by level quizzes,
@@ -607,12 +660,15 @@ lib/
                          getCourseProgress(), and the card copy shared by the
                          in-app card and the image
   useLearnerState.js      Shared client hooks/helpers: subscription state
-                         (cached, then reconciled) and per-category struggle
-                         counts
+                         (cached, then reconciled), the first-visit onboarding
+                         gate (useOnboarding), and per-category struggle counts
   shareCard.js            Canvas renderer for the shareable PNG
   preview.js              The one sample question per locked category
   sleepScience.js         The ONLY place sleep/memory claims are written
-                         (see the accuracy rules in "Project context")
+                         (see the accuracy rules in "Project context"):
+                         the long-form SLEEP_SCIENCE sentences, the short
+                         SCIENCE_FACTS (sleep + retrieval) and hedges, and
+                         pickScienceFact() for the home note
   onboarding.js           The one-time "seen onboarding" flag
   timeOfDay.js            Local-time phases (morning/midday/evening) and the
                          "last night's words" / "tonight's study" selection
