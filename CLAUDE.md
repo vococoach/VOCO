@@ -126,7 +126,9 @@ decisions already made, so they shouldn't be re-litigated or silently changed.
     mutually exclusive, and only a genuine non-`trialing`/`active` status
     from Stripe should ever lock a category.
 - **No AI calls at runtime.** All vocab content is hard-coded in
-  `lib/wordbanks.js` (SAT Vocab), `lib/everydayVocabulary.js` (Everyday
+  `lib/wordbanks.js` (SAT Vocab's original three tiers), `lib/satExpertTier.js`
+  (SAT Vocab's Expert tier), `lib/satPassages.js` and `lib/satStrategy.js` (SAT
+  reading passages and strategy guides), `lib/everydayVocabulary.js` (Everyday
   Vocabulary) and `lib/professionalVocabulary.js` (Professional Vocabulary).
   This is intentional for reliability — an earlier
   version called an AI API live and it was flaky. Content is written once
@@ -350,7 +352,9 @@ decisions already made, so they shouldn't be re-litigated or silently changed.
   daily one) reaching 3 / 7 / 30 days; **mastery** — categories mastered *per
   course*, at that course's 1st / 3rd / whole-course (`masteryThresholds(n)`:
   SAT Vocab 1/3/6, Everyday Vocabulary and Professional Vocabulary 1/3; a category is mastered once
-  *every* level in it has been completed at 100% at least once); **words** —
+  *every required level* in it has been completed at 100% at least once — SAT
+  Vocab's Expert tier is `optional` and doesn't count, see "SAT Vocab has three
+  sections" below); **words** —
   distinct words, across every course, that have ever reached
   spaced-repetition box 3+ (`LEARNED_BOX`; i.e. answered correctly twice in a
   row, not merely seen), at 25 / 50 / 100 / 200. A mastery id names its course
@@ -438,7 +442,7 @@ decisions already made, so they shouldn't be re-litigated or silently changed.
 - **Each category has its own "still learning" course — dynamic, not a
   real level.** `missedWordsId(categoryId)` (`lib/wordbanks.js`) builds a
   reserved id like `"agreement-support-missed-words"` (real level ids
-  always end in `-1`/`-2`/`-3`, so this suffix can't collide); the inverse,
+  always end in `-1` to `-4`, so this suffix can't collide); the inverse,
   `missedWordsCategoryId(setId)`, is what `/sets/[setId]/study` and
   `/sets/[setId]/quiz` use to special-case it. Built at request time from
   whichever of *that category's* words are currently in box 1
@@ -484,8 +488,9 @@ in groupings a curious general reader would recognize. The quiz format is kept
 reason: it teaches how a word is *used*, not just what it means, which is worth doing
 with or without an exam. Same 3 levels, distractor difficulty escalating with level.
 
-**Data model** (`lib/wordbanks.js`): `courses = [{ id, title, description, categories }]`
-above the unchanged category > level > word shape. `categories` is still exported as
+**Data model** (`lib/wordbanks.js`): `courses = [{ id, title, description, categories,
+passages?, guides? }]` above the unchanged category > level > word shape (`passages` and
+`guides` are optional extra sections — only the SAT course defines them). `categories` is still exported as
 the flat list across every course, so anything that only cares about categories
 (paywall, preview, milestones' word totals, time-of-day) didn't need to know courses
 exist. `findLevel()` returns `{ course, category, level }`; `getAllWordsFlat()` returns
@@ -495,8 +500,12 @@ back. **The restructure was a wrapping, not a regeneration**: the SAT data liter
 untouched (the array was only renamed and nested — proven byte-identical by hash), and
 **no level id or word id may ever change** — `voco_progress_v1`, `voco_word_srs_v1` and
 the milestone list key on them directly, and changing one silently orphans that data.
-Ids must stay unique across courses (level `<category>-<1|2|3>`, word
-`<levelId>::<slug>`), and a word may appear in only one course.
+Ids must stay unique across courses (level `<category>-<1|2|3>`, plus `-4` for SAT
+Vocab's Expert tier; word `<levelId>::<slug>`), and a word may appear in only one course.
+Adding the Expert tier was the same kind of wrapping: the SAT data literal is still
+untouched (its array is `satVocabCoreCategories`) and the Expert level is appended from a
+separate file — the original three tiers were proven byte-identical by hash
+(`f65f7e793d183d8a`, Expert stripped).
 
 **Entitlement: one free category per course** (a decision made when the second course
 was added, so each course can be genuinely tried before paying):
@@ -504,7 +513,10 @@ was added, so each course can be genuinely tried before paying):
 Precise Description (Everyday Vocabulary) and Meetings & Negotiation (Professional
 Vocabulary); each is its course's first category. Everything else, in every course, is
 one subscription. When adding a course, give it a free category there and update the
-terms free-category sentence; when adding a category, nothing else changes.
+terms free-category sentence; when adding a category, nothing else changes. A category's
+Expert tier follows the category: Agreement & Support's Expert level is free, the other
+five need the subscription (the gate is per category, so nothing extra was needed). SAT
+reading passages have their own small gate — see "SAT Vocab has three sections".
 
 **The home screen has two layers.** *Top, unscoped to any course:* the daily habit loop
 — last night's words (morning), tonight's study (evening), due for review, words
@@ -526,7 +538,10 @@ through, and a legacy SAT learner keeps getting SAT; (3) if nothing has been sta
 prompt listing the unstarted courses, with no course pre-selected — the decision was
 explicit that the app must not guess which course a brand-new learner wants. "Started"
 means a level was *studied* (a quiz alone doesn't count). Everything unlocked studied →
-revisit the level studied longest ago. Locked levels are never suggested.
+revisit the level studied longest ago. Locked levels are never suggested, and neither are
+`optional` levels (SAT Vocab's Expert tier is something you choose to go for, not
+something the app nudges you into) — though studying one still counts as "tonight's study
+is done".
 
 **Professional Vocabulary** (the third course) is for working adults — a different
 audience from exam prep (SAT Vocab) and from general reading and conversation
@@ -565,10 +580,77 @@ not generic):
    no duplicate words anywhere in the library, no `a`/`an` before the blank that gives
    the answer away — and **read every sentence for a defensible second answer**, which a
    script can't catch (a dozen were rewritten for Everyday, three for Professional).
-6. **Then test for real:** the course on the home selector, a free-category preview and
+6. **Optional extra sections.** A course may also define `passages` and/or `guides`; if it
+   does, `getCourseSections()` gives its page tabs automatically (a course with neither
+   gets none). Passages need a free one in `FREE_PASSAGE_BY_COURSE` and their own gating;
+   see "SAT Vocab has three sections".
+7. **Then test for real:** the course on the home selector, a free-category preview and
    a locked one, a real mastery card and its share image (render the longest category
    title), the daily cards pulling words from every course, and a subscription unlocking
    every locked category across all courses.
+
+## SAT Vocab has three sections — Vocabulary, Passages, Strategy (added 2026-09-21)
+
+The SAT course was **deepened, not turned into a fourth course**, with harder vocabulary,
+real SAT-style reading passages and test-day strategy. Everything that existed kept
+working unchanged; these are the decisions made with the owner (don't re-litigate them):
+
+- **The course page is tabs, defaulting to Vocabulary.** `getCourseSections(course)`
+  (`lib/wordbanks.js`) returns `Vocabulary | Passages | Strategy` for a course that defines
+  `passages`/`guides`, and `null` for one that doesn't — Everyday and Professional show no
+  tabs and are the old page exactly. It opens on Vocabulary so `/courses/sat-vocab` looks as
+  it always did. The tab lives in the URL (`?section=passages|strategy`, written with
+  `history.replaceState`, read with `useSearchParams`), so it can be linked and the Back
+  links from a passage or guide return to the right tab. `CourseProgress` sits under the
+  Vocabulary tab only. Before this, a course page had no sections — just a category list.
+- **Expert tier: a 4th level in each of the 6 SAT categories, an *extra* — mastery is
+  unchanged.** `lib/satExpertTier.js` (ids `<category>-4`, label "Expert", 32 words:
+  agreement 6, disagreement 5, degree 6, change 4, certainty 5, tone 6), appended to the
+  categories in `wordbanks.js`. Each level carries `optional: true`. Mastery, the course
+  summary ("N of 6 categories mastered · Y of 18 levels") and Tonight's-study suggestions
+  count only the **required** levels (`requiredLevels()` in `lib/milestones.js`; `core` in
+  `getTonight`), so an existing learner's "1 of 6 mastered" doesn't drop and no earned or
+  pending milestone moves. Expert **does** feed everything else: spaced repetition, missed
+  words, words learned, last night's words, and the "tonight's study is done" check.
+  **Any new code that decides whether a category/course is *complete* must use
+  `requiredLevels()`, not `category.levels`.** Agreement & Support's Expert level is free
+  (it follows its category); the others follow the subscription.
+- **Reading passages** (`lib/satPassages.js`, route `/passages/[passageId]`): 5 original
+  passages, 100–150 words, 1–2 questions each, a real mix of types — `central-idea`,
+  `inference` and `words-in-context` (a `______` blank drawn from *inside* the passage —
+  the same mechanic as the vocabulary quizzes). **Originality is the rule that matters most
+  here**: invented people, places, data and quotes; nothing derived from, modeled on or
+  paraphrased from any real SAT or test-prep passage. Options are correct-first
+  (`correctIndex: 0`) and shuffled on screen, so **an explanation must never refer to a
+  choice by position** ("the first choice") — it names the choice by content. (This
+  shipped wrong once during development and was caught by clicking through; the validator
+  now fails on it.) The page reuses the quiz option/feedback pattern and `QuizResults`.
+  Passage ids, like every id here, never change.
+- **Decision — passages are tracked completely separately.** `lib/passageProgress.js`
+  (`voco_passages_v1`, `PASSAGES_KEY` in `lib/progress.js`; cleared by Reset) keeps one record
+  per passage — `{completedAt, lastScore, lastTotal, bestScore, attempts}` — and the course
+  page shows its own "N of M passages completed". Passages do **not** touch spaced
+  repetition, missed words, milestones, or either streak. Reason: a passage tests
+  reading, not word retention, and forcing it into the SRS would have polluted the review
+  queue. Known trade-off: a day with only a passage does not extend the daily streak.
+- **Decision — one free passage.** `FREE_PASSAGE_BY_COURSE` / `isPassageLocked()`
+  (`lib/purchase.js`): *The Tide Pool Census* is free to everyone (mirroring "one free
+  category per course", and it doubles as the free sample of the passage layout); the other
+  four need the subscription. Gated exactly like the levels: `/passages/[passageId]` shows
+  nothing until subscription status is known (cached, then reconciled), then redirects a
+  non-subscriber to `/unlock`; the passage list shows locked cards with the price. As
+  everywhere, this is UI-level gating — all content ships in the client bundle.
+- **Test-day strategy guides** (`lib/satStrategy.js`, route `/strategy/[guideId]`): four
+  short written guides (words-in-context routine, pacing, common traps, unknown words) —
+  **free to everyone, no gate, nothing recorded**. Written as `blocks` (heading, paragraph,
+  list, steps, example). They state Digital SAT format facts (module length, question
+  count, no guessing penalty, the timer/flag tools) *as of when written* and send readers to
+  the College Board for current details, plus a "not affiliated with the College Board"
+  line — formats change, so re-check those sentences if the test does.
+- **Copy that changed with it:** `/unlock` lists "Reading passages (4)" under SAT Vocab and
+  says the strategy guides are free; terms §4 names the free passage and free guides;
+  privacy §2 lists reading-passage results among what stays on the device. (Both dated
+  2026-09-21.)
 
 ## Content rules — these matter a lot, please follow them exactly
 
@@ -604,7 +686,11 @@ not generic):
 3. **Distractor difficulty should escalate with level.** Foundational
    levels: distractors are clearly wrong (opposites/unrelated words) — easy
    to build confidence. Advanced levels: distractors are close, plausible
-   near-synonyms — genuinely hard, matching real hard-tier SAT questions.
+   near-synonyms — genuinely hard, matching real hard-tier SAT questions. SAT Vocab's
+   Expert tier goes one step further: every option is a real near-synonym and the
+   sentence must turn on one specific shade (strength, praise vs. criticism, how specific
+   the word is). Expert words were cut whenever a second option was defensible — which is
+   why its categories have 4–6 words rather than a fixed count.
 
 4. **Quality over hitting an exact word count.** Every word in a level
    should be genuinely distinct from every other word in that category —
@@ -626,10 +712,13 @@ not generic):
 
 ## Content status
 
-All 12 categories across all three courses are fully built: 408 words total, each
-category with 3 levels (12 Foundational / 12 Intermediate / 10 Advanced).
+All 12 categories across all three courses are fully built: 440 words total. Each
+category has 3 levels (12 Foundational / 12 Intermediate / 10 Advanced); each SAT Vocab
+category also has a 4th, optional **Expert** level.
 
-**SAT Vocab** (`sat-vocab`, `lib/wordbanks.js`) — 204 words:
+**SAT Vocab** (`sat-vocab`, `lib/wordbanks.js` + `lib/satExpertTier.js`) — 236 words (204
+in the three original tiers + 32 Expert), plus 5 reading passages
+(`lib/satPassages.js`) and 4 strategy guides (`lib/satStrategy.js`):
 - ✅ `agreement-support` (free)
 - ✅ `disagreement-refutation`
 - ✅ `degree-intensity`
@@ -670,7 +759,10 @@ app/
                          due-for-review, "still learning" across courses,
                          streaks), then a card per course
   courses/[courseId]/     One course's category list (locked cards, levels,
-                         each category's own "still learning" card)
+                         each category's own "still learning" card); for a
+                         course with passages/guides, tabs above it
+  passages/[passageId]/   One reading passage + its questions (SAT Vocab)
+  strategy/[guideId]/     One written strategy guide (free, ungated)
   globals.css             Fonts + Tailwind + the results card's one-time
                          entrance animation
   review/                 Spaced-repetition review session (capped at 20)
@@ -706,6 +798,9 @@ components/
                          sample-question link, per-category "still learning"
   CourseProgress.js       The per-course "X of N categories mastered · Y of M
                          levels completed" line (home cards + course page)
+  PassageList.js          The Passages tab: cards, free/locked state, results,
+                         "N of M passages completed"
+  StrategyList.js         The Strategy tab: one card per guide
   CelebrationCard.js      The one celebration-card recipe (disc, label,
                          headline, figure, note) — score tiers AND milestones
   MilestoneCards.js       One-time milestone cards under the score card
@@ -747,13 +842,18 @@ lib/
                          getMissedWordsLevel() / getDueForReviewLevel() for
                          the dynamic study sets and getSetCategoryId() for
                          paywall gating
+  satExpertTier.js        SAT Vocab's Expert level for each category (optional)
+  satPassages.js          SAT reading passages (original writing)
+  satStrategy.js          SAT test-day strategy guides + guideReadingMinutes()
+  passageProgress.js      Per-passage results (voco_passages_v1) — separate
+                         from vocabulary progress
   everydayVocabulary.js   The Everyday Vocabulary course's categories
   professionalVocabulary.js The Professional Vocabulary course's categories
   progress.js             localStorage helpers: streaks, scores, and the
                          Leitner-system spaced repetition tracker
-                         (REVIEW_SESSION_CAP lives here)
+                         (REVIEW_SESSION_CAP lives here; PASSAGES_KEY too)
   purchase.js              Subscription constants (incl. the free category
-                         in each course) + localStorage helpers
+                         and free passage in each course) + localStorage helpers
                          (voco_customer_id_v1, voco_subscription_status_v1)
                          — per-device only, see "Paid unlock" above
 ```
@@ -845,4 +945,7 @@ Terms' "Subscription & Billing" section to match — don't let it drift
 from `lib/purchase.js`. (Both pages were updated on 2026-09-20 for the
 second course: one free category per course, and "the paid categories"
 instead of a hardcoded count. Terms §2 and §4 were updated again for the third
-course: §2 no longer names the courses, §4 lists each course's free category.)
+course: §2 no longer names the courses, §4 lists each course's free category. On
+2026-09-21, for SAT Vocab's passages and guides: §4 says the first reading passage and the
+strategy guides are free and the remaining passages need the subscription; privacy §2 lists
+reading-passage results among what is stored on the device.)

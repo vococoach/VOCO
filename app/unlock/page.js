@@ -6,6 +6,7 @@ import { Moon, Lock, Check, X, Sparkles } from "lucide-react";
 import { courses } from "@/lib/wordbanks";
 import {
   isFreeCategory,
+  isPassageLocked,
   PAYMENT_LINK_URL,
   PRICE_LABEL,
   TRIAL_LABEL,
@@ -64,9 +65,16 @@ export default function UnlockPage() {
 
   // Each course has one free category; everything else unlocks together.
   const freeCategories = courses.flatMap((course) => course.categories.filter((c) => isFreeCategory(c.id)));
+  // A course's reading passages: the first is free, the rest unlock with the
+  // categories. (Strategy guides are free to everyone, so they never appear here.)
   const lockedByCourse = courses
-    .map((course) => ({ course, categories: course.categories.filter((c) => !isFreeCategory(c.id)) }))
-    .filter((group) => group.categories.length > 0);
+    .map((course) => ({
+      course,
+      categories: course.categories.filter((c) => !isFreeCategory(c.id)),
+      passages: (course.passages || []).filter((p) => isPassageLocked(p.id, false)),
+    }))
+    .filter((group) => group.categories.length > 0 || group.passages.length > 0);
+  const lockedPassageCount = lockedByCourse.reduce((sum, group) => sum + group.passages.length, 0);
   const lockedCategories = lockedByCourse.flatMap((group) => group.categories);
   const lockedWordCount = lockedCategories.reduce(
     (sum, c) => sum + c.levels.reduce((s, l) => s + l.words.length, 0),
@@ -155,12 +163,14 @@ export default function UnlockPage() {
                 {freeTitles || "One category in each course"} stay{freeCategories.length === 1 ? "s" : ""} free; the
                 other {lockedCategories.length} — {lockedWordCount} more words — all unlock together
                 with a {TRIAL_LABEL}, then {PRICE_LABEL}.
+                {lockedPassageCount > 0 &&
+                  ` That includes ${lockedPassageCount} reading passages beyond the free one; the strategy guides are free for everyone.`}
               </p>
             </div>
 
             <div className="bg-[#20223F] rounded-2xl p-4 mb-6 space-y-3">
               <p className="text-xs text-[#9B97C4]">One subscription unlocks all of these:</p>
-              {lockedByCourse.map(({ course, categories: locked }) => (
+              {lockedByCourse.map(({ course, categories: locked, passages }) => (
                 <div key={course.id} className="space-y-2">
                   <p className="text-xs uppercase tracking-wide text-[#8B85FF]">{course.title}</p>
                   {locked.map((c) => (
@@ -169,6 +179,12 @@ export default function UnlockPage() {
                       {c.title}
                     </div>
                   ))}
+                  {passages.length > 0 && (
+                    <div className="flex items-center gap-2 text-sm text-[#EDEBFF]">
+                      <Lock size={14} color="#6E699B" />
+                      Reading passages ({passages.length})
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

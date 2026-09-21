@@ -16,8 +16,9 @@ To keep this MVP simple and reliable, based on what we decided:
   device you're using. It won't sync between your phone and laptop — that's a
   deliberate tradeoff for v1, not a bug.
 - **No backend, no database.** All content is hard-coded in `lib/wordbanks.js`
-  (plus `lib/everydayVocabulary.js` and `lib/professionalVocabulary.js`), organized as courses > categories >
-  3 difficulty levels > words. Nothing calls an AI API at runtime, so there's
+  (plus `lib/satExpertTier.js`, `lib/satPassages.js`, `lib/satStrategy.js`,
+  `lib/everydayVocabulary.js` and `lib/professionalVocabulary.js`), organized as
+  courses > categories > difficulty levels > words. Nothing calls an AI API at runtime, so there's
   nothing that can go down or return a bad response while someone's using the
   app.
 - **Quiz format is words in context, in every course.** A sentence with a
@@ -26,11 +27,16 @@ To keep this MVP simple and reliable, based on what we decided:
   the real Digital SAT's "Words in Context" questions; for Everyday and
   Professional Vocabulary it's kept because it teaches how a word is actually
   used (Professional sets every sentence in a real workplace situation).
-- **Content status:** 408 words in 12 categories, each with 3 levels
-  (12/12/10 words).
-  - **SAT Vocab** (204 words): organized by function — Agreement & Support,
+- **Content status:** 440 words in 12 categories, each with 3 levels
+  (12/12/10 words); SAT Vocab categories also have a 4th, optional Expert level.
+  - **SAT Vocab** (236 words): organized by function — Agreement & Support,
     Disagreement & Refutation, Degree & Intensity, Change & Consequence,
-    Certainty & Doubt, and Tone & Attitude.
+    Certainty & Doubt, and Tone & Attitude. The course page has three tabs:
+    **Vocabulary** (the categories, including the Expert level, whose
+    distractors are extremely close near-synonyms), **Passages** (5 original
+    reading passages with questions — one free, the rest with the
+    subscription; tracked separately from vocabulary progress), and
+    **Strategy** (4 short test-day guides, free for everyone).
   - **Everyday Vocabulary** (102 words): organized by theme — Precise
     Description, Emotional Nuance, and Persuasion & Influence.
   - **Professional Vocabulary** (102 words): organized by theme and setting —

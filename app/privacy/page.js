@@ -18,7 +18,7 @@ export default function PrivacyPage() {
           <span className="font-display text-lg text-[#EDEBFF]">Voco</span>
         </div>
         <h1 className="font-display text-2xl text-[#EDEBFF] mb-1">Privacy Policy</h1>
-        <p className="text-xs text-[#6E699B] mb-8">Last updated September 20, 2026</p>
+        <p className="text-xs text-[#6E699B] mb-8">Last updated September 21, 2026</p>
 
         <div className="space-y-6 text-sm text-[#9B97C4] leading-relaxed">
           <section>
@@ -36,9 +36,10 @@ export default function PrivacyPage() {
             <p>
               There's no sign-up, login, or user profile. We don't collect your name, email, or
               any personal information just to use the free content. Your study progress — which
-              words you've studied, quiz scores, streaks, and spaced-repetition scheduling — is
-              stored only in your browser's local storage (<code>localStorage</code>) on your
-              device. We have no access to it, no copy of it, and no way to see it.
+              words you've studied, quiz scores, reading-passage results, streaks, and
+              spaced-repetition scheduling — is stored only in your browser's local storage (
+              <code>localStorage</code>) on your device. We have no access to it, no copy of it, and
+              no way to see it.
             </p>
           </section>
 
