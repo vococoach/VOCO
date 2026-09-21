@@ -5,7 +5,7 @@ import Stripe from "stripe";
 // Dashboard for the subscription unlock (see lib/purchase.js
 // PAYMENT_LINK_URL). Checked so this endpoint can't be used to "verify" a
 // paid Checkout Session from some other product.
-const EXPECTED_PAYMENT_LINK_ID = "plink_1UFaEjQbCm1Y6nVS1DOPNCBi";
+const EXPECTED_PAYMENT_LINK_ID = "plink_1UIAT8HSW53IY9shBH3iARzX";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 

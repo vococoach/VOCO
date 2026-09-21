@@ -858,7 +858,26 @@ lib/
                          — per-device only, see "Paid unlock" above
 ```
 
-## Paid unlock — status: built and verified end-to-end on production (test mode)
+## Paid unlock — built and verified end-to-end on production in test mode; live cutover in progress
+
+**Going live (Stripe live mode activated 2026-09-21).** Three things move together, and
+getting only some of them is the failure that matters: (1) the live secret key in Vercel as
+`STRIPE_SECRET_KEY`, **Production only** (Sensitive on) — Preview and Development keep a
+`sk_test_` key, as does the gitignored `.env.local`; (2) `PAYMENT_LINK_URL` in
+`lib/purchase.js`; (3) `EXPECTED_PAYMENT_LINK_ID` in `app/api/verify-subscription/route.js`.
+`/api/verify-subscription` only unlocks a session whose `payment_link` equals that id, so a
+live key with the old test id would take payment and never unlock. **Live** ids: Payment Link
+`plink_1UIAT8HSW53IY9shBH3iARzX` (`buy.stripe.com/8x2cN57lk66C7zyf1scAo00`), price
+`price_1UIAT4HSW53IY9shUejehPNY`, $1.99/month, 7-day trial, redirect
+`https://voco.courses/unlock?session_id={CHECKOUT_SESSION_ID}` (all read back from the live
+API, not assumed). The **test** ids described below are kept for history; the code no longer
+points at them, so local/preview "Start free trial" now opens the live checkout — exercise
+the subscription flow locally with the test key against the Stripe API instead. Live
+Billing Portal settings are per mode and must be saved in live mode too. Status: not yet
+verified end-to-end in live mode (do a real $0 trial subscription, then cancel it in the
+portal) — update this paragraph once done.
+
+The sections below describe the original test-mode build:
 
 The Stripe product already existed in this account before this round of
 work (`prod_VG6KhZ3PshOM3Q`, "Voco - Full Access", with price
