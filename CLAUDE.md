@@ -133,6 +133,18 @@ decisions already made, so they shouldn't be re-litigated or silently changed.
   This is intentional for reliability — an earlier
   version called an AI API live and it was flaky. Content is written once
   (by a human or AI-assisted, then reviewed), then baked in as static data.
+- **Vercel Web Analytics only, and it must stay that way.** `<Analytics />`
+  from `@vercel/analytics/next` in `app/layout.js` (added 2026-09-22) gives
+  aggregate, anonymous page-view counts — no cookies, no per-visitor
+  identifiers, nothing that connects a page view to a customer id or any
+  other data this app holds. That's a deliberate constraint matching the
+  no-accounts architecture above, not an oversight: don't add event
+  properties, user ids, or a second analytics tool that would start
+  identifying visitors without discussing it first. In dev it logs to the
+  console instead of sending anything ("Debug mode is enabled by default in
+  development"); it only reports to Vercel on a real deploy, and needs Web
+  Analytics turned on for the project in the Vercel dashboard to collect
+  there.
 - No quiz-unlock timer — study and quiz are both available anytime. Also
   deliberate, for ease of testing/demoing.
 - **Spaced repetition (Leitner system)**, added after MVP launch as the
@@ -214,9 +226,34 @@ decisions already made, so they shouldn't be re-litigated or silently changed.
   `visibilitychange`/`focus`, so a tab left open overnight shows the
   morning state at breakfast. A small info icon next to the logo opens
   `components/NightThemeExplainer.js` — a native `<dialog>` (Esc, backdrop
-  click, X and "Got it" all dismiss it) explaining the sleep/memory
-  rationale; keep its claims hedged, since how much sleep helps varies by
-  person. Its tap target is 44px on purpose (the visible icon is 16px).
+  click, X and "Got it" all dismiss it — one tap, no added friction)
+  explaining the sleep/memory rationale; keep its claims hedged, since how
+  much sleep helps varies by person. Its tap target is 44px on purpose (the
+  visible icon is 16px).
+  **It also auto-opens once per fresh browser session** (added 2026-09-22,
+  `lib/nightThemeExplainer.js`, `voco_night_theme_seen_session_v1`,
+  `sessionStorage` — not `localStorage`): a new tab/window opening the site
+  shows it once, but navigating around (or reloading) within that same tab
+  doesn't show it again, because it's marked seen the moment it auto-opens,
+  not on dismiss. **Deliberate tradeoff, discussed with the owner:** before
+  this it only ever opened by tapping the icon, with no auto-show at all —
+  content this useful for framing the app's premise was easy to never
+  discover. A once-ever auto-show (mirroring onboarding) was considered and
+  rejected: it would only ever help the very first session, and the value of
+  "why the night theme?" doesn't expire after one viewing the way a guided
+  tour does. Per-session repetition was chosen over that, accepting the
+  minor repeat-visit friction as worth it for the explainer actually being
+  seen again. The manual tap-to-open icon is unchanged and always available
+  regardless of the session flag. On a brand-new visitor's very first
+  session, `finishOnboarding()` (`lib/useLearnerState.js`) also marks this
+  session as seen, since the onboarding they just finished already covers
+  the same rationale — without that, the explainer would auto-pop
+  immediately on top of the intro that just closed. Their *next* fresh
+  session (a later visit) shows it normally. Not cleared by "Reset progress
+  on this device" — `sessionStorage` isn't touched by `resetProgress()`
+  (`localStorage`-only) and clears itself when the tab closes regardless.
+  **Leave `components/ScienceNote.js` (the permanent, always-on footnote,
+  below) out of this — it's a separate feature and wasn't touched.**
 - **All sleep-and-memory wording lives in one file — `lib/sleepScience.js` —
   and has hard accuracy rules.** The closing screen, the onboarding, the
   "why the night theme?" explainer and the home screen's always-on science
@@ -753,7 +790,9 @@ there are none of those left.
 
 ```
 app/
-  layout.js              Root layout + metadata
+  layout.js              Root layout + metadata + Vercel Web Analytics
+                         (@vercel/analytics/next — anonymous page views only,
+                         no cookies, no identifying data; added 2026-09-22)
   page.js                Home screen, two layers: the unscoped daily-habit
                          cards (last night's words, tonight's study,
                          due-for-review, "still learning" across courses,
@@ -810,7 +849,10 @@ components/
   ScienceNote.js          The permanent, quiet science footnote on the home
                          screen (one fact + its hedge; nothing interactive)
   NightThemeExplainer.js  Info icon by the logo + the dismissible "why the
-                         night theme?" dialog (native <dialog>)
+                         night theme?" dialog (native <dialog>); also
+                         auto-opens once per fresh session (lib/
+                         nightThemeExplainer.js) — see "The home screen
+                         is time-aware" above
   QuizResults.js          End-of-quiz card shared by level quizzes,
                          missed-words sessions and review sessions —
                          one structure, recolored by score tier
@@ -830,6 +872,9 @@ lib/
                          SCIENCE_FACTS (sleep + retrieval) and hedges, and
                          pickScienceFact() for the home note
   onboarding.js           The one-time "seen onboarding" flag
+  nightThemeExplainer.js  The "seen the explainer this session?" flag
+                         (sessionStorage, not localStorage — resets every
+                         fresh tab, unlike onboarding.js above)
   timeOfDay.js            Local-time phases (morning/midday/evening) and the
                          "last night's words" / "tonight's study" selection
                          for the home screen

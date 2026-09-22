@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 export const metadata = {
@@ -15,7 +16,14 @@ export const viewport = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      {/* Vercel Web Analytics: aggregate, anonymous page-view counts only — no
+          cookies, no per-visitor tracking. Consistent with the app's no-accounts,
+          no-identification design (see CLAUDE.md); don't add event props that
+          could identify a visitor (email, customer id, etc). */}
+      <body>
+        {children}
+        <Analytics />
+      </body>
     </html>
   );
 }

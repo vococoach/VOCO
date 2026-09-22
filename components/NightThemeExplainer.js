@@ -1,15 +1,32 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Info, X } from "lucide-react";
 import { SLEEP_SCIENCE } from "@/lib/sleepScience";
+import { hasSeenThisSession, markSeenThisSession } from "@/lib/nightThemeExplainer";
 
 // Small "why the night theme?" icon for the home header, plus the dismissible
 // explainer it opens. Uses the native <dialog> element, which supplies the
 // modal backdrop, focus trapping and Esc-to-close for free; the forms with
 // method="dialog" close it without any extra state.
+//
+// Also auto-opens once per fresh browser session (a new tab/window opening the
+// site) — not once ever, and not on every internal navigation within a session
+// that's already open. See lib/nightThemeExplainer.js for the sessionStorage
+// flag and CLAUDE.md for the reasoning (traded onboarding-once for repeated
+// visibility, deliberately). The manual tap-to-open affordance below is
+// unchanged and always available regardless of the session flag.
 export default function NightThemeExplainer() {
   const dialogRef = useRef(null);
+
+  useEffect(() => {
+    if (!hasSeenThisSession()) {
+      dialogRef.current?.showModal();
+      // Marked immediately (not on dismiss), so navigating away before
+      // closing it still counts as "seen" for the rest of this session.
+      markSeenThisSession();
+    }
+  }, []);
 
   return (
     <>
