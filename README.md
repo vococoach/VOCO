@@ -27,13 +27,13 @@ To keep this MVP simple and reliable, based on what we decided:
   the real Digital SAT's "Words in Context" questions; for Everyday and
   Professional Vocabulary it's kept because it teaches how a word is actually
   used (Professional sets every sentence in a real workplace situation).
-- **Content status:** 440 words in 12 categories, each with 3 levels
+- **Content status:** 453 words in 12 categories, each with 3 levels
   (12/12/10 words); SAT Vocab categories also have a 4th, optional Expert level.
-  - **SAT Vocab** (236 words): organized by function — Agreement & Support,
+  - **SAT Vocab** (249 words): organized by function — Agreement & Support,
     Disagreement & Refutation, Degree & Intensity, Change & Consequence,
     Certainty & Doubt, and Tone & Attitude. The course page has three tabs:
     **Vocabulary** (the categories, including the Expert level, whose
-    distractors are extremely close near-synonyms), **Passages** (5 original
+    distractors are extremely close near-synonyms), **Passages** (10 original
     reading passages with questions — one free, the rest with the
     subscription; tracked separately from vocabulary progress), and
     **Strategy** (4 short test-day guides, free for everyone).

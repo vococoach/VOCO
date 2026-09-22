@@ -641,9 +641,15 @@ working unchanged; these are the decisions made with the owner (don't re-litigat
   links from a passage or guide return to the right tab. `CourseProgress` sits under the
   Vocabulary tab only. Before this, a course page had no sections — just a category list.
 - **Expert tier: a 4th level in each of the 6 SAT categories, an *extra* — mastery is
-  unchanged.** `lib/satExpertTier.js` (ids `<category>-4`, label "Expert", 32 words:
-  agreement 6, disagreement 5, degree 6, change 4, certainty 5, tone 6), appended to the
-  categories in `wordbanks.js`. Each level carries `optional: true`. Mastery, the course
+  unchanged.** `lib/satExpertTier.js` (ids `<category>-4`, label "Expert", 45 words as of
+  2026-09-22: agreement 8, disagreement 8, degree 8, change 6, certainty 6, tone 9),
+  appended to the categories in `wordbanks.js`. Grown once already (from an initial 32):
+  the batch that shipped 15 new words was cut to 13 after a close read caught two that
+  were too close to an existing distractor to have one defensible answer (`Champion` vs.
+  `Advocate`, `Incredulous` vs. `Skeptical`) — dropped rather than shipped, same standard
+  as everything else here. **Category sizes are deliberately uneven and will likely stay
+  that way** — each category grows only as far as genuinely distinct, unambiguous words
+  allow; don't pad a smaller category to match a larger one. Each level carries `optional: true`. Mastery, the course
   summary ("N of 6 categories mastered · Y of 18 levels") and Tonight's-study suggestions
   count only the **required** levels (`requiredLevels()` in `lib/milestones.js`; `core` in
   `getTonight`), so an existing learner's "1 of 6 mastered" doesn't drop and no earned or
@@ -652,17 +658,36 @@ working unchanged; these are the decisions made with the owner (don't re-litigat
   **Any new code that decides whether a category/course is *complete* must use
   `requiredLevels()`, not `category.levels`.** Agreement & Support's Expert level is free
   (it follows its category); the others follow the subscription.
-- **Reading passages** (`lib/satPassages.js`, route `/passages/[passageId]`): 5 original
-  passages, 100–150 words, 1–2 questions each, a real mix of types — `central-idea`,
-  `inference` and `words-in-context` (a `______` blank drawn from *inside* the passage —
-  the same mechanic as the vocabulary quizzes). **Originality is the rule that matters most
-  here**: invented people, places, data and quotes; nothing derived from, modeled on or
-  paraphrased from any real SAT or test-prep passage. Options are correct-first
-  (`correctIndex: 0`) and shuffled on screen, so **an explanation must never refer to a
-  choice by position** ("the first choice") — it names the choice by content. (This
-  shipped wrong once during development and was caught by clicking through; the validator
-  now fails on it.) The page reuses the quiz option/feedback pattern and `QuizResults`.
-  Passage ids, like every id here, never change.
+- **Reading passages** (`lib/satPassages.js`, route `/passages/[passageId]`): 10 original
+  passages (grown from an initial 5 on 2026-09-22), 100–150 words, 1–2 questions each, a
+  real mix of types — `central-idea`, `inference` and `words-in-context` (a `______` blank
+  drawn from *inside* the passage — the same mechanic as the vocabulary quizzes). No
+  passage repeats a question type, and across the library no one type is allowed to
+  dominate (each of the 3 must appear at least 3 times and none may exceed 60% of the
+  total — a proportional version of the original "none more than 5" check, updated when 5
+  passages became 10; re-check this if the library grows again). **Originality is the rule
+  that matters most here**: invented people, places, data and quotes; nothing derived from,
+  modeled on or paraphrased from any real SAT or test-prep passage. Options are
+  correct-first (`correctIndex: 0`) and shuffled on screen, so **an explanation must never
+  refer to a choice by position** ("the first choice") — it names the choice by content.
+  This shipped wrong not once but twice (the original 5, then 4 of the first draft of the
+  next 5) before being caught by reading the rendered page — the mechanical part of that
+  is now an automated, committed check: `npm run validate:passages`
+  (`scripts/validate-passages.mjs`) runs a regex over every explanation
+  (`POSITIONAL_LANGUAGE` in that file) and fails the build-adjacent check if a choice is
+  referenced by position or letter, alongside its other structural checks (word/question
+  counts, the blank-count match, 4 distinct options, no passage repeating a question type,
+  the type-mix balance). **This script does not replace the close read** — it only catches
+  the mechanical half of the bug (a positional phrase existing at all), not whether an
+  explanation is actually *correct*, or whether a "correct" answer is genuinely the only
+  defensible one. **Run both, every time passage content changes:** `npm run
+  validate:passages`, then read every new passage against its actual shuffled options on
+  screen. The same close-reading pass also cut two questions whose correct answer was
+  defensible but not uniquely so (a `central-idea` question with two `inference` siblings
+  in one passage, and an "incredulous vs. skeptical"-style distractor pair with no textual
+  tiebreaker) — rewritten or retyped rather than shipped; no script catches that class of
+  bug. The page reuses the quiz option/feedback pattern and `QuizResults`. Passage ids,
+  like every id here, never change.
 - **Decision — passages are tracked completely separately.** `lib/passageProgress.js`
   (`voco_passages_v1`, `PASSAGES_KEY` in `lib/progress.js`; cleared by Reset) keeps one record
   per passage — `{completedAt, lastScore, lastTotal, bestScore, attempts}` — and the course
@@ -745,16 +770,19 @@ working unchanged; these are the decisions made with the owner (don't re-litigat
 6. **Validate before finishing.** After adding words, run a quick script
    (see the pattern used in past sessions) to check: no duplicate words
    within a category, every quiz has exactly 4 options, every quiz sentence
-   contains `______`, `correctIndex` is 0–3.
+   contains `______`, `correctIndex` is 0–3. For reading passages specifically,
+   `npm run validate:passages` (`scripts/validate-passages.mjs`) is a real,
+   committed script — run it, then still do the close read (see "SAT Vocab has
+   three sections" above for why both are required).
 
 ## Content status
 
-All 12 categories across all three courses are fully built: 440 words total. Each
+All 12 categories across all three courses are fully built: 453 words total. Each
 category has 3 levels (12 Foundational / 12 Intermediate / 10 Advanced); each SAT Vocab
 category also has a 4th, optional **Expert** level.
 
-**SAT Vocab** (`sat-vocab`, `lib/wordbanks.js` + `lib/satExpertTier.js`) — 236 words (204
-in the three original tiers + 32 Expert), plus 5 reading passages
+**SAT Vocab** (`sat-vocab`, `lib/wordbanks.js` + `lib/satExpertTier.js`) — 249 words (204
+in the three original tiers + 45 Expert), plus 10 reading passages
 (`lib/satPassages.js`) and 4 strategy guides (`lib/satStrategy.js`):
 - ✅ `agreement-support` (free)
 - ✅ `disagreement-refutation`
@@ -901,6 +929,10 @@ lib/
                          and free passage in each course) + localStorage helpers
                          (voco_customer_id_v1, voco_subscription_status_v1)
                          — per-device only, see "Paid unlock" above
+scripts/
+  validate-passages.mjs   `npm run validate:passages` — structural checks on
+                         lib/satPassages.js, incl. the positional-language
+                         check; does not replace the manual close read
 ```
 
 ## Paid unlock — built and verified end-to-end on production, both in Stripe test mode and live
