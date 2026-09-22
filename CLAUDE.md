@@ -858,7 +858,7 @@ lib/
                          — per-device only, see "Paid unlock" above
 ```
 
-## Paid unlock — built and verified end-to-end on production in test mode; live cutover in progress
+## Paid unlock — built and verified end-to-end on production, both in Stripe test mode and live
 
 **Going live (Stripe live mode activated 2026-09-21).** Three things move together, and
 getting only some of them is the failure that matters: (1) the live secret key in Vercel as
@@ -873,9 +873,14 @@ live key with the old test id would take payment and never unlock. **Live** ids:
 API, not assumed). The **test** ids described below are kept for history; the code no longer
 points at them, so local/preview "Start free trial" now opens the live checkout — exercise
 the subscription flow locally with the test key against the Stripe API instead. Live
-Billing Portal settings are per mode and must be saved in live mode too. Status: not yet
-verified end-to-end in live mode (do a real $0 trial subscription, then cancel it in the
-portal) — update this paragraph once done.
+Billing Portal settings are saved (per mode, separate from test).
+
+**Verified live end-to-end on production (2026-09-22):** subscribed on `voco.courses` with a
+real card via the live Payment Link — $0 charged (7-day trial), confirmed `trialing` in the
+live Dashboard, every paid category unlocked. "Manage subscription" opened the real live
+Billing Portal (not test); cancelling there left the subscription active with `cancelAt` set,
+and the site showed the "ends on [date], you'll keep access until then" banner with access
+still working, matching the test-mode behavior verified earlier.
 
 The sections below describe the original test-mode build:
 
