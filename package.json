@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "validate:passages": "node scripts/validate-passages.mjs"
+    "validate:passages": "node scripts/validate-passages.mjs",
+    "validate:grammar": "node scripts/validate-grammar.mjs"
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",

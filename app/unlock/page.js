@@ -7,6 +7,7 @@ import { courses } from "@/lib/wordbanks";
 import {
   isFreeCategory,
   isPassageLocked,
+  isGrammarCategoryLocked,
   PAYMENT_LINK_URL,
   PRICE_LABEL,
   TRIAL_LABEL,
@@ -66,15 +67,23 @@ export default function UnlockPage() {
   // Each course has one free category; everything else unlocks together.
   const freeCategories = courses.flatMap((course) => course.categories.filter((c) => isFreeCategory(c.id)));
   // A course's reading passages: the first is free, the rest unlock with the
-  // categories. (Strategy guides are free to everyone, so they never appear here.)
+  // categories. Grammar categories are gated the same way vocabulary
+  // categories are — one free, the rest paid. (Strategy guides are free to
+  // everyone, so they never appear here.)
   const lockedByCourse = courses
     .map((course) => ({
       course,
       categories: course.categories.filter((c) => !isFreeCategory(c.id)),
       passages: (course.passages || []).filter((p) => isPassageLocked(p.id, false)),
+      grammar: (course.grammar || []).filter((g) => isGrammarCategoryLocked(g.id, false)),
     }))
-    .filter((group) => group.categories.length > 0 || group.passages.length > 0);
+    .filter((group) => group.categories.length > 0 || group.passages.length > 0 || group.grammar.length > 0);
   const lockedPassageCount = lockedByCourse.reduce((sum, group) => sum + group.passages.length, 0);
+  const lockedGrammarQuestionCount = lockedByCourse.reduce(
+    (sum, group) =>
+      sum + group.grammar.reduce((s, g) => s + g.levels.reduce((s2, l) => s2 + l.questions.length, 0), 0),
+    0
+  );
   const lockedCategories = lockedByCourse.flatMap((group) => group.categories);
   const lockedWordCount = lockedCategories.reduce(
     (sum, c) => sum + c.levels.reduce((s, l) => s + l.words.length, 0),
@@ -164,13 +173,16 @@ export default function UnlockPage() {
                 other {lockedCategories.length} — {lockedWordCount} more words — all unlock together
                 with a {TRIAL_LABEL}, then {PRICE_LABEL}.
                 {lockedPassageCount > 0 &&
-                  ` That includes ${lockedPassageCount} reading passages beyond the free one; the strategy guides are free for everyone.`}
+                  ` That includes ${lockedPassageCount} reading passages beyond the free one`}
+                {lockedGrammarQuestionCount > 0 && ` and ${lockedGrammarQuestionCount} grammar questions`}
+                {(lockedPassageCount > 0 || lockedGrammarQuestionCount > 0) &&
+                  "; the strategy guides are free for everyone."}
               </p>
             </div>
 
             <div className="bg-[#20223F] rounded-2xl p-4 mb-6 space-y-3">
               <p className="text-xs text-[#9B97C4]">One subscription unlocks all of these:</p>
-              {lockedByCourse.map(({ course, categories: locked, passages }) => (
+              {lockedByCourse.map(({ course, categories: locked, passages, grammar }) => (
                 <div key={course.id} className="space-y-2">
                   <p className="text-xs uppercase tracking-wide text-[#8B85FF]">{course.title}</p>
                   {locked.map((c) => (
@@ -185,6 +197,12 @@ export default function UnlockPage() {
                       Reading passages ({passages.length})
                     </div>
                   )}
+                  {grammar.map((g) => (
+                    <div key={g.id} className="flex items-center gap-2 text-sm text-[#EDEBFF]">
+                      <Lock size={14} color="#6E699B" />
+                      {g.title} ({g.levels.reduce((s, l) => s + l.questions.length, 0)} questions)
+                    </div>
+                  ))}
                 </div>
               ))}
             </div>

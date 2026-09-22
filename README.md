@@ -31,11 +31,13 @@ To keep this MVP simple and reliable, based on what we decided:
   (12/12/10 words); SAT Vocab categories also have a 4th, optional Expert level.
   - **SAT Vocab** (249 words): organized by function — Agreement & Support,
     Disagreement & Refutation, Degree & Intensity, Change & Consequence,
-    Certainty & Doubt, and Tone & Attitude. The course page has three tabs:
+    Certainty & Doubt, and Tone & Attitude. The course page has four tabs:
     **Vocabulary** (the categories, including the Expert level, whose
     distractors are extremely close near-synonyms), **Passages** (10 original
     reading passages with questions — one free, the rest with the
-    subscription; tracked separately from vocabulary progress), and
+    subscription; tracked separately from vocabulary progress), **Grammar**
+    (30 Standard English Conventions questions across Boundaries, free, and
+    Form, Structure, and Sense, paid — also tracked separately), and
     **Strategy** (4 short test-day guides, free for everyone).
   - **Everyday Vocabulary** (102 words): organized by theme — Precise
     Description, Emotional Nuance, and Persuasion & Influence.

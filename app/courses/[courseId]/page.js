@@ -7,11 +7,13 @@ import { ArrowLeft } from "lucide-react";
 import CategoryList from "@/components/CategoryList";
 import CourseProgress from "@/components/CourseProgress";
 import PassageList from "@/components/PassageList";
+import GrammarList from "@/components/GrammarList";
 import StrategyList from "@/components/StrategyList";
 import Onboarding from "@/components/Onboarding";
 import { getCourse, getCourseSections } from "@/lib/wordbanks";
 import { getAllProgress } from "@/lib/progress";
 import { getAllPassageRecords } from "@/lib/passageProgress";
+import { getAllGrammarRecords } from "@/lib/grammarProgress";
 import { useSubscription, useOnboarding, computeStruggleCounts } from "@/lib/useLearnerState";
 
 // One course's category list — what the home screen showed before Voco had
@@ -19,12 +21,13 @@ import { useSubscription, useOnboarding, computeStruggleCounts } from "@/lib/use
 // cards (due for review, tonight's study, streaks) stay on the home screen,
 // unscoped to any course.
 //
-// A course that defines extra sections (the SAT course has reading passages and
-// strategy guides) gets a tab bar under its header — Vocabulary | Passages |
-// Strategy — driven by getCourseSections(). It always opens on Vocabulary, so
-// the page looks as it always did, and the chosen tab lives in the URL
-// (?section=passages) so it can be linked and so "Back" from a passage or guide
-// returns to the right tab. A course with no extra sections shows no tabs.
+// A course that defines extra sections (the SAT course has reading passages,
+// grammar questions and strategy guides) gets a tab bar under its header —
+// Vocabulary | Passages | Grammar | Strategy — driven by getCourseSections().
+// It always opens on Vocabulary, so the page looks as it always did, and the
+// chosen tab lives in the URL (?section=passages) so it can be linked and so
+// "Back" from a passage, grammar level or guide returns to the right tab. A
+// course with no extra sections shows no tabs.
 //
 // A course page can be a visitor's very first page (a shared or bookmarked
 // link), so it shows the first-visit onboarding too — and afterwards stays on
@@ -43,11 +46,13 @@ export default function CoursePage() {
   const [progress, setProgress] = useState({});
   const [struggleCounts, setStruggleCounts] = useState({});
   const [passageRecords, setPassageRecords] = useState({});
+  const [grammarRecords, setGrammarRecords] = useState({});
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     setProgress(getAllProgress());
     setPassageRecords(getAllPassageRecords());
+    setGrammarRecords(getAllGrammarRecords());
     setStruggleCounts(computeStruggleCounts());
     setReady(true);
   }, []);
@@ -118,6 +123,9 @@ export default function CoursePage() {
             )}
             {section === "passages" && (
               <PassageList passages={course.passages} records={passageRecords} subscribed={subscribed} ready={ready} />
+            )}
+            {section === "grammar" && (
+              <GrammarList categories={course.grammar} records={grammarRecords} subscribed={subscribed} ready={ready} />
             )}
             {section === "strategy" && <StrategyList guides={course.guides} />}
           </div>

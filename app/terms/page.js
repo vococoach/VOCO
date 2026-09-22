@@ -18,7 +18,7 @@ export default function TermsPage() {
           <span className="font-display text-lg text-[#EDEBFF]">Voco</span>
         </div>
         <h1 className="font-display text-2xl text-[#EDEBFF] mb-1">Terms of Service</h1>
-        <p className="text-xs text-[#6E699B] mb-8">Last updated September 21, 2026</p>
+        <p className="text-xs text-[#6E699B] mb-8">Last updated September 22, 2026</p>
 
         <div className="space-y-6 text-sm text-[#9B97C4] leading-relaxed">
           <section>
@@ -51,13 +51,15 @@ export default function TermsPage() {
             <p className="mb-2">
               One category in each course is free forever: Agreement &amp; Support in SAT Vocab,
               Precise Description in Everyday Vocabulary, and Meetings &amp; Negotiation in
-              Professional Vocabulary. The first reading passage in SAT Vocab and all of the SAT
-              Vocab strategy guides are also free.
+              Professional Vocabulary. The first reading passage in SAT Vocab, the Boundaries
+              grammar category in SAT Vocab, and all of the SAT Vocab strategy guides are also
+              free.
             </p>
             <p className="mb-2">
-              Every other category, in every course, and the remaining SAT Vocab reading passages
-              require an active subscription: $1.99/month, with a 7-day free trial for new
-              subscribers. One subscription unlocks all of them.
+              Every other category, in every course, the remaining SAT Vocab reading passages, and
+              the Form, Structure, and Sense grammar category in SAT Vocab require an active
+              subscription: $1.99/month, with a 7-day free trial for new subscribers. One
+              subscription unlocks all of them.
             </p>
             <p className="mb-2">
               Subscriptions are billed and processed entirely by Stripe, our payment processor. We

@@ -626,7 +626,7 @@ not generic):
    title), the daily cards pulling words from every course, and a subscription unlocking
    every locked category across all courses.
 
-## SAT Vocab has three sections — Vocabulary, Passages, Strategy (added 2026-09-21)
+## SAT Vocab has four sections — Vocabulary, Passages, Grammar, Strategy (Grammar added 2026-09-22)
 
 The SAT course was **deepened, not turned into a fourth course**, with harder vocabulary,
 real SAT-style reading passages and test-day strategy. Everything that existed kept
@@ -709,10 +709,99 @@ working unchanged; these are the decisions made with the owner (don't re-litigat
   count, no guessing penalty, the timer/flag tools) *as of when written* and send readers to
   the College Board for current details, plus a "not affiliated with the College Board"
   line — formats change, so re-check those sentences if the test does.
-- **Copy that changed with it:** `/unlock` lists "Reading passages (4)" under SAT Vocab and
-  says the strategy guides are free; terms §4 names the free passage and free guides;
-  privacy §2 lists reading-passage results among what stays on the device. (Both dated
-  2026-09-21.)
+- **Test-day strategy guides** (`lib/satStrategy.js`, route `/strategy/[guideId]`): four
+  short written guides (words-in-context routine, pacing, common traps, unknown words) —
+  **free to everyone, no gate, nothing recorded**. Written as `blocks` (heading, paragraph,
+  list, steps, example). They state Digital SAT format facts (module length, question
+  count, no guessing penalty, the timer/flag tools) *as of when written* and send readers to
+  the College Board for current details, plus a "not affiliated with the College Board"
+  line — formats change, so re-check those sentences if the test does.
+- **Grammar & Standard English Conventions** (`lib/satGrammar.js`, route
+  `/grammar/[levelId]`, added 2026-09-22): the Digital SAT's *other* major Reading & Writing
+  domain, alongside Words in Context — correct sentence construction, not word meaning.
+  Organized around the two real College Board subdomains, not invented ones: **Boundaries**
+  (punctuation and sentence boundaries — commas, semicolons, colons, run-ons, fragments) and
+  **Form, Structure, and Sense** (subject-verb agreement, pronoun agreement and case, verb
+  tense/mood, parallel structure, modifier placement). A third plausible category,
+  transitions/logical connectors, was deliberately left out — it belongs to the Digital
+  SAT's *other* domain, Expression of Ideas, not Standard English Conventions, and adding it
+  here would have been miscategorizing rather than organizing around what's real.
+  - **Same 3-tier structure as vocabulary, but its own separate tree.** `course.grammar =
+    [{ id, title, description, levels: [{ id, level, label, questions }] }]`, a sibling of
+    `course.categories`/`passages`/`guides` on the course object, **not** nested inside
+    `categories` — grammar has no `word`/no SRS identity, so keeping it structurally outside
+    `categories` is what keeps it invisible to `getAllWordsFlat()`, mastery, missed-words and
+    milestones without any special-casing. `findGrammarLevel(levelId)` mirrors `findLevel()`
+    but walks `course.grammar`; level and category ids are a disjoint namespace from
+    vocabulary ids (verified by test, not just by convention) so there is no collision risk
+    even though ids look similar (`boundaries-1` vs. a vocabulary level like
+    `agreement-support-1`).
+  - **The question format reuses the vocab quiz shape, not vocab's blank-and-word-options
+    shape.** Each question is `{ type, prompt, options: [4 FULL sentences, correct first],
+    correctIndex: 0, explanation }` — 4 complete versions of a sentence (or the relevant
+    portion), not 4 words filling a blank, since this tests construction, not meaning. The
+    `/grammar/[levelId]` page clones `/sets/[setId]/quiz`'s multi-question step-through flow
+    (not `/passages/[passageId]`'s 1–2-question shape) but renders each option as full-width
+    wrapped text like passages do, since grammar options are sentences, not single words.
+    `type` tags the specific rule each question tests (e.g. `"comma-splice"`,
+    `"subject-verb-agreement"`) — used by the validator to check for real variety within a
+    category, and useful for anyone auditing coverage later.
+  - **Every wrong option is a real, common mistake, and every explanation names the actual
+    rule for every option, not just "this one is correct."** Same discipline as everywhere
+    else: original invented sentences, nothing derived from or modeled closely on real SAT
+    material. Same positional-language rule as passages, for the same reason (options are
+    shuffled on screen) — **and it recurred here even though the rule was already
+    documented**: all 30 explanations were first drafted using "the second choice," "the
+    third," etc., caught only by the (also new) automated check, not by drafting carefully in
+    the first place. Lesson: write explanations content-first from the start ("the choice
+    that does X"), don't draft positionally and fix later.
+  - **Decision — tracked completely separately, like passages, not fed into spaced
+    repetition.** `lib/grammarProgress.js` (`voco_grammar_v1`, `GRAMMAR_KEY` in
+    `lib/progress.js`; cleared by Reset) keeps one record per grammar *level* (not per
+    question) — `{completedAt, lastScore, lastTotal, bestScore, attempts}` — mirroring
+    `passageProgress.js` exactly, keyed by level id instead of passage id since grammar has
+    levels the way passages don't. Reason, as discussed with the owner: a grammar rule
+    doesn't degrade the way a forgotten word does, so forcing it into the Leitner box model
+    would have been a conceptual stretch with no real benefit, the same reasoning that kept
+    passages out of the SRS. Grammar results never touch `voco_progress_v1`,
+    `voco_word_srs_v1`, streaks, or milestones — verified by test (isolation is asserted, not
+    assumed) and confirmed live in the browser (only `voco_grammar_v1` appears in storage
+    after finishing a level).
+  - **Decision — one free category, mirroring the passage and vocabulary-category
+    precedent.** `FREE_GRAMMAR_CATEGORY_BY_COURSE` / `isGrammarCategoryLocked()`
+    (`lib/purchase.js`): Boundaries is free to everyone (all 3 tiers); Form, Structure, and
+    Sense requires the subscription. Gated exactly like vocabulary categories: the
+    `/grammar/[levelId]` page shows nothing until subscription status is known (cached, then
+    reconciled), then redirects a non-subscriber to `/unlock`; the grammar list on the course
+    page shows a locked card with the price for the paid category. UI-level gating, same as
+    everywhere else — all content ships in the client bundle.
+  - **Decision — a new 4th tab, not nested under Vocabulary.** `getCourseSections()` already
+    generalized to N optional sections when Passages and Strategy were added, so Grammar is
+    one more `if ((course.grammar || []).length > 0)` line, no new architecture. Nesting it as
+    a 7th vocabulary "category" was the alternative and was rejected: everywhere else in the
+    code, "a category" specifically means "a set of vocabulary levels with words," and
+    grammar levels have no words — nesting it in would have meant special-casing mastery
+    counting, missed-words and SRS to *exclude* the fake category, which is more invasive
+    than one more tab. Tab order: Vocabulary | Passages | Grammar | Strategy (quiz-based
+    content grouped together, free read-only Strategy last).
+  - **Quiz-only — no separate study/flashcard mode.** A grammar level is graded questions to
+    answer, not words to review first, the same reasoning that gave passages no study mode.
+  - **`scripts/validate-grammar.mjs`** (`npm run validate:grammar`), built the same way as
+    `scripts/validate-passages.mjs` and for the same reason: catches what's mechanical
+    (4 distinct options with exactly one designated correct answer, options that read like
+    real sentences not stray words, the positional-language check, at least 3 distinct
+    `type`s per category so it isn't 15 questions about the same rule, no two questions
+    sharing a correct sentence). **It cannot tell whether the designated answer is actually
+    the only grammatically defensible one** — that's the manual close-read, and it is not
+    optional. That close-read found and fixed real issues the validator structurally cannot
+    catch: one explanation calling a missing-comma-before-a-conjunction error a "run-on"
+    (imprecise — a true run-on has no connector at all; fixed to name the error precisely
+    instead).
+- **Copy that changed with it:** `/unlock` lists "Reading passages (9)" and "Form, Structure,
+  and Sense (15 questions)" under SAT Vocab; terms §4 names the free passage, the free
+  grammar category, and the free guides; privacy §2 lists reading-passage and grammar-quiz
+  results among what stays on the device. (Passages count updated and grammar added
+  2026-09-22 — see "Reading passages" above for why the passage count moved from 5 to 10.)
 
 ## Content rules — these matter a lot, please follow them exactly
 
@@ -783,7 +872,9 @@ category also has a 4th, optional **Expert** level.
 
 **SAT Vocab** (`sat-vocab`, `lib/wordbanks.js` + `lib/satExpertTier.js`) — 249 words (204
 in the three original tiers + 45 Expert), plus 10 reading passages
-(`lib/satPassages.js`) and 4 strategy guides (`lib/satStrategy.js`):
+(`lib/satPassages.js`), 4 strategy guides (`lib/satStrategy.js`), and 30 grammar questions
+across 2 categories (`lib/satGrammar.js`: Boundaries, free — 15 questions; Form, Structure,
+and Sense, paid — 15 questions):
 - ✅ `agreement-support` (free)
 - ✅ `disagreement-refutation`
 - ✅ `degree-intensity`
@@ -829,6 +920,9 @@ app/
                          each category's own "still learning" card); for a
                          course with passages/guides, tabs above it
   passages/[passageId]/   One reading passage + its questions (SAT Vocab)
+  grammar/[levelId]/      One grammar level's questions (SAT Vocab) — same
+                         multi-question flow as sets/[setId]/quiz, full-
+                         sentence options rendered like passages'
   strategy/[guideId]/     One written strategy guide (free, ungated)
   globals.css             Fonts + Tailwind + the results card's one-time
                          entrance animation
@@ -867,6 +961,8 @@ components/
                          levels completed" line (home cards + course page)
   PassageList.js          The Passages tab: cards, free/locked state, results,
                          "N of M passages completed"
+  GrammarList.js          The Grammar tab: categories and levels, quiz-only
+                         (no study mode), locked-category card with price
   StrategyList.js         The Strategy tab: one card per guide
   CelebrationCard.js      The one celebration-card recipe (disc, label,
                          headline, figure, note) — score tiers AND milestones
@@ -918,21 +1014,31 @@ lib/
   satExpertTier.js        SAT Vocab's Expert level for each category (optional)
   satPassages.js          SAT reading passages (original writing)
   satStrategy.js          SAT test-day strategy guides + guideReadingMinutes()
+  satGrammar.js           SAT Grammar & Standard English Conventions —
+                         Boundaries + Form, Structure, and Sense categories,
+                         each with its own 3-tier levels (a separate tree from
+                         `categories`, not vocabulary levels)
   passageProgress.js      Per-passage results (voco_passages_v1) — separate
                          from vocabulary progress
+  grammarProgress.js      Per-grammar-level results (voco_grammar_v1) —
+                         separate from vocabulary progress, mirrors
+                         passageProgress.js
   everydayVocabulary.js   The Everyday Vocabulary course's categories
   professionalVocabulary.js The Professional Vocabulary course's categories
   progress.js             localStorage helpers: streaks, scores, and the
                          Leitner-system spaced repetition tracker
                          (REVIEW_SESSION_CAP lives here; PASSAGES_KEY too)
-  purchase.js              Subscription constants (incl. the free category
-                         and free passage in each course) + localStorage helpers
-                         (voco_customer_id_v1, voco_subscription_status_v1)
-                         — per-device only, see "Paid unlock" above
+  purchase.js              Subscription constants (incl. the free category,
+                         free passage, and free grammar category in each
+                         course) + localStorage helpers (voco_customer_id_v1,
+                         voco_subscription_status_v1) — per-device only, see
+                         "Paid unlock" above
 scripts/
   validate-passages.mjs   `npm run validate:passages` — structural checks on
                          lib/satPassages.js, incl. the positional-language
                          check; does not replace the manual close read
+  validate-grammar.mjs    `npm run validate:grammar` — the same, for
+                         lib/satGrammar.js (built 2026-09-22)
 ```
 
 ## Paid unlock — built and verified end-to-end on production, both in Stripe test mode and live
