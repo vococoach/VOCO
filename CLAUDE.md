@@ -626,7 +626,7 @@ not generic):
    title), the daily cards pulling words from every course, and a subscription unlocking
    every locked category across all courses.
 
-## SAT Vocab has four sections — Vocabulary, Passages, Grammar, Strategy (Grammar added 2026-09-22)
+## SAT Vocab has five sections — Vocabulary, Passages, Grammar, Practice Test, Strategy (Practice Test added 2026-09-23)
 
 The SAT course was **deepened, not turned into a fourth course**, with harder vocabulary,
 real SAT-style reading passages and test-day strategy. Everything that existed kept
@@ -802,6 +802,116 @@ working unchanged; these are the decisions made with the owner (don't re-litigat
   grammar category, and the free guides; privacy §2 lists reading-passage and grammar-quiz
   results among what stays on the device. (Passages count updated and grammar added
   2026-09-22 — see "Reading passages" above for why the passage count moved from 5 to 10.)
+- **Practice Test** (`lib/practiceTest.js`, `lib/practiceTestProgress.js`, route
+  `/practice-test`, tab component `components/PracticeTestTab.js`, added 2026-09-23): a
+  timed, simulated Reading & Writing section built entirely from the vocabulary/passage/
+  grammar content that already exists — no new content was written for this feature, only a
+  selection algorithm over the existing pools.
+  - **Real format, verified before building, not assumed.** The Digital SAT's Reading &
+    Writing section is 54 questions across two separately-timed 32-minute modules, 27
+    questions each, no time transfer between modules (checked against the College Board's
+    own spec and a current test-prep guide — re-verify this if the real test's format ever
+    changes; adaptive per-module difficulty is real on the SAT but is **not** replicated
+    here, this is a fixed-difficulty simulation of the shape, not the adaptivity).
+  - **Selection is block-based, not question-based, so a passage's questions never split
+    across modules.** A vocab word and a grammar question are each a 1-question block; a
+    whole passage is one block carrying all of its questions together (each question still
+    carries its own copy of the passage text, so it renders correctly wherever the block
+    lands after shuffling). `pickBlocks()` targets ~8 passage questions and ~12 grammar
+    questions, shuffled with a fresh-first/stale-fallback preference; vocabulary absorbs
+    whatever's left so the total is always exactly 54 — this isn't a claim about the real
+    test's own subdomain ratio (Voco's three pools don't map cleanly onto the SAT's), just a
+    genuinely mixed composition of what this app actually has. All chosen blocks are
+    shuffled together, then greedily packed into Module 1 up to exactly 27 questions; when a
+    2-question passage block would overshoot the 27th slot, a single-question block is
+    pulled forward to fill the gap instead and the passage block rolls into Module 2 — this
+    guarantees an exact 27/27 split every time, verified by test across many seeds, not just
+    typical-case checked.
+  - **Decision — repeats are allowed once the pool is exhausted, and the UI says so.**
+    Discussed with the owner, chosen over silently repeating or refusing to build a test:
+    the full pool is small enough (298 questions: 249 vocab + 19 passage across 10 passages
+    + 30 grammar) that repeats are inevitable well before a learner would stop practicing.
+    Measured, not guessed: across 8 consecutive attempts, vocabulary stays fresh for roughly
+    7 attempts, but passages and grammar — much smaller pools — start recycling from about
+    the 3rd–4th attempt on. `usedIds` (every question id from every past attempt, via
+    `getUsedQuestionIds()`) is preferred against; when a pool can't supply enough fresh
+    content, previously-used questions fill the gap and `reusedCounts` reports exactly how
+    many per pool, surfaced honestly on the intro screen ("This attempt reuses N questions
+    from earlier practice tests...") rather than silently repeating. `TARGET_PASSAGE_QUESTIONS`
+    was deliberately lowered from an initial 10 to 8 after measuring that 10 let a *second*
+    attempt already need to reuse a whole passage — 8 buys roughly 2–3 fresh attempts before
+    any passage repeats, a real, measured tradeoff, not an arbitrary constant.
+  - **Decision — entirely paid, no free attempt.** Unlike every other section here (one free
+    category, one free passage, one free grammar category), Practice Test has no free
+    sample. Reason: a genuinely mixed 54-question test needs the full pool; a free-only
+    version would either have to leak paid category/passage/grammar content to non-subscribers
+    or be built only from the free pool (about 59 questions total), which would be too thin
+    to reuse-avoid for even one attempt and too vocab-skewed to be a real mixed test. Gated
+    exactly like every other paid route: `/practice-test` shows nothing until subscription
+    status is known (cached, then reconciled with Stripe), then redirects a non-subscriber to
+    `/unlock`.
+  - **Decision — a 5th tab, not folded into an existing one.** `getCourseSections()` already
+    generalized to N optional sections; Practice Test is one more conditional entry (shown
+    only when a course has both `passages` and `grammar`, since it draws from both). Tab
+    order: Vocabulary | Passages | Grammar | Practice Test | Strategy — the four
+    quiz/practice modes together, free read-only Strategy last.
+  - **Per-module countdown, not one combined session timer**, matching the real test's own
+    separately-timed modules and the "time doesn't transfer" mechanic. The end time is an
+    absolute timestamp (`Date.now() + MODULE_DURATION_MS`) set once when a module begins and
+    recomputed against `Date.now()` on every tick, rather than decremented — a background tab
+    (where `setInterval` throttles) can't cause the displayed time to drift from the real
+    deadline; when the real clock crosses it, the module submits automatically with whatever
+    was answered, blanks included, no crash.
+  - **Deliberate departure from the app's universal instant-feedback pattern: no
+    correct/wrong marking during the test at all, revealed only at the results screen.**
+    Every other quiz in this app marks each answer right or wrong immediately; Practice Test
+    withholds that entirely while a module is in progress, matching the real test's blind
+    answering experience, and only shows per-question correctness in the results screen's
+    "Review your answers" list (correct answer, the learner's answer if wrong, explanation).
+  - **Never implies a predicted SAT score** — same discipline as the sleep-science content
+    elsewhere in this app. The results screen shows a raw score and a by-question-type
+    breakdown only, with an explicit line ("A raw score, not a predicted SAT score.") on
+    every tier of result copy, and the intro screen states the same thing before the test
+    starts.
+  - **Decision — tracked completely separately, like passages and grammar.**
+    `lib/practiceTestProgress.js` (`voco_practice_tests_v1`, `PRACTICE_TESTS_KEY` in
+    `lib/progress.js`; cleared by Reset) appends one record per completed attempt —
+    `{completedAt, score, total, byType, questionIds, reused}` — never overwrites, so
+    `getUsedQuestionIds()` can see every past attempt's questions. Doesn't touch spaced
+    repetition, missed words, streaks, or milestones — verified by test (95 assertions in
+    the selection/scoring/storage logic alone) and confirmed live: a fresh browser profile
+    that completed two full attempts showed only `voco_practice_tests_v1` plus the
+    subscription-cache keys in storage, nothing vocab-related created.
+  - **A real bug, found live, not by any test — the same lesson as the passages/grammar
+    positional-language issue, a different shape.** The first draft rendered
+    `question.options` directly in their stored, correct-first order, so the correct answer
+    was always the first button on screen — no unit test caught this because the selection
+    and scoring logic were correct; only *looking at the rendered page* revealed the
+    correct answer was suspiciously always in the same spot. Fixed with the same
+    `shuffledIndices(4)` pattern every other quiz in this app already uses: a per-question
+    `order` array re-shuffled on every question change, rendered via `order.map(idx => ...)`
+    while `onSelect` still stores the underlying data index. **Lesson, worth repeating: a
+    green test suite proves the data is right, not that the screen is right — anything that
+    touches what's rendered in what order needs an actual look at the live page, every time.**
+  - **Verified for real, not just in code**, per the owner's explicit request that auto-submit
+    specifically not be faked by a manual submit standing in for a real clock expiry:
+    `MODULE_DURATION_MS` was temporarily shrunk (first to 12s, then to 60s for a slower pass)
+    to make genuine wall-clock expiry practical to observe, and reverted to the real
+    `32 * 60 * 1000` immediately after, confirmed both in a clean `rm -rf .next && npm run
+    build` and in the regression suite (`PASS 32-minute module timer`). With the shrunk
+    timer: let Module 1's real clock hit zero twice with zero manual clicks (once fully
+    blank, once with 3 of 27 answered) — both times it auto-submitted straight to the
+    "Module 1 complete" transition screen, no crash on the unanswered questions; then did the
+    same for Module 2 twice, reaching the real results screen both times purely from the
+    clock, once so fast the tooling couldn't click before it fired. Deliberately answered 5
+    questions across both modules with independently-reasoned right/wrong guesses (not
+    reading any answer key) — the app's own score (3/54; vocab 2/34, grammar 1/12) and the
+    "Review your answers" list matched every single prediction exactly, including which
+    specific wrong answer was recorded for each miss. Also confirmed live: the option
+    shuffle fix (correct answer lands in varying positions, not always first), a fresh
+    profile's storage stays isolated after full attempts, and a second/third attempt's intro
+    screen correctly says "Start a new practice test," lists prior attempts with accurate
+    per-type breakdowns, and honestly discloses reused questions once the pool needs them.
 
 ## Content rules — these matter a lot, please follow them exactly
 
@@ -924,6 +1034,9 @@ app/
                          multi-question flow as sets/[setId]/quiz, full-
                          sentence options rendered like passages'
   strategy/[guideId]/     One written strategy guide (free, ungated)
+  practice-test/           Timed, simulated 54-question Reading & Writing
+                         section (SAT Vocab) — mixes vocab/passage/grammar
+                         content already in the app; paid only
   globals.css             Fonts + Tailwind + the results card's one-time
                          entrance animation
   review/                 Spaced-repetition review session (capped at 20)
@@ -964,6 +1077,8 @@ components/
   GrammarList.js          The Grammar tab: categories and levels, quiz-only
                          (no study mode), locked-category card with price
   StrategyList.js         The Strategy tab: one card per guide
+  PracticeTestTab.js      The Practice Test tab: format summary, locked
+                         state, past-attempt history with per-type summaries
   CelebrationCard.js      The one celebration-card recipe (disc, label,
                          headline, figure, note) — score tiers AND milestones
   MilestoneCards.js       One-time milestone cards under the score card
@@ -1023,11 +1138,16 @@ lib/
   grammarProgress.js      Per-grammar-level results (voco_grammar_v1) —
                          separate from vocabulary progress, mirrors
                          passageProgress.js
+  practiceTest.js         Practice-test selection algorithm (block-based,
+                         exact 27/27 module split) + scorePracticeTest()
+  practiceTestProgress.js Per-attempt history (voco_practice_tests_v1) —
+                         append-only, feeds repeat-avoidance across attempts
   everydayVocabulary.js   The Everyday Vocabulary course's categories
   professionalVocabulary.js The Professional Vocabulary course's categories
   progress.js             localStorage helpers: streaks, scores, and the
                          Leitner-system spaced repetition tracker
-                         (REVIEW_SESSION_CAP lives here; PASSAGES_KEY too)
+                         (REVIEW_SESSION_CAP lives here; PASSAGES_KEY,
+                         GRAMMAR_KEY, PRACTICE_TESTS_KEY too)
   purchase.js              Subscription constants (incl. the free category,
                          free passage, and free grammar category in each
                          course) + localStorage helpers (voco_customer_id_v1,

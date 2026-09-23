@@ -8,12 +8,14 @@ import CategoryList from "@/components/CategoryList";
 import CourseProgress from "@/components/CourseProgress";
 import PassageList from "@/components/PassageList";
 import GrammarList from "@/components/GrammarList";
+import PracticeTestTab from "@/components/PracticeTestTab";
 import StrategyList from "@/components/StrategyList";
 import Onboarding from "@/components/Onboarding";
 import { getCourse, getCourseSections } from "@/lib/wordbanks";
 import { getAllProgress } from "@/lib/progress";
 import { getAllPassageRecords } from "@/lib/passageProgress";
 import { getAllGrammarRecords } from "@/lib/grammarProgress";
+import { getAllPracticeTestAttempts } from "@/lib/practiceTestProgress";
 import { useSubscription, useOnboarding, computeStruggleCounts } from "@/lib/useLearnerState";
 
 // One course's category list — what the home screen showed before Voco had
@@ -47,12 +49,14 @@ export default function CoursePage() {
   const [struggleCounts, setStruggleCounts] = useState({});
   const [passageRecords, setPassageRecords] = useState({});
   const [grammarRecords, setGrammarRecords] = useState({});
+  const [practiceTestAttempts, setPracticeTestAttempts] = useState([]);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     setProgress(getAllProgress());
     setPassageRecords(getAllPassageRecords());
     setGrammarRecords(getAllGrammarRecords());
+    setPracticeTestAttempts(getAllPracticeTestAttempts());
     setStruggleCounts(computeStruggleCounts());
     setReady(true);
   }, []);
@@ -126,6 +130,9 @@ export default function CoursePage() {
             )}
             {section === "grammar" && (
               <GrammarList categories={course.grammar} records={grammarRecords} subscribed={subscribed} ready={ready} />
+            )}
+            {section === "practice-test" && (
+              <PracticeTestTab attempts={practiceTestAttempts} subscribed={subscribed} ready={ready} />
             )}
             {section === "strategy" && <StrategyList guides={course.guides} />}
           </div>
