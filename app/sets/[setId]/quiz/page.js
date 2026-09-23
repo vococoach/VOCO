@@ -23,6 +23,7 @@ import {
   getNightToMorningStreak,
 } from "@/lib/progress";
 import { getPhase, findLastNightsLevel } from "@/lib/timeOfDay";
+import { getActivityTheme, NIGHT } from "@/lib/timeTheme";
 import { isCategoryLocked, isSubscribedCached, shouldRefreshStatus, refreshSubscriptionStatus } from "@/lib/purchase";
 import QuizResults from "@/components/QuizResults";
 import MilestoneCards from "@/components/MilestoneCards";
@@ -69,6 +70,10 @@ export default function QuizPage() {
   // which avoids a hydration mismatch from Math.random() running on both
   // the server and the client with different results.
   const [order, setOrder] = useState([0, 1, 2, 3]);
+  // Real time of day, not "quiz = always dawn" — see lib/timeTheme.js. NIGHT
+  // until mounted; the page is behind a subscription check anyway, so
+  // nothing renders before this resolves for real.
+  const [theme, setTheme] = useState(NIGHT);
 
   useEffect(() => {
     if (isMissedWords) {
@@ -83,6 +88,7 @@ export default function QuizPage() {
     if (shouldRefreshStatus()) {
       refreshSubscriptionStatus().then(setSubscribed);
     }
+    setTheme(getActivityTheme(new Date()));
   }, [isMissedWords]);
 
   const locked = subscribed !== null && categoryId !== null && isCategoryLocked(categoryId, subscribed);
@@ -129,14 +135,14 @@ export default function QuizPage() {
 
   if (isMissedWords && found.level.words.length === 0) {
     return (
-      <main className="min-h-dvh bg-[#1A1C3A] flex items-center justify-center px-4">
+      <main className={`min-h-dvh ${theme.page} flex items-center justify-center px-4`}>
         <div className="text-center max-w-sm">
-          <Sparkles size={28} color="#8B85FF" className="mx-auto mb-3" />
-          <p className="text-[#EDEBFF] mb-1">Nothing to catch up on in {found.category.title} right now.</p>
-          <p className="text-sm text-[#9B97C4] mb-5">
+          <Sparkles size={28} color={theme.accent} className="mx-auto mb-3" />
+          <p className="mb-1" style={{ color: theme.text }}>Nothing to catch up on in {found.category.title} right now.</p>
+          <p className="text-sm mb-5" style={{ color: theme.subtext }}>
             Words show up here when you miss them in a quiz. You're not struggling with anything in this category — nice work.
           </p>
-          <Link href="/" className="text-[#8B85FF] text-sm">
+          <Link href="/" className="text-sm" style={{ color: theme.accent }}>
             Back home
           </Link>
         </div>
@@ -146,10 +152,10 @@ export default function QuizPage() {
 
   if (!found) {
     return (
-      <main className="min-h-dvh bg-[#1A1C3A] flex items-center justify-center px-4">
+      <main className={`min-h-dvh ${theme.page} flex items-center justify-center px-4`}>
         <div className="text-center">
-          <p className="text-[#EDEBFF] mb-4">That level doesn't exist.</p>
-          <Link href="/" className="text-[#8B85FF] text-sm">
+          <p className="mb-4" style={{ color: theme.text }}>That level doesn't exist.</p>
+          <Link href="/" className="text-sm" style={{ color: theme.accent }}>
             Back home
           </Link>
         </div>
@@ -190,27 +196,27 @@ export default function QuizPage() {
   }
 
   return (
-    <main className="min-h-dvh bg-gradient-to-b from-[#FFD9B0] to-[#FFEFDD] px-4 py-8">
+    <main className={`min-h-dvh ${theme.page} px-4 py-8`}>
       <div className="max-w-md mx-auto">
-        <Link href={backHref} className="flex items-center gap-1 text-xs text-[#8A6E7D] mb-6">
+        <Link href={backHref} className="flex items-center gap-1 text-xs mb-6" style={{ color: theme.subtext }}>
           <ArrowLeft size={14} /> Back
         </Link>
 
         {!done ? (
           <div>
-            <p className="text-xs uppercase tracking-wide text-[#8A6E7D] mb-4">
+            <p className="text-xs uppercase tracking-wide mb-4" style={{ color: theme.subtext }}>
               {category.title} — {level.label} — {step + 1} of {words.length}
             </p>
 
-            <div className="bg-[#FFF9F2] rounded-2xl p-6 mb-5">
-              <p className="text-xs text-[#8A6E7D] mb-2">Which word best completes the sentence?</p>
-              <p className="font-display text-lg mb-4 text-[#3D2B4F] leading-relaxed">{q.sentence}</p>
+            <div className="rounded-2xl p-6 mb-5" style={{ backgroundColor: theme.card }}>
+              <p className="text-xs mb-2" style={{ color: theme.subtext }}>Which word best completes the sentence?</p>
+              <p className="font-display text-lg mb-4 leading-relaxed" style={{ color: theme.text }}>{q.sentence}</p>
               <div className="space-y-2">
                 {order.map((idx) => {
                   const opt = q.options[idx];
                   const isCorrect = idx === q.correctIndex;
                   const isSelected = idx === selected;
-                  let style = "border-[#00000014] bg-transparent";
+                  let style = theme.optionIdle;
                   if (selected !== null) {
                     if (isCorrect) style = "border-[#7BC9A0] bg-[#7BC9A01A]";
                     else if (isSelected) style = "border-[#E08A9E] bg-[#E08A9E1A]";
@@ -219,7 +225,8 @@ export default function QuizPage() {
                     <button
                       key={idx}
                       onClick={() => answer(idx)}
-                      className={`w-full text-left rounded-xl px-4 py-3 border ${style} text-[#3D2B4F] flex items-center justify-between`}
+                      className={`w-full text-left rounded-xl px-4 py-3 border ${style} flex items-center justify-between`}
+                      style={{ color: theme.text }}
                     >
                       {opt}
                       {selected !== null && isCorrect && <Check size={16} color="#7BC9A0" />}
@@ -229,15 +236,15 @@ export default function QuizPage() {
                 })}
               </div>
               {selected !== null && (
-                <p className="text-sm mt-4 text-[#8A6E7D]">{q.explanation}</p>
+                <p className="text-sm mt-4" style={{ color: theme.subtext }}>{q.explanation}</p>
               )}
             </div>
 
             {selected !== null && (
               <button
                 onClick={next}
-                className="w-full rounded-xl px-4 py-3 font-medium text-white"
-                style={{ backgroundColor: "#FF9B5C" }}
+                className="w-full rounded-xl px-4 py-3 font-medium"
+                style={{ backgroundColor: theme.accent, color: theme.onAccent }}
               >
                 {step + 1 < words.length ? "Next question" : "See results"}
               </button>
@@ -248,6 +255,7 @@ export default function QuizPage() {
             <QuizResults
               score={score}
               total={words.length}
+              theme={theme}
               copy={
                 isMissedWords
                   ? {
@@ -281,7 +289,7 @@ export default function QuizPage() {
               }
             >
               {cycleStreak > 0 && (
-                <div className="mt-4 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-sm text-[#8A6E7D]">
+                <div className="mt-4 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-sm" style={{ color: theme.subtext }}>
                   <Sunrise size={16} color="#D9772F" />
                   <span>
                     Night-to-morning complete —{" "}
@@ -289,7 +297,8 @@ export default function QuizPage() {
                   </span>
                   <ShareButton
                     card={streakCard("streak", cycleStreak)}
-                    className="underline text-[#A9501A]"
+                    className="underline"
+                    style={{ color: theme.accent }}
                     ariaLabel="Share your night-to-morning streak"
                   >
                     Share
@@ -297,11 +306,11 @@ export default function QuizPage() {
                 </div>
               )}
             </QuizResults>
-            <MilestoneCards milestones={milestones} />
+            <MilestoneCards milestones={milestones} theme={theme} />
             <Link
               href="/"
-              className="block w-full rounded-xl px-4 py-3 font-medium text-white text-center"
-              style={{ backgroundColor: "#FF9B5C" }}
+              className="block w-full rounded-xl px-4 py-3 font-medium text-center"
+              style={{ backgroundColor: theme.accent, color: theme.onAccent }}
             >
               Done
             </Link>

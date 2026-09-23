@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Clock, Flag, Check, X } from "lucide-react";
 import { getCourse } from "@/lib/wordbanks";
+import { getActivityTheme, NIGHT } from "@/lib/timeTheme";
 import { isSubscribedCached, shouldRefreshStatus, refreshSubscriptionStatus } from "@/lib/purchase";
 import {
   buildPracticeTest,
@@ -56,10 +57,10 @@ function formatClock(ms) {
 // Splits on the ______ blank the same way components in app/passages/ do,
 // for passage paragraph text specifically (vocab sentences are shown as
 // plain text, matching how the ordinary vocabulary quiz renders them).
-function PassageParagraph({ paragraph }) {
+function PassageParagraph({ paragraph, theme }) {
   const parts = paragraph.split("______");
   return (
-    <p className="font-display text-[16px] leading-[1.7] text-[#3D2B4F] mb-3 last:mb-0">
+    <p className="font-display text-[16px] leading-[1.7] mb-3 last:mb-0" style={{ color: theme.text }}>
       {parts.map((part, i) => (
         <span key={i}>
           {part}
@@ -67,7 +68,8 @@ function PassageParagraph({ paragraph }) {
             <span
               role="img"
               aria-label="blank"
-              className="inline-block w-16 border-b-2 border-[#3D2B4F] mx-1 align-baseline"
+              className="inline-block w-16 mx-1 align-baseline"
+              style={{ borderBottom: `2px solid ${theme.text}` }}
             >
               &nbsp;
             </span>
@@ -97,10 +99,17 @@ export default function PracticeTestPage() {
   const [finalResult, setFinalResult] = useState(null);
   const [order, setOrder] = useState([0, 1, 2, 3]);
   const submittedRef = useRef(false); // guards against double-submitting a module (timeout racing a manual click)
+  // Real time of day, not "practice test = always night" — see
+  // lib/timeTheme.js. Fixed once when the page opens (not live-updated
+  // mid-session): a session runs up to ~64 minutes of real timed modules,
+  // and the palette shifting under someone's hands mid-question would be far
+  // more jarring than it staying put from whatever it was when they began.
+  const [theme, setTheme] = useState(NIGHT);
 
   useEffect(() => {
     setSubscribed(isSubscribedCached());
     if (shouldRefreshStatus()) refreshSubscriptionStatus().then(setSubscribed);
+    setTheme(getActivityTheme(new Date()));
   }, []);
 
   const locked = subscribed === false;
@@ -204,15 +213,15 @@ export default function PracticeTestPage() {
   if (subscribed === null || locked || phase === "loading") return null;
 
   return (
-    <main className="min-h-dvh bg-[#1A1C3A] px-4 py-8">
+    <main className={`min-h-dvh ${theme.page} px-4 py-8`}>
       <div className="max-w-md mx-auto">
         {phase !== "module" && (
-          <Link href={`/courses/${course.id}?section=practice-test`} className="flex items-center gap-1 text-xs text-[#9B97C4] mb-6">
+          <Link href={`/courses/${course.id}?section=practice-test`} className="flex items-center gap-1 text-xs mb-6" style={{ color: theme.subtext }}>
             <ArrowLeft size={14} /> Back
           </Link>
         )}
 
-        {phase === "intro" && <IntroScreen test={test} onBegin={beginModule} />}
+        {phase === "intro" && <IntroScreen test={test} onBegin={beginModule} theme={theme} />}
 
         {phase === "module" && (
           <ModuleScreen
@@ -236,44 +245,45 @@ export default function PracticeTestPage() {
             answeredCount={answeredInModule}
             onSubmitClick={handleSubmitClick}
             onCancelSubmit={() => setConfirmingSubmit(false)}
+            theme={theme}
           />
         )}
 
-        {phase === "transition" && <TransitionScreen onContinue={beginModule} />}
+        {phase === "transition" && <TransitionScreen onContinue={beginModule} theme={theme} />}
 
         {phase === "results" && test && finalResult && (
-          <ResultsScreen test={test} result={finalResult} answers={answers} courseId={course.id} />
+          <ResultsScreen test={test} result={finalResult} answers={answers} courseId={course.id} theme={theme} />
         )}
       </div>
     </main>
   );
 }
 
-function IntroScreen({ test, onBegin }) {
+function IntroScreen({ test, onBegin, theme }) {
   const reusedTotal = test ? test.reusedCounts.vocab + test.reusedCounts.passages + test.reusedCounts.grammar : 0;
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
-        <Clock size={22} color="#8B85FF" />
-        <h1 className="font-display text-2xl text-[#EDEBFF]">Practice Test</h1>
+        <Clock size={22} color={theme.accent} />
+        <h1 className="font-display text-2xl" style={{ color: theme.text }}>Practice Test</h1>
       </div>
-      <p className="text-sm text-[#9B97C4] mb-4 leading-relaxed">
+      <p className="text-sm mb-4 leading-relaxed" style={{ color: theme.subtext }}>
         A timed, simulated Reading & Writing section: {test ? test.questions.length : MODULE_QUESTION_COUNT * MODULE_COUNT}{" "}
         questions across {MODULE_COUNT} modules of {MODULE_QUESTION_COUNT}, {Math.round(MODULE_DURATION_MS / 60000)} minutes
         each, mixing vocabulary, reading passages, and grammar.
       </p>
-      <div className="rounded-2xl p-4 bg-[#20223F] mb-4 space-y-2 text-sm text-[#C9C5EC]">
+      <div className="rounded-2xl p-4 mb-4 space-y-2 text-sm" style={{ backgroundColor: theme.card, color: theme.subtext }}>
         <p>• Each module has its own timer. Time left in Module 1 doesn't carry over to Module 2.</p>
         <p>• Move freely between questions in a module — skip ahead, come back, flag one to revisit — before submitting.</p>
         <p>• You won't see whether an answer is right or wrong until both modules are done, the same as the real test.</p>
         <p>• If a module's timer runs out, whatever's answered is submitted automatically.</p>
       </div>
-      <p className="text-xs text-[#6E699B] mb-4">
+      <p className="text-xs mb-4" style={{ color: theme.muted }}>
         This gives you a raw score and a breakdown by question type — it isn't a predicted SAT score, which needs official
         scoring this app doesn't have.
       </p>
       {reusedTotal > 0 && (
-        <p className="text-xs text-[#FF9B5C] mb-4">
+        <p className="text-xs mb-4" style={{ color: theme.accent }}>
           This attempt reuses {reusedTotal} question{reusedTotal !== 1 ? "s" : ""} from earlier practice tests
           {test.reusedCounts.passages > 0 || test.reusedCounts.grammar > 0
             ? " — passages and grammar have smaller pools than vocabulary, so they cycle back sooner."
@@ -283,7 +293,7 @@ function IntroScreen({ test, onBegin }) {
       <button
         onClick={onBegin}
         className="w-full rounded-xl px-4 py-3 font-medium"
-        style={{ backgroundColor: "#8B85FF", color: "#14152B" }}
+        style={{ backgroundColor: theme.accent, color: theme.onAccent }}
       >
         Begin Module 1
       </button>
@@ -291,18 +301,18 @@ function IntroScreen({ test, onBegin }) {
   );
 }
 
-function TransitionScreen({ onContinue }) {
+function TransitionScreen({ onContinue, theme }) {
   return (
     <div className="text-center pt-10">
       <Check size={28} color="#7BC9A0" className="mx-auto mb-3" />
-      <p className="font-display text-xl text-[#EDEBFF] mb-2">Module 1 complete</p>
-      <p className="text-sm text-[#9B97C4] mb-8">
+      <p className="font-display text-xl mb-2" style={{ color: theme.text }}>Module 1 complete</p>
+      <p className="text-sm mb-8" style={{ color: theme.subtext }}>
         Time remaining in Module 1 doesn't carry over. Module 2 gets its own fresh 32-minute timer.
       </p>
       <button
         onClick={onContinue}
         className="w-full rounded-xl px-4 py-3 font-medium"
-        style={{ backgroundColor: "#8B85FF", color: "#14152B" }}
+        style={{ backgroundColor: theme.accent, color: theme.onAccent }}
       >
         Begin Module 2
       </button>
@@ -310,23 +320,24 @@ function TransitionScreen({ onContinue }) {
   );
 }
 
-function QuestionNav({ questions, current, answeredIds, flaggedIds, onGoTo }) {
+function QuestionNav({ questions, current, answeredIds, flaggedIds, onGoTo, theme }) {
   return (
     <div className="grid grid-cols-9 gap-1.5 mb-4">
       {questions.map((qq, i) => {
         const isAnswered = answeredIds[qq.id] !== undefined;
         const isFlagged = flaggedIds.has(qq.id);
         const isCurrent = i === current;
-        let style = "bg-[#20223F] text-[#9B97C4]";
-        if (isCurrent) style = "bg-[#8B85FF] text-[#14152B]";
-        else if (isAnswered) style = "bg-[#8B85FF33] text-[#EDEBFF]";
+        let style = { backgroundColor: theme.card, color: theme.subtext };
+        if (isCurrent) style = { backgroundColor: theme.accent, color: theme.onAccent };
+        else if (isAnswered) style = { backgroundColor: `${theme.accent}33`, color: theme.text };
         return (
           <button
             key={qq.id}
             onClick={() => onGoTo(i)}
             aria-current={isCurrent ? "true" : undefined}
             aria-label={`Question ${i + 1}${isAnswered ? ", answered" : ", unanswered"}${isFlagged ? ", flagged" : ""}`}
-            className={`relative aspect-square rounded-lg text-xs font-medium ${style}`}
+            className="relative aspect-square rounded-lg text-xs font-medium"
+            style={style}
           >
             {i + 1}
             {isFlagged && <Flag size={8} color="#FF9B5C" fill="#FF9B5C" className="absolute top-0.5 right-0.5" />}
@@ -358,30 +369,34 @@ function ModuleScreen({
   answeredCount,
   onSubmitClick,
   onCancelSubmit,
+  theme,
 }) {
   const low = remainingMs < 5 * 60 * 1000;
+  const borderMuted = theme.isDawn ? "border-[#00000026]" : "border-[#ffffff26]";
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <p className="text-xs uppercase tracking-wide text-[#9B97C4]">
+        <p className="text-xs uppercase tracking-wide" style={{ color: theme.subtext }}>
           Module {moduleIndex + 1} of {MODULE_COUNT} — Question {current + 1} of {total}
         </p>
         <div
-          className={`flex items-center gap-1.5 text-sm font-medium tabular-nums ${low ? "text-[#E08A9E]" : "text-[#EDEBFF]"}`}
+          className="flex items-center gap-1.5 text-sm font-medium tabular-nums"
+          style={{ color: low ? "#E08A9E" : theme.text }}
         >
           <Clock size={14} />
           {formatClock(remainingMs)}
         </div>
       </div>
 
-      <QuestionNav questions={questions} current={current} answeredIds={answeredIds} flaggedIds={flaggedIds} onGoTo={onGoTo} />
+      <QuestionNav questions={questions} current={current} answeredIds={answeredIds} flaggedIds={flaggedIds} onGoTo={onGoTo} theme={theme} />
 
-      <div className="rounded-2xl p-5 bg-[#20223F] mb-4">
+      <div className="rounded-2xl p-5 mb-4" style={{ backgroundColor: theme.card }}>
         <div className="flex items-start justify-between gap-3 mb-3">
-          <p className="text-[10px] uppercase tracking-wide text-[#6E699B]">{POOL_LABEL[question.poolType]}</p>
+          <p className="text-[10px] uppercase tracking-wide" style={{ color: theme.muted }}>{POOL_LABEL[question.poolType]}</p>
           <button
             onClick={onToggleFlag}
-            className={`flex items-center gap-1 text-xs ${flagged ? "text-[#FF9B5C]" : "text-[#6E699B]"}`}
+            className="flex items-center gap-1 text-xs"
+            style={{ color: flagged ? "#FF9B5C" : theme.muted }}
           >
             <Flag size={12} fill={flagged ? "#FF9B5C" : "none"} />
             {flagged ? "Flagged" : "Flag for review"}
@@ -389,18 +404,18 @@ function ModuleScreen({
         </div>
 
         {question.poolType === "passage" && (
-          <div className="rounded-xl p-4 bg-[#FFF9F2] mb-4">
-            <p className="text-[10px] uppercase tracking-wide text-[#8A6E7D] mb-1">{question.passageSubject}</p>
-            <p className="font-display text-base text-[#3D2B4F] mb-2">{question.passageTitle}</p>
+          <div className="rounded-xl p-4 mb-4" style={{ backgroundColor: theme.isDawn ? "#FFFFFF" : "#14152B" }}>
+            <p className="text-[10px] uppercase tracking-wide mb-1" style={{ color: theme.subtext }}>{question.passageSubject}</p>
+            <p className="font-display text-base mb-2" style={{ color: theme.text }}>{question.passageTitle}</p>
             {question.passageText.map((para, i) => (
-              <PassageParagraph key={i} paragraph={para} />
+              <PassageParagraph key={i} paragraph={para} theme={theme} />
             ))}
           </div>
         )}
 
-        <p className="text-xs text-[#9B97C4] mb-2">{question.prompt}</p>
+        <p className="text-xs mb-2" style={{ color: theme.subtext }}>{question.prompt}</p>
         {question.poolType === "vocab" && (
-          <p className="font-display text-base mb-3 text-[#EDEBFF] leading-relaxed">{question.sentence}</p>
+          <p className="font-display text-base mb-3 leading-relaxed" style={{ color: theme.text }}>{question.sentence}</p>
         )}
 
         <div className="space-y-2">
@@ -408,9 +423,12 @@ function ModuleScreen({
             <button
               key={idx}
               onClick={() => onSelect(idx)}
-              className={`w-full text-left rounded-xl px-4 py-3 border ${
-                selected === idx ? "border-[#8B85FF] bg-[#8B85FF1A]" : "border-[#ffffff26] bg-transparent"
-              } text-[#EDEBFF]`}
+              className={`w-full text-left rounded-xl px-4 py-3 border ${selected === idx ? "" : theme.optionIdle}`}
+              style={
+                selected === idx
+                  ? { borderColor: theme.accent, backgroundColor: `${theme.accent}1A`, color: theme.text }
+                  : { color: theme.text }
+              }
             >
               {question.options[idx]}
             </button>
@@ -422,32 +440,34 @@ function ModuleScreen({
         <button
           onClick={onPrev}
           disabled={current === 0}
-          className="flex-1 text-center text-sm rounded-xl px-3 py-2 border border-[#ffffff26] text-[#EDEBFF] disabled:opacity-40"
+          className={`flex-1 text-center text-sm rounded-xl px-3 py-2 border ${borderMuted} disabled:opacity-40`}
+          style={{ color: theme.text }}
         >
           Previous
         </button>
         <button
           onClick={onNext}
           disabled={current === total - 1}
-          className="flex-1 text-center text-sm rounded-xl px-3 py-2 border border-[#ffffff26] text-[#EDEBFF] disabled:opacity-40"
+          className={`flex-1 text-center text-sm rounded-xl px-3 py-2 border ${borderMuted} disabled:opacity-40`}
+          style={{ color: theme.text }}
         >
           Next
         </button>
       </div>
 
       {confirmingSubmit ? (
-        <div className="rounded-2xl p-4 bg-[#20223F] text-center">
-          <p className="text-sm text-[#EDEBFF] mb-3">
+        <div className="rounded-2xl p-4 text-center" style={{ backgroundColor: theme.card }}>
+          <p className="text-sm mb-3" style={{ color: theme.text }}>
             {total - answeredCount} question{total - answeredCount !== 1 ? "s" : ""} unanswered. Submit anyway?
           </p>
           <div className="flex gap-2">
-            <button onClick={onCancelSubmit} className="flex-1 text-sm rounded-xl px-3 py-2 border border-[#ffffff26] text-[#EDEBFF]">
+            <button onClick={onCancelSubmit} className={`flex-1 text-sm rounded-xl px-3 py-2 border ${borderMuted}`} style={{ color: theme.text }}>
               Keep going
             </button>
             <button
               onClick={onSubmitClick}
               className="flex-1 text-sm rounded-xl px-3 py-2 font-medium"
-              style={{ backgroundColor: "#FF9B5C", color: "#14152B" }}
+              style={{ backgroundColor: theme.accent, color: theme.onAccent }}
             >
               Submit module
             </button>
@@ -457,7 +477,7 @@ function ModuleScreen({
         <button
           onClick={onSubmitClick}
           className="w-full rounded-xl px-4 py-3 font-medium"
-          style={{ backgroundColor: "#8B85FF", color: "#14152B" }}
+          style={{ backgroundColor: theme.accent, color: theme.onAccent }}
         >
           Submit Module {moduleIndex + 1} ({answeredCount}/{total} answered)
         </button>
@@ -466,43 +486,44 @@ function ModuleScreen({
   );
 }
 
-function ResultsScreen({ test, result, answers, courseId }) {
+function ResultsScreen({ test, result, answers, courseId, theme }) {
   const [showReview, setShowReview] = useState(false);
   return (
     <div className="text-center">
       <QuizResults
         score={result.correct}
         total={result.total}
+        theme={theme}
         copy={{
           perfect: { headline: "Every question right.", note: "A raw score, not a predicted SAT score." },
           good: { headline: "A strong pass.", note: "A raw score, not a predicted SAT score." },
           watch: { headline: "Worth another pass.", note: "A raw score, not a predicted SAT score." },
         }}
       >
-        <div className="mt-5 text-left rounded-2xl p-4 bg-[#20223F]">
-          <p className="text-xs uppercase tracking-wide text-[#9B97C4] mb-3">By question type</p>
+        <div className="mt-5 text-left rounded-2xl p-4" style={{ backgroundColor: theme.card }}>
+          <p className="text-xs uppercase tracking-wide mb-3" style={{ color: theme.subtext }}>By question type</p>
           {["vocab", "passages", "grammar"].map((key) => {
             const b = result.byType[key];
             const pct = b.total > 0 ? Math.round((b.correct / b.total) * 100) : 0;
             return (
               <div key={key} className="mb-2 last:mb-0">
-                <div className="flex justify-between text-sm text-[#EDEBFF] mb-1">
+                <div className="flex justify-between text-sm mb-1" style={{ color: theme.text }}>
                   <span className="capitalize">{key === "vocab" ? "Vocabulary" : key === "passages" ? "Passages" : "Grammar"}</span>
                   <span>
                     {b.correct}/{b.total}
                   </span>
                 </div>
-                <div className="h-1.5 rounded-full bg-[#ffffff14] overflow-hidden">
-                  <div className="h-full rounded-full bg-[#8B85FF]" style={{ width: `${pct}%` }} />
+                <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: theme.isDawn ? "#00000014" : "#ffffff14" }}>
+                  <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: theme.accent }} />
                 </div>
               </div>
             );
           })}
-          <p className="text-xs text-[#6E699B] mt-3">{result.answered} of {result.total} questions answered.</p>
+          <p className="text-xs mt-3" style={{ color: theme.muted }}>{result.answered} of {result.total} questions answered.</p>
         </div>
       </QuizResults>
 
-      <button onClick={() => setShowReview((s) => !s)} className="mt-4 text-sm text-[#8B85FF]">
+      <button onClick={() => setShowReview((s) => !s)} className="mt-4 text-sm" style={{ color: theme.accent }}>
         {showReview ? "Hide" : "Review"} your answers
       </button>
 
@@ -512,30 +533,30 @@ function ResultsScreen({ test, result, answers, courseId }) {
             const sel = answers[qq.id];
             const correct = sel === qq.correctIndex;
             return (
-              <div key={qq.id} className="rounded-2xl p-4 bg-[#20223F]">
+              <div key={qq.id} className="rounded-2xl p-4" style={{ backgroundColor: theme.card }}>
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-[10px] uppercase tracking-wide text-[#6E699B]">
+                  <p className="text-[10px] uppercase tracking-wide" style={{ color: theme.muted }}>
                     Q{i + 1} · {POOL_LABEL[qq.poolType]} · {qq.sourceLabel}
                   </p>
                   {sel === undefined ? (
-                    <span className="text-[10px] text-[#6E699B]">Unanswered</span>
+                    <span className="text-[10px]" style={{ color: theme.muted }}>Unanswered</span>
                   ) : correct ? (
                     <Check size={14} color="#7BC9A0" />
                   ) : (
                     <X size={14} color="#E08A9E" />
                   )}
                 </div>
-                {qq.poolType === "vocab" && <p className="text-sm text-[#EDEBFF] mb-2">{qq.sentence}</p>}
-                <p className="text-sm text-[#9B97C4] mb-2">
-                  Correct answer: <span className="text-[#EDEBFF]">{qq.options[qq.correctIndex]}</span>
+                {qq.poolType === "vocab" && <p className="text-sm mb-2" style={{ color: theme.text }}>{qq.sentence}</p>}
+                <p className="text-sm mb-2" style={{ color: theme.subtext }}>
+                  Correct answer: <span style={{ color: theme.text }}>{qq.options[qq.correctIndex]}</span>
                   {sel !== undefined && !correct && (
                     <>
                       {" "}
-                      · Your answer: <span className="text-[#E08A9E]">{qq.options[sel]}</span>
+                      · Your answer: <span style={{ color: "#E08A9E" }}>{qq.options[sel]}</span>
                     </>
                   )}
                 </p>
-                <p className="text-xs text-[#6E699B]">{qq.explanation}</p>
+                <p className="text-xs" style={{ color: theme.muted }}>{qq.explanation}</p>
               </div>
             );
           })}
@@ -545,7 +566,7 @@ function ResultsScreen({ test, result, answers, courseId }) {
       <Link
         href={`/courses/${courseId}?section=practice-test`}
         className="block mt-6 w-full text-center rounded-xl px-4 py-3 font-medium"
-        style={{ backgroundColor: "#8B85FF", color: "#14152B" }}
+        style={{ backgroundColor: theme.accent, color: theme.onAccent }}
       >
         Done
       </Link>

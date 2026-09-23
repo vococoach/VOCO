@@ -136,7 +136,15 @@ export default function Home() {
           <div className="flex items-center gap-2">
             <Moon size={22} color="#8B85FF" />
             <span className="font-display text-xl text-[#EDEBFF]">Voco</span>
-            <NightThemeExplainer />
+            {/* Only once onboarding is confirmed NOT needed — never during the
+                still-checking `null` state. NightThemeExplainer auto-fires a
+                showModal() + a "seen this session" write the instant it
+                mounts, regardless of this page's `invisible` wrapper (CSS
+                visibility doesn't stop an effect from running); mounting it
+                during the brief window before useOnboarding() has resolved
+                let it steal the reveal a genuine first-timer should see as
+                Onboarding's own slide 1. See CLAUDE.md. */}
+            {onboarding === false && <NightThemeExplainer />}
           </div>
           <div className="flex flex-col items-end gap-1">
             {/* Tap either streak to share it as an image (components/ShareButton.js). */}

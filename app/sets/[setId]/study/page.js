@@ -16,6 +16,7 @@ import {
 import { markStudied, getStruggleWordIds, getDueWordIds, REVIEW_SESSION_CAP } from "@/lib/progress";
 import { isCategoryLocked, isSubscribedCached, shouldRefreshStatus, refreshSubscriptionStatus } from "@/lib/purchase";
 import { getPhase } from "@/lib/timeOfDay";
+import { getActivityTheme, NIGHT } from "@/lib/timeTheme";
 import StudyClose from "@/components/StudyClose";
 
 export default function StudyPage() {
@@ -36,6 +37,11 @@ export default function StudyPage() {
   const [index, setIndex] = useState(0);
   // null while studying; set on "Done studying" to show the closing screen.
   const [closing, setClosing] = useState(null);
+  // Real time of day, not "study = always night" — see lib/timeTheme.js.
+  // NIGHT until mounted (matches the server-rendered guess; the page is
+  // behind a subscription/data gate anyway, so nothing is ever shown before
+  // this resolves for real).
+  const [theme, setTheme] = useState(NIGHT);
 
   useEffect(() => {
     if (isMissedWords) {
@@ -55,6 +61,7 @@ export default function StudyPage() {
     if (shouldRefreshStatus()) {
       refreshSubscriptionStatus().then(setSubscribed);
     }
+    setTheme(getActivityTheme(new Date()));
   }, [isMissedWords, isDueForReview]);
 
   const locked = subscribed !== null && categoryId !== null && isCategoryLocked(categoryId, subscribed);
@@ -84,25 +91,25 @@ export default function StudyPage() {
 
   if (isDynamic && found.level.words.length === 0) {
     return (
-      <main className="min-h-dvh bg-[#14152B] flex items-center justify-center px-4">
+      <main className={`min-h-dvh ${theme.page} flex items-center justify-center px-4`}>
         <div className="text-center max-w-sm">
-          <Sparkles size={28} color="#8B85FF" className="mx-auto mb-3" />
+          <Sparkles size={28} color={theme.accent} className="mx-auto mb-3" />
           {isDueForReview ? (
             <>
-              <p className="text-[#EDEBFF] mb-1">Nothing due for review right now.</p>
-              <p className="text-sm text-[#9B97C4] mb-5">
+              <p className="mb-1" style={{ color: theme.text }}>Nothing due for review right now.</p>
+              <p className="text-sm mb-5" style={{ color: theme.subtext }}>
                 Words come back here once you've quizzed on them and it's time to review again.
               </p>
             </>
           ) : (
             <>
-              <p className="text-[#EDEBFF] mb-1">Nothing to catch up on in {found.category.title} right now.</p>
-              <p className="text-sm text-[#9B97C4] mb-5">
+              <p className="mb-1" style={{ color: theme.text }}>Nothing to catch up on in {found.category.title} right now.</p>
+              <p className="text-sm mb-5" style={{ color: theme.subtext }}>
                 Words show up here when you miss them in a quiz. You're not struggling with anything in this category — nice work.
               </p>
             </>
           )}
-          <Link href="/" className="text-[#8B85FF] text-sm">
+          <Link href="/" className="text-sm" style={{ color: theme.accent }}>
             Back home
           </Link>
         </div>
@@ -112,10 +119,10 @@ export default function StudyPage() {
 
   if (!found) {
     return (
-      <main className="min-h-dvh bg-[#14152B] flex items-center justify-center px-4">
+      <main className={`min-h-dvh ${theme.page} flex items-center justify-center px-4`}>
         <div className="text-center">
-          <p className="text-[#EDEBFF] mb-4">That level doesn't exist.</p>
-          <Link href="/" className="text-[#8B85FF] text-sm">
+          <p className="mb-4" style={{ color: theme.text }}>That level doesn't exist.</p>
+          <Link href="/" className="text-sm" style={{ color: theme.accent }}>
             Back home
           </Link>
         </div>
@@ -136,29 +143,30 @@ export default function StudyPage() {
   }
 
   if (closing) {
-    return <StudyClose evening={closing.evening} />;
+    return <StudyClose evening={closing.evening} theme={theme} />;
   }
 
   return (
-    <main className="min-h-dvh bg-[#14152B] px-4 py-8">
+    <main className={`min-h-dvh ${theme.page} px-4 py-8`}>
       <div className="max-w-md mx-auto">
-        <Link href={backHref} className="flex items-center gap-1 text-xs text-[#9B97C4] mb-6">
+        <Link href={backHref} className="flex items-center gap-1 text-xs mb-6" style={{ color: theme.subtext }}>
           <ArrowLeft size={14} /> Back
         </Link>
 
-        <p className="text-xs uppercase tracking-wide text-[#9B97C4] mb-4">
+        <p className="text-xs uppercase tracking-wide mb-4" style={{ color: theme.subtext }}>
           {category.title} — {level.label}
         </p>
 
-        <div className="bg-[#1F2142] rounded-2xl p-6 min-h-[180px] flex items-center mb-5">
-          <p className="font-display text-xl leading-relaxed text-[#EDEBFF]">{word.fact}</p>
+        <div className="rounded-2xl p-6 min-h-[180px] flex items-center mb-5" style={{ backgroundColor: theme.card }}>
+          <p className="font-display text-xl leading-relaxed" style={{ color: theme.text }}>{word.fact}</p>
         </div>
 
         <div className="flex items-center justify-between mb-2">
           <button
             onClick={() => setIndex((i) => Math.max(0, i - 1))}
             disabled={index === 0}
-            className="p-3 -m-1 rounded-full text-[#9B97C4] disabled:opacity-30"
+            className="p-3 -m-1 rounded-full disabled:opacity-30"
+            style={{ color: theme.subtext }}
           >
             <ChevronLeft size={20} />
           </button>
@@ -168,7 +176,7 @@ export default function StudyPage() {
               <div
                 key={i}
                 className="w-1.5 h-1.5 rounded-full"
-                style={{ backgroundColor: i === index ? "#8B85FF" : "#ffffff26" }}
+                style={{ backgroundColor: i === index ? theme.accent : theme.isDawn ? "#00000014" : "#ffffff26" }}
               />
             ))}
           </div>
@@ -176,7 +184,8 @@ export default function StudyPage() {
           {!isLast ? (
             <button
               onClick={() => setIndex((i) => Math.min(level.words.length - 1, i + 1))}
-              className="p-3 -m-1 rounded-full text-[#9B97C4]"
+              className="p-3 -m-1 rounded-full"
+              style={{ color: theme.subtext }}
             >
               <ChevronRight size={20} />
             </button>
@@ -185,7 +194,7 @@ export default function StudyPage() {
           )}
         </div>
 
-        <p className="text-xs text-center text-[#9B97C4] mb-5">
+        <p className="text-xs text-center mb-5" style={{ color: theme.subtext }}>
           {index + 1} of {level.words.length}
         </p>
 
@@ -193,7 +202,7 @@ export default function StudyPage() {
           <button
             onClick={finish}
             className="w-full rounded-xl px-4 py-3 font-medium"
-            style={{ backgroundColor: "#8B85FF", color: "#14152B" }}
+            style={{ backgroundColor: theme.accent, color: theme.onAccent }}
           >
             Done studying
           </button>

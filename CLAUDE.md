@@ -203,8 +203,10 @@ re-litigated or silently changed.
   lifetime best, so a later retake can move a level between tiers; a
   sticky "best ever" badge would need a new field in `voco_progress_v1`.
 - **The home screen is time-aware — framing only, never gating.** The
-  night/dawn look is the app's premise made visible (study = night blues,
-  quiz = warm dawn), so the home screen follows the learner's **local
+  night/dawn look is the app's premise made visible, tied to the **real
+  clock**, not to which activity is on screen — see "Screens follow real
+  time, not activity type" below for the fuller rule this now follows
+  everywhere, not just here. The home screen follows the learner's **local
   device clock** (`lib/timeOfDay.js`, read on the client after mount — the
   page is prerendered, so the server has no meaningful "now"): **evening**
   18:00–04:59 shows a "Tonight's study" card (a suggested next level, a
@@ -256,6 +258,35 @@ re-litigated or silently changed.
   (`localStorage`-only) and clears itself when the tab closes regardless.
   **Leave `components/ScienceNote.js` (the permanent, always-on footnote,
   below) out of this — it's a separate feature and wasn't touched.**
+  **Bug, found and fixed 2026-09-23: `NightThemeExplainer` was mounting (and
+  auto-firing) during the brief window before onboarding status was even
+  known, which let it steal the reveal a genuine first-timer should see as
+  Onboarding's own first slide.** Root cause, precisely: `useOnboarding()`'s
+  `onboarding` state starts at `null` ("not yet checked"), and `app/page.js`'s
+  `if (onboarding) return <Onboarding .../>` is falsy for `null` — so on the
+  very first render, before `useOnboarding()`'s own effect has resolved
+  whether this is a brand-new visitor, the page fell through to its *main*
+  return (hidden via an `invisible` class, but still mounted) — which
+  included `<NightThemeExplainer />`, unconditionally. That component's own
+  effect fires the instant it mounts, regardless of the page's CSS
+  visibility, so a genuine first-timer's fresh session had it call
+  `showModal()` and write the "seen this session" flag *before* the
+  onboarding check even resolved — on some code paths this let the
+  explainer's own dialog (which also covers sleep/rhythm content, so it can
+  look enough like "an intro" to be mistaken for one) show in place of
+  Onboarding's actual first slide. **Fix:** `NightThemeExplainer` now only
+  renders once `onboarding === false` is definitively known — `{onboarding
+  === false && <NightThemeExplainer />}` — never during the still-checking
+  `null` state, matching how every other piece of this page's content is
+  already gated behind knowing the real state first. This fully closes the
+  race (confirmed live: a genuinely fresh session's `sessionStorage` now
+  stays untouched until `finishOnboarding()` marks it, not before), while
+  leaving the *intended* per-session auto-show for a returning,
+  already-onboarded visitor completely unchanged. **Lesson:** a component
+  with a mount-time side effect (opening a modal, writing storage) needs to
+  be gated on a definitively-known state, not merely "the state that isn't
+  literally `true` yet" — `null` (unknown) and `false` (confirmed no) are
+  not the same condition, even though `if (x)` treats them identically.
 - **All sleep-and-memory wording lives in one file — `lib/sleepScience.js` —
   and has hard accuracy rules.** The closing screen, the onboarding, the
   "why the night theme?" explainer and the home screen's always-on science
@@ -568,19 +599,60 @@ as the mastery milestone), leading to `/courses/[courseId]`, which shows that co
 category list (the old home screen, scoped). "Back" from a level's study/quiz page
 returns to its course page; the due-for-review set spans courses, so it goes home.
 
-**"Tonight's study" has no default course, on purpose.** `getTonight(courses, …)`:
-(1) `done` if a level was studied since 18:00, as before; (2) otherwise `suggest`s the
-first unstudied *unlocked* level (course order, then category order) in the course
-studied **most recently** — so the suggestion follows what the learner is working
-through, and a legacy SAT learner keeps getting SAT; (3) if nothing has been started
-(or every started course has nothing left unlocked), `choose`: a "pick a course"
-prompt listing the unstarted courses, with no course pre-selected — the decision was
-explicit that the app must not guess which course a brand-new learner wants. "Started"
-means a level was *studied* (a quiz alone doesn't count). Everything unlocked studied →
-revisit the level studied longest ago. Locked levels are never suggested, and neither are
-`optional` levels (SAT Vocab's Expert tier is something you choose to go for, not
-something the app nudges you into) — though studying one still counts as "tonight's study
-is done".
+**"Tonight's study" has no default course, on purpose — and, since 2026-09-23,
+prioritizes finishing what's in progress over jumping around, then rotates across
+courses rather than tunneling into one.** `getTonight(courses, sets, now, isLocked)`
+(`lib/timeOfDay.js`): (1) `done` if a level was studied since 18:00, unchanged — this
+answers "did I already do tonight's study," which is about activity, not about what's
+next. Otherwise, two priorities, checked in order, across **every unlocked course
+equally** (never locked to whichever course was touched last):
+- **Priority 1 — finish an in-progress category.** A category is "in progress" if
+  some (not all) of its required levels have been perfected at least once
+  (`isPerfectOnce`, `lib/milestones.js` — the exact same "completed" the course-progress
+  summary already uses, so this doesn't invent a second definition). If any exist,
+  anywhere, the **most recently touched** one wins — so momentum on what the learner
+  just started isn't interrupted by a fresher-looking category elsewhere — and the
+  suggestion is its first not-yet-perfected required level, in level order.
+- **Priority 2 — only once nothing is in progress, start a fresh category** (zero
+  required levels ever studied). The **least recently touched course** wins — the
+  opposite tie-break from priority 1, deliberately: priority 1 rewards recency
+  (finish what you're doing), priority 2 penalizes it (don't neglect the other three
+  courses) — so a learner isn't kept grinding one course's categories start to finish
+  while the rest sit untouched; within that course, its first fresh category in
+  category order.
+- `choose` — a "pick a course" prompt listing every course, no course pre-selected —
+  fires **only** when *nothing anywhere* has ever been studied: the one moment the app
+  still refuses to guess. It does not recur once anything anywhere has been touched,
+  even after every started course is later fully mastered — priority 2 takes over
+  from then on instead.
+- **Never suggests a level that's already been perfected once, full stop** — the
+  selection is built entirely from *not-yet-mastered* levels, so this holds
+  structurally, not as an afterthought. If literally every required level in every
+  unlocked course has been perfected, `getTonight()` returns `null` (no card at all)
+  rather than re-suggesting something already mastered — replacing the old "revisit
+  whatever was studied longest ago" fallback, which didn't check mastery and could
+  easily have re-suggested a perfected level while a genuinely unfinished one sat
+  elsewhere.
+
+Locked levels are never suggested, and neither are `optional` levels (SAT Vocab's
+Expert tier is something you choose to go for, not something the app nudges you
+into) — though studying one still counts toward "tonight's study is done" (unchanged).
+**Why the previous version needed this:** it always followed the single
+most-recently-studied *course*, taking its first unstudied level in fixed
+category/level array order — which happened to look like "finish what's in progress"
+in the common case of studying straight through in order, but wasn't actually that
+rule: a learner who studied categories out of order could be pointed at a **fresh**
+category while an **in-progress** one still had levels left (nothing about "first
+unstudied in array order" prefers "has some progress" over "hasn't been touched"),
+and once a course was picked it was the *only* course suggested from until entirely
+exhausted, real tunnel vision. Verified with a from-scratch Node simulation
+(`tonight_simulation.mjs` in the scratchpad pattern) that plays 45 consecutive
+perfect evenings across all 4 courses and asserts the exact properties above (no
+duplicate suggestion, `choose` exactly once, every course visited, momentum
+preserved when interrupted by an out-of-order manual study session, imperfect
+quizzes still re-suggested), plus confirmed live in the browser: mastering SAT
+Vocab's first category correctly rotates the very next suggestion to Everyday
+Vocabulary, not deeper into SAT Vocab.
 
 **Professional Vocabulary** (the third course) is for working adults — a different
 audience from exam prep (SAT Vocab) and from general reading and conversation
@@ -661,6 +733,93 @@ only steps 1, 2, 4 and 5 below — nothing in step 3 needed touching again):
    a locked one, a real mastery card and its share image (render the longest category
    title), the daily cards pulling words from every course, and a subscription unlocking
    every locked category across all courses.
+
+## Screens follow real time, not activity type (fixed 2026-09-23)
+
+**The rule, stated plainly, for any screen added from here on: a full-screen learning
+activity's palette is decided by `lib/timeTheme.js`'s `getActivityTheme(now)`, driven by
+the real local clock (`lib/timeOfDay.js`'s `getPhase()`) — never by what kind of screen
+it is.** Don't write `bg-[#14152B]` (night) or `bg-gradient-to-b from-[#FFD9B0]
+to-[#FFEFDD]` (dawn) directly into a new page because "this one feels like a study
+screen" or "this one feels quiz-shaped." It doesn't matter what the screen *is* — it
+matters what time it *is*. This is the second time this exact instinct produced a bug
+(see below); treat any hardcoded palette on a new screen as a bug on sight, not a style
+choice.
+
+**What was actually wrong.** Every full-screen learning activity — `/sets/[setId]/study`,
+`/sets/[setId]/quiz` (also missed-words and due-for-review, which reuse it),
+`/passages/[passageId]`, `/grammar/[levelId]`, `/review`, `/practice-test`,
+`/preview/[categoryId]` — hardcoded its palette by **what type of screen it was**, not
+by the actual time: study was *always* the dark night palette, and quiz/passages/
+grammar/review/preview were *always* the warm dawn gradient, regardless of the real
+clock. The practice test had no time-awareness at all — always dark, all 64 possible
+minutes of it, whatever the real hour. This meant a learner quizzing at 9pm (a completely
+normal time to be quizzing — nothing in this app's own rhythm says quizzing only happens
+at dawn) got a bright peach-and-cream screen exactly when the app's own stated premise
+("deep night blues for studying, warm dawn tones when it's time to quiz" — the
+NightThemeExplainer's own words) says they shouldn't. Only the home screen actually did
+this correctly, tying its "Last night's words" (dawn) and "Tonight's study" (its own dark
+shell) framing to `getPhase()` — every other screen imitated its *look* without adopting
+its *rule*.
+
+**The fix — one shared module, not a per-page `if`.** `lib/timeTheme.js` exports two
+palettes, `NIGHT` and `DAWN` (page background, card surface, primary/secondary/muted
+text, the accent button color + its own text color, and an unselected quiz-option
+border/background), and `getActivityTheme(now)`, which returns `DAWN` only during the
+morning phase and `NIGHT` otherwise. Every page above now computes
+`getActivityTheme(new Date())` once on mount (client-only, matching the established
+"read the clock after mount, not during SSR" pattern) and renders entirely from that
+object — no page hardcodes a hex value for its background, card, or text color anymore.
+**Midday defaults to NIGHT, not DAWN, on purpose:** there's no reason to warm a screen up
+at 2pm, and it matches the home screen's own long-standing precedent (its neutral,
+non-morning, non-evening state is already just its dark shell). The one hard requirement
+this exists to satisfy: **nothing bright and warm shows up on a screen late at night**,
+regardless of whether the activity is "study," "quiz," or anything added later.
+
+**Two color families deliberately stayed OUTSIDE this system, unchanged:** (1) outcome
+colors — the correct-answer green (`#7BC9A0`) and wrong-answer rose (`#E08A9E`) — because
+they're already proven to read fine on both a light and a dark surface (the always-dark
+practice test already used them successfully before this fix even existed), and they
+mean something about the *answer*, not the *time*; (2) score-tier colors
+(`lib/scoreTier.js`) and milestone-card colors (`lib/milestones.js`'s `CARD_STYLES`) —
+these describe *how well the learner did* or *what was achieved*, a completely different
+axis from time-of-day, and recoloring them by clock would make them meaningless.
+
+**The results screen is still a screen — this was the part most likely to be missed.**
+`components/CelebrationCard.js` (the shared recipe behind `QuizResults` and
+`MilestoneCards`, so every quiz's end screen and every milestone celebration) used to
+hardcode a light cream card (`#FFF9F2`) unconditionally, regardless of what page it was
+rendered on — meaning even after fixing every page's own background, the results card
+sitting in the middle of it would still have been a bright cream rectangle at 9pm. It now
+takes a `theme` prop (threaded through `QuizResults`/`MilestoneCards` from the same
+`getActivityTheme(now)` the calling page already computed) and renders its surface and
+text from it. One subtlety that needed a real fix, not just a find-and-replace:
+`lib/scoreTier.js`'s `deep` color (a darkened tier hue) was calibrated specifically to
+read at 4.5:1 against the light DAWN card — reusing it as-is on a dark NIGHT card would
+have been nearly invisible. `CelebrationCard` now picks `deep` on a DAWN card and
+`accent` (the tier's brighter hue, already proven to read on dark surfaces — see
+`lib/scoreTier.js`'s own comment) on a NIGHT card, rather than always using `deep`.
+`MilestoneCards`' inline "Share this" text/icon needed the identical swap.
+
+**The practice test's theme is fixed once, when the session opens — not
+live-updated.** Every other page computes its theme once on mount too, but a practice
+test can run up to ~64 real minutes across two timed modules; re-coloring the screen out
+from under someone mid-question because a phase boundary (e.g. 05:00) was crossed during
+the session would be far more disorienting than it staying exactly as it was when they
+started, unlike a quick single-question quiz or the home screen's tab-refocus refresh.
+Deliberate, not an oversight.
+
+**Verified systematically, not spot-checked** (the same `window.__setClock` real-`Date`
+override pattern used throughout this project, since jumping the real system clock isn't
+an option): every one of study, quiz, missed-words (study + quiz), passages, grammar,
+review, and the practice test (intro, the actual timed question screen including its
+"selected" state, and the results screen) was loaded fresh at all three phases — morning
+08:00, midday 14:00, evening 21:00 — confirming dawn only at morning and the calm night
+palette at both evening *and* midday. The riskiest single check — a `CelebrationCard`
+results screen rendered at night, `deep`-vs-`accent` swap included — was confirmed
+visually, not just by computed style, and reads cleanly. `/preview/[categoryId]` (the
+locked-category sample question, not explicitly named in the original ask but the same
+exact bug) was found during the audit and fixed the same way.
 
 ## SAT Vocab has five sections — Vocabulary, Passages, Grammar, Practice Test, Strategy (Practice Test added 2026-09-23)
 
@@ -1172,9 +1331,18 @@ lib/
   nightThemeExplainer.js  The "seen the explainer this session?" flag
                          (sessionStorage, not localStorage — resets every
                          fresh tab, unlike onboarding.js above)
-  timeOfDay.js            Local-time phases (morning/midday/evening) and the
-                         "last night's words" / "tonight's study" selection
-                         for the home screen
+  timeOfDay.js            Local-time phases (morning/midday/evening),
+                         "last night's words", and "tonight's study" —
+                         priority 1 finish an in-progress category
+                         (momentum), priority 2 rotate to the least
+                         recently touched course, never re-suggest an
+                         already-mastered level
+  timeTheme.js            NIGHT/DAWN palettes for every full-screen
+                         learning activity (study, quiz, passages,
+                         grammar, practice test, review) + getActivityTheme
+                         (now) — see "Screens follow real time, not
+                         activity type"; the ONLY place these hex values
+                         should live
   scoreTier.js            Tier thresholds (100 / 70 / below) + colors,
                          shared by QuizResults and the home screen
   wordbanks.js            The `courses` layer (courses > categories > levels >

@@ -76,9 +76,10 @@ export default function NightThemeExplainer() {
               {SLEEP_SCIENCE.retrieval}
             </p>
             <p>
-              The colors follow the rhythm: deep night blues for studying, warm dawn tones when
-              it's time to quiz. The home screen also shifts gently with your local time —
-              evenings point you to tonight's study, and mornings bring back last night's words.
+              The colors follow the actual time of day, wherever you are in the app: deep night
+              blues in the evening, warm dawn tones in the morning — not which screen you're on.
+              The home screen also shifts gently with your local time — evenings point you to
+              tonight's study, and mornings bring back last night's words.
             </p>
             <p>
               Two different streaks: the flame counts days you completed any quiz; the sunrise is

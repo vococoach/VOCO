@@ -12,12 +12,16 @@ export const CARD_ICONS = { sunrise: Sunrise, flame: Flame, award: Award, book: 
 // component, CelebrationCard); each has a "Share this" button right beside
 // the achievement. `milestones` are descriptors from describeMilestone() —
 // already marked as shown by checkNewMilestones(), so they appear once, ever.
-export default function MilestoneCards({ milestones }) {
+// `theme` (lib/timeTheme.js) is the caller's real-time-of-day palette, passed
+// straight through — see QuizResults.js for the same pattern.
+export default function MilestoneCards({ milestones, theme }) {
   return milestones.map((card) => {
     const style = CARD_STYLES[card.style];
+    const smallText = theme.isDawn ? style.deep : style.accent;
     return (
       <CelebrationCard
         key={card.filename}
+        theme={theme}
         accent={style.accent}
         deep={style.deep}
         rgb={style.rgb}
@@ -33,8 +37,8 @@ export default function MilestoneCards({ milestones }) {
           style={{ borderColor: `${style.accent}99` }}
           ariaLabel={`Share this milestone: ${card.headline}`}
         >
-          <Share2 size={15} style={{ color: style.deep }} />
-          <span style={{ color: style.deep }}>Share this</span>
+          <Share2 size={15} style={{ color: smallText }} />
+          <span style={{ color: smallText }}>Share this</span>
         </ShareButton>
       </CelebrationCard>
     );

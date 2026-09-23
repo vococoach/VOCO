@@ -7,6 +7,7 @@ import { Check, X, ArrowLeft } from "lucide-react";
 import { findGrammarLevel } from "@/lib/wordbanks";
 import { isGrammarCategoryLocked, isSubscribedCached, shouldRefreshStatus, refreshSubscriptionStatus } from "@/lib/purchase";
 import { recordGrammarResult } from "@/lib/grammarProgress";
+import { getActivityTheme, NIGHT } from "@/lib/timeTheme";
 import QuizResults from "@/components/QuizResults";
 
 // Options are listed correct-first in the data (correctIndex: 0); shuffle the
@@ -41,6 +42,8 @@ export default function GrammarQuizPage() {
   const [score, setScore] = useState(0);
   const [done, setDone] = useState(false);
   const [order, setOrder] = useState([0, 1, 2, 3]);
+  // Real time of day, not "grammar quiz = always dawn" — see lib/timeTheme.js.
+  const [theme, setTheme] = useState(NIGHT);
 
   useEffect(() => {
     // Cached status first (no loading flash), then re-verified with Stripe at
@@ -48,6 +51,7 @@ export default function GrammarQuizPage() {
     // flips and the learner is sent to /unlock even mid-quiz.
     setSubscribed(isSubscribedCached());
     if (shouldRefreshStatus()) refreshSubscriptionStatus().then(setSubscribed);
+    setTheme(getActivityTheme(new Date()));
   }, []);
 
   useEffect(() => {
@@ -63,10 +67,10 @@ export default function GrammarQuizPage() {
 
   if (!level) {
     return (
-      <main className="min-h-dvh bg-[#14152B] flex items-center justify-center px-4">
+      <main className={`min-h-dvh ${theme.page} flex items-center justify-center px-4`}>
         <div className="text-center">
-          <p className="text-[#EDEBFF] mb-4">That grammar level doesn't exist.</p>
-          <Link href="/" className="text-[#8B85FF] text-sm">
+          <p className="mb-4" style={{ color: theme.text }}>That grammar level doesn't exist.</p>
+          <Link href="/" className="text-sm" style={{ color: theme.accent }}>
             Back home
           </Link>
         </div>
@@ -95,25 +99,25 @@ export default function GrammarQuizPage() {
   }
 
   return (
-    <main className="min-h-dvh bg-gradient-to-b from-[#FFD9B0] to-[#FFEFDD] px-4 py-8">
+    <main className={`min-h-dvh ${theme.page} px-4 py-8`}>
       <div className="max-w-md mx-auto">
-        <Link href={backHref} className="flex items-center gap-1 text-xs text-[#8A6E7D] mb-6">
+        <Link href={backHref} className="flex items-center gap-1 text-xs mb-6" style={{ color: theme.subtext }}>
           <ArrowLeft size={14} /> Back
         </Link>
 
         {!done ? (
           <div>
-            <p className="text-xs uppercase tracking-wide text-[#8A6E7D] mb-4">
+            <p className="text-xs uppercase tracking-wide mb-4" style={{ color: theme.subtext }}>
               {category.title} — {level.label} — {step + 1} of {total}
             </p>
 
-            <div className="bg-[#FFF9F2] rounded-2xl p-6 mb-5">
-              <p className="text-xs text-[#8A6E7D] mb-3">{q.prompt}</p>
+            <div className="rounded-2xl p-6 mb-5" style={{ backgroundColor: theme.card }}>
+              <p className="text-xs mb-3" style={{ color: theme.subtext }}>{q.prompt}</p>
               <div className="space-y-2">
                 {order.map((idx) => {
                   const isCorrect = idx === q.correctIndex;
                   const isSelected = idx === selected;
-                  let style = "border-[#00000014] bg-transparent";
+                  let style = theme.optionIdle;
                   if (selected !== null) {
                     if (isCorrect) style = "border-[#7BC9A0] bg-[#7BC9A01A]";
                     else if (isSelected) style = "border-[#E08A9E] bg-[#E08A9E1A]";
@@ -122,7 +126,8 @@ export default function GrammarQuizPage() {
                     <button
                       key={idx}
                       onClick={() => answer(idx)}
-                      className={`w-full text-left rounded-xl px-4 py-3 border ${style} text-[#3D2B4F] flex items-center justify-between gap-3`}
+                      className={`w-full text-left rounded-xl px-4 py-3 border ${style} flex items-center justify-between gap-3`}
+                      style={{ color: theme.text }}
                     >
                       <span className="leading-relaxed">{q.options[idx]}</span>
                       {selected !== null && isCorrect && <Check size={16} color="#7BC9A0" className="shrink-0" />}
@@ -131,14 +136,14 @@ export default function GrammarQuizPage() {
                   );
                 })}
               </div>
-              {selected !== null && <p className="text-sm mt-4 text-[#8A6E7D]">{q.explanation}</p>}
+              {selected !== null && <p className="text-sm mt-4" style={{ color: theme.subtext }}>{q.explanation}</p>}
             </div>
 
             {selected !== null && (
               <button
                 onClick={next}
-                className="w-full rounded-xl px-4 py-3 font-medium text-white"
-                style={{ backgroundColor: "#FF9B5C" }}
+                className="w-full rounded-xl px-4 py-3 font-medium"
+                style={{ backgroundColor: theme.accent, color: theme.onAccent }}
               >
                 {step + 1 < total ? "Next question" : "See results"}
               </button>
@@ -149,6 +154,7 @@ export default function GrammarQuizPage() {
             <QuizResults
               score={score}
               total={total}
+              theme={theme}
               copy={{
                 perfect: {
                   headline: "Every rule applied correctly.",
@@ -168,7 +174,7 @@ export default function GrammarQuizPage() {
                 <Link
                   href={backHref}
                   className="flex-1 text-center text-sm rounded-xl px-3 py-2 font-medium"
-                  style={{ backgroundColor: "#FF9B5C", color: "#14152B" }}
+                  style={{ backgroundColor: theme.accent, color: theme.onAccent }}
                 >
                   More grammar
                 </Link>
