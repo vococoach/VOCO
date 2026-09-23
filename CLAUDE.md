@@ -3,9 +3,11 @@
 A vocabulary-learning platform. Study before bed, quiz yourself whenever you're ready.
 Voco has multiple courses under one subscription — **SAT Vocab** (the original
 course, matched to the Digital SAT), **Everyday Vocabulary** (general audience, no
-exam) and **Professional Vocabulary** (working adults, set in real workplace
-situations) — see "Courses" below. Read this file before making changes — it captures
-decisions already made, so they shouldn't be re-litigated or silently changed.
+exam), **Professional Vocabulary** (working adults, set in real workplace
+situations) and **GRE Vocab** (graduate-level, organized by connotation instead of
+theme, set in academic/scholarly voice) — see "Courses" below. Read this file before
+making changes — it captures decisions already made, so they shouldn't be
+re-litigated or silently changed.
 
 ## Stack & architecture (deliberate choices, not defaults)
 
@@ -388,7 +390,7 @@ decisions already made, so they shouldn't be re-litigated or silently changed.
   with fixed thresholds: **streak** — the *night-to-morning* streak (never the
   daily one) reaching 3 / 7 / 30 days; **mastery** — categories mastered *per
   course*, at that course's 1st / 3rd / whole-course (`masteryThresholds(n)`:
-  SAT Vocab 1/3/6, Everyday Vocabulary and Professional Vocabulary 1/3; a category is mastered once
+  SAT Vocab 1/3/6, Everyday Vocabulary, Professional Vocabulary and GRE Vocab 1/3; a category is mastered once
   *every required level* in it has been completed at 100% at least once — SAT
   Vocab's Expert tier is `optional` and doesn't count, see "SAT Vocab has three
   sections" below); **words** —
@@ -547,8 +549,8 @@ separate file — the original three tiers were proven byte-identical by hash
 **Entitlement: one free category per course** (a decision made when the second course
 was added, so each course can be genuinely tried before paying):
 `FREE_CATEGORY_BY_COURSE` in `lib/purchase.js` — Agreement & Support (SAT Vocab),
-Precise Description (Everyday Vocabulary) and Meetings & Negotiation (Professional
-Vocabulary); each is its course's first category. Everything else, in every course, is
+Precise Description (Everyday Vocabulary), Meetings & Negotiation (Professional
+Vocabulary) and Positive Charge (GRE Vocab); each is its course's first category. Everything else, in every course, is
 one subscription. When adding a course, give it a free category there and update the
 terms free-category sentence; when adding a category, nothing else changes. A category's
 Expert tier follows the category: Agreement & Support's Expert level is free, the other
@@ -592,13 +594,45 @@ negotiations, performance reviews, reports, budgets), so the words are learned w
 they are used. A fourth category, Professional Writing & Tone, was deliberately left
 for later (it would overlap SAT Vocab's Tone & Attitude, so it needs care).
 
+**GRE Vocab** (the fourth course, added 2026-09-23) targets graduate-level vocabulary —
+a different, harder audience from all three courses before it. It is organized by
+**connotation, not theme or function**: Positive Charge, Negative Charge, and Neutral &
+Academic. This is deliberately different from every course so far, decided with the
+owner rather than defaulting to the theme-based pattern Everyday and Professional
+already established: recognizing whether a word is favorable, unfavorable, or
+charge-neutral is a well-established, genuinely useful GRE technique, one that works
+even before a learner knows a word's exact definition — organizing around it, rather
+than around theme, teaches the technique directly instead of leaving it implicit. The
+Neutral & Academic category exists for the other half of that technique: practice with
+words that carry no charge at all, so a learner doesn't over-apply "must be good or
+bad" to a word that's simply descriptive or analytical (`empirical`, `discrete`,
+`paradigm`). **Difficulty is calibrated above the other three courses at every tier** —
+GRE Vocab's Foundational sits roughly where SAT Vocab's Advanced does, and its own
+Advanced tier is deliberately obscure, graduate-register vocabulary
+(`pusillanimous`, `perfidious`, `recondite`). Its **voice** is the fourth distinct one
+in the app: academic and scholarly — essays, research, literary and historical
+criticism — where Everyday is general-life and Professional is workplace. See "Content
+status" below for the word-count and content-quality details.
+
+**Registering GRE Vocab needed exactly the checklist below and nothing more** — a real
+test of the claim that adding a course is "close to a one-line change" for the third
+time, and this time even the three non-generic fixes Professional Vocabulary needed
+(see step 3) required no further changes: `joinList()` on `/unlock` already handled a
+4th free category correctly ("A, B, C, and D"), `masteryThresholds(totalCategories)`
+already worked off a category count rather than a hardcoded per-course list, and the
+share card's dynamic height already handled a category title shorter than
+Professional Vocabulary's own "Leadership & Workplace Dynamics." The only genuinely
+manual step was terms §4, which — same as every time before — names free categories
+by name because a legal list should be specific, not generic.
+
 **Milestones and share cards are course-aware** (see the milestones bullet above);
 sample-question previews work per locked category in any course and name the course.
 
 **Adding a course** — what it really takes (the third course tested the claim that this
 is "close to a one-line change"; the *code* is generic — nothing indexes into `courses`
 or assumes a count — but registration is not literally one line, and three things were
-not generic):
+not generic. The fourth course, GRE Vocab, confirmed all three fixes held: it needed
+only steps 1, 2, 4 and 5 below — nothing in step 3 needed touching again):
 1. **Content:** new `lib/<name>.js` exporting its categories (every id unique across
    the library, every word new to it).
 2. **Register:** one import + one entry (id, title, description) in `courses` in
@@ -616,7 +650,9 @@ not generic):
 5. **Validate** like the others: 4 distinct options, one `______`, `correctIndex` 0–3,
    no duplicate words anywhere in the library, no `a`/`an` before the blank that gives
    the answer away — and **read every sentence for a defensible second answer**, which a
-   script can't catch (a dozen were rewritten for Everyday, three for Professional).
+   script can't catch (a dozen were rewritten for Everyday, three for Professional, and
+   six `a`/`an` giveaways were caught by an automated check and fixed for GRE Vocab —
+   see the option set's vowel/consonant mix, not just whether `a`/`an` appears at all).
 6. **Optional extra sections.** A course may also define `passages` and/or `guides`; if it
    does, `getCourseSections()` gives its page tabs automatically (a course with neither
    gets none). Passages need a free one in `FREE_PASSAGE_BY_COURSE` and their own gating;
@@ -976,9 +1012,10 @@ working unchanged; these are the decisions made with the owner (don't re-litigat
 
 ## Content status
 
-All 12 categories across all three courses are fully built: 453 words total. Each
-category has 3 levels (12 Foundational / 12 Intermediate / 10 Advanced); each SAT Vocab
-category also has a 4th, optional **Expert** level.
+All 15 categories across all four courses are fully built: 537 words total. Most
+categories have 3 levels of 12 Foundational / 12 Intermediate / 10 Advanced words; each
+SAT Vocab category also has a 4th, optional **Expert** level. GRE Vocab's categories are
+smaller (10/10/8) — see its entry below for why.
 
 **SAT Vocab** (`sat-vocab`, `lib/wordbanks.js` + `lib/satExpertTier.js`) — 249 words (204
 in the three original tiers + 45 Expert), plus 10 reading passages
@@ -1005,6 +1042,27 @@ context:
 - ✅ `meetings-negotiation` (free)
 - ✅ `strategy-decisions`
 - ✅ `leadership-workplace`
+
+**GRE Vocab** (`gre-vocab`, `lib/greVocabulary.js`, added 2026-09-23) — 84 words, 3
+categories of 28 (10 Foundational / 10 Intermediate / 8 Advanced each), every sentence
+set in an academic/scholarly voice — essays, research, literary and historical
+criticism:
+- ✅ `positive-charge` (free)
+- ✅ `negative-charge`
+- ✅ `neutral-academic`
+
+Smaller than the other courses' 102-word, 12/12/10 shape, deliberately: GRE-level
+vocabulary has a much smaller pool of words that are simultaneously (a) genuinely
+GRE-caliber, (b) distinct enough from every other word already in the 453-word library
+at the time (SAT Vocab, Everyday and Professional between them already claim most of
+the common upper-register words — `prudent`, `sanguine`, `laconic`, `cursory`,
+`meticulous`, `ubiquitous` and dozens more were ruled out this way), and (c) not
+near-duplicate roots of a word already used elsewhere (e.g. `laudable` was skipped
+because `laud` was already a tracked SAT word). 28 well-chosen, cleanly-differentiated
+words per category was the honest number at this difficulty; the same "quality over
+hitting an exact word count" rule that gives SAT Vocab's categories their uneven Expert
+tiers. Every candidate word was checked programmatically against the full existing
+word list before being drafted, not just by memory.
 
 Validated: no duplicate words anywhere in the library (within a category,
 across categories, or across courses — a word appearing in two courses would
