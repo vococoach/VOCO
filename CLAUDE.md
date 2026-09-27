@@ -821,7 +821,7 @@ visually, not just by computed style, and reads cleanly. `/preview/[categoryId]`
 locked-category sample question, not explicitly named in the original ask but the same
 exact bug) was found during the audit and fixed the same way.
 
-## SAT Vocab has five sections — Vocabulary, Passages, Grammar, Practice Test, Strategy (Practice Test added 2026-09-23)
+## SAT Vocab has five sections — Vocabulary, Passages, Grammar & Usage, Practice Test, Strategy (Practice Test added 2026-09-23; Grammar renamed "Grammar & Usage" 2026-09-24 — see "Transitions + Command of Evidence" below)
 
 The SAT course was **deepened, not turned into a fourth course**, with harder vocabulary,
 real SAT-style reading passages and test-day strategy. Everything that existed kept
@@ -853,14 +853,17 @@ working unchanged; these are the decisions made with the owner (don't re-litigat
   **Any new code that decides whether a category/course is *complete* must use
   `requiredLevels()`, not `category.levels`.** Agreement & Support's Expert level is free
   (it follows its category); the others follow the subscription.
-- **Reading passages** (`lib/satPassages.js`, route `/passages/[passageId]`): 10 original
-  passages (grown from an initial 5 on 2026-09-22), 100–150 words, 1–2 questions each, a
-  real mix of types — `central-idea`, `inference` and `words-in-context` (a `______` blank
-  drawn from *inside* the passage — the same mechanic as the vocabulary quizzes). No
-  passage repeats a question type, and across the library no one type is allowed to
-  dominate (each of the 3 must appear at least 3 times and none may exceed 60% of the
-  total — a proportional version of the original "none more than 5" check, updated when 5
-  passages became 10; re-check this if the library grows again). **Originality is the rule
+- **Reading passages** (`lib/satPassages.js`, route `/passages/[passageId]`): 11 original
+  passages (grown from an initial 5 on 2026-09-22, then 10, then 11 on 2026-09-24), 100–150
+  words, 1–3 questions each, a real mix of types — `central-idea`, `inference`,
+  `words-in-context` (a `______` blank drawn from *inside* the passage — the same
+  mechanic as the vocabulary quizzes) and, since 2026-09-24, `command-of-evidence` (a
+  claim plus 4 real quotations from the passage, asking which one best supports it — see
+  "Transitions + Command of Evidence" below). No passage repeats a question type, and
+  across the library no one type is allowed to dominate (each of the 4 must appear at
+  least 3 times and none may exceed 60% of the total — a proportional version of the
+  original "none more than 5" check, updated when 5 passages became 10; re-check this if
+  the library grows again). **Originality is the rule
   that matters most here**: invented people, places, data and quotes; nothing derived from,
   modeled on or paraphrased from any real SAT or test-prep passage. Options are
   correct-first (`correctIndex: 0`) and shuffled on screen, so **an explanation must never
@@ -904,23 +907,22 @@ working unchanged; these are the decisions made with the owner (don't re-litigat
   count, no guessing penalty, the timer/flag tools) *as of when written* and send readers to
   the College Board for current details, plus a "not affiliated with the College Board"
   line — formats change, so re-check those sentences if the test does.
-- **Test-day strategy guides** (`lib/satStrategy.js`, route `/strategy/[guideId]`): four
-  short written guides (words-in-context routine, pacing, common traps, unknown words) —
-  **free to everyone, no gate, nothing recorded**. Written as `blocks` (heading, paragraph,
-  list, steps, example). They state Digital SAT format facts (module length, question
-  count, no guessing penalty, the timer/flag tools) *as of when written* and send readers to
-  the College Board for current details, plus a "not affiliated with the College Board"
-  line — formats change, so re-check those sentences if the test does.
-- **Grammar & Standard English Conventions** (`lib/satGrammar.js`, route
-  `/grammar/[levelId]`, added 2026-09-22): the Digital SAT's *other* major Reading & Writing
-  domain, alongside Words in Context — correct sentence construction, not word meaning.
-  Organized around the two real College Board subdomains, not invented ones: **Boundaries**
-  (punctuation and sentence boundaries — commas, semicolons, colons, run-ons, fragments) and
-  **Form, Structure, and Sense** (subject-verb agreement, pronoun agreement and case, verb
-  tense/mood, parallel structure, modifier placement). A third plausible category,
-  transitions/logical connectors, was deliberately left out — it belongs to the Digital
-  SAT's *other* domain, Expression of Ideas, not Standard English Conventions, and adding it
-  here would have been miscategorizing rather than organizing around what's real.
+- **Grammar & Usage** (`lib/satGrammar.js`, route `/grammar/[levelId]`, added 2026-09-22,
+  3rd category and tab rename added 2026-09-24): correct sentence construction, not word
+  meaning — organized around real College Board subdomains, not invented ones, but
+  spanning **two different real domains under one tab** because they read naturally as
+  one thing to a learner. **Boundaries** and **Form, Structure, and Sense** (punctuation
+  and sentence boundaries; subject-verb agreement, pronoun agreement and case, verb
+  tense/mood, parallel structure, modifier placement) are Standard English Conventions.
+  **Transitions** (choosing the transition word/phrase matching the actual logical
+  relationship between two ideas) is Expression of Ideas — originally left out for
+  exactly that reason (see the domain audit above), then added once a specific need
+  (moving the practice test's measured domain skew) justified building it, with the tab
+  renamed from "Grammar" to "Grammar & Usage" rather than mislabeling Transitions as
+  Standard English Conventions. Full reasoning, the navigation-placement decision, and
+  the content itself: see "Transitions + Command of Evidence" below. Each category's own
+  `description` names its real domain honestly, even though the tab groups them
+  together.
   - **Same 3-tier structure as vocabulary, but its own separate tree.** `course.grammar =
     [{ id, title, description, levels: [{ id, level, label, questions }] }]`, a sibling of
     `course.categories`/`passages`/`guides` on the course object, **not** nested inside
@@ -1012,8 +1014,9 @@ working unchanged; these are the decisions made with the owner (don't re-litigat
     across modules.** A vocab word and a grammar question are each a 1-question block; a
     whole passage is one block carrying all of its questions together (each question still
     carries its own copy of the passage text, so it renders correctly wherever the block
-    lands after shuffling). `pickBlocks()` targets ~8 passage questions and ~12 grammar
-    questions, shuffled with a fresh-first/stale-fallback preference; vocabulary absorbs
+    lands after shuffling). `pickBlocks()` targets ~12 passage questions and ~18 grammar
+    questions (raised from ~8/~12 on 2026-09-24 — see "Transitions + Command of Evidence"),
+    shuffled with a fresh-first/stale-fallback preference; vocabulary absorbs
     whatever's left so the total is always exactly 54 — this isn't a claim about the real
     test's own subdomain ratio (Voco's three pools don't map cleanly onto the SAT's), just a
     genuinely mixed composition of what this app actually has. All chosen blocks are
@@ -1024,18 +1027,21 @@ working unchanged; these are the decisions made with the owner (don't re-litigat
     typical-case checked.
   - **Decision — repeats are allowed once the pool is exhausted, and the UI says so.**
     Discussed with the owner, chosen over silently repeating or refusing to build a test:
-    the full pool is small enough (298 questions: 249 vocab + 19 passage across 10 passages
-    + 30 grammar) that repeats are inevitable well before a learner would stop practicing.
-    Measured, not guessed: across 8 consecutive attempts, vocabulary stays fresh for roughly
-    7 attempts, but passages and grammar — much smaller pools — start recycling from about
-    the 3rd–4th attempt on. `usedIds` (every question id from every past attempt, via
+    the full pool (323 questions as of 2026-09-24: 249 vocab + 29 passage across 11 passages
+    + 45 grammar) is small enough that repeats are inevitable well before a learner would
+    stop practicing. Measured, not guessed: across several consecutive attempts, vocabulary
+    stays fresh the longest, but passages and grammar — much smaller pools — start recycling
+    sooner. `usedIds` (every question id from every past attempt, via
     `getUsedQuestionIds()`) is preferred against; when a pool can't supply enough fresh
     content, previously-used questions fill the gap and `reusedCounts` reports exactly how
     many per pool, surfaced honestly on the intro screen ("This attempt reuses N questions
     from earlier practice tests...") rather than silently repeating. `TARGET_PASSAGE_QUESTIONS`
     was deliberately lowered from an initial 10 to 8 after measuring that 10 let a *second*
-    attempt already need to reuse a whole passage — 8 buys roughly 2–3 fresh attempts before
-    any passage repeats, a real, measured tradeoff, not an arbitrary constant.
+    attempt already need to reuse a whole passage — 8 bought roughly 2–3 fresh attempts before
+    any passage repeats, a real, measured tradeoff, not an arbitrary constant. Both targets
+    were raised again on 2026-09-24 (to 12/18, alongside the pools growing to 29/45) to
+    preserve that same freshness ratio rather than let it silently tighten — see "Transitions
+    + Command of Evidence."
   - **Decision — entirely paid, no free attempt.** Unlike every other section here (one free
     category, one free passage, one free grammar category), Practice Test has no free
     sample. Reason: a genuinely mixed 54-question test needs the full pool; a free-only
@@ -1108,6 +1114,228 @@ working unchanged; these are the decisions made with the owner (don't re-litigat
     screen correctly says "Start a new practice test," lists prior attempts with accurate
     per-type breakdowns, and honestly discloses reused questions once the pool needs them.
 
+## SAT domain accuracy audit (2026-09-24) — content is sound, but unevenly mapped
+
+A full content close-read plus a check of every section against the Digital SAT's real
+domain structure, done before building any new content — verification only, nothing
+added or changed in this pass. **The reference data lives in `lib/satDomains.js`
+(`SAT_RW_DOMAINS`)**, verified directly against the College Board's own published spec
+(satsuite.collegeboard.org/k12-educators/about/alignment/reading, checked 2026-09-24,
+not a test-prep aggregator — the exact same "verify, don't assume" discipline already
+used for the module/timing format):
+
+| Domain | Weight | Skills |
+|---|---|---|
+| Craft and Structure | 28% | Words in Context, Text Structure and Purpose, Cross-Text Connections |
+| Information and Ideas | 26% | Central Ideas and Details, Command of Evidence (Textual), Command of Evidence (Quantitative), Inferences |
+| Standard English Conventions | 26% | Boundaries, Form, Structure, and Sense |
+| Expression of Ideas | 20% | Rhetorical Synthesis, Transitions |
+
+**1. Content accuracy — everything re-read closely, nothing found wrong.** All 249
+vocabulary words (204 core + 45 Expert across all 6 categories), all 19 passage
+questions across all 10 passages, all 30 grammar questions across both categories, and
+all 4 strategy guides were read in full — the same close-read standard used when this
+content was first written (checking that the correct answer is the *only* defensible
+one, that every distractor is genuinely wrong in that specific sentence, that every
+explanation is accurate and doesn't refer to a choice by screen position), not a rerun
+of the mechanical validators (`validate:passages`, `validate:grammar`), which only catch
+structural issues. Nothing needed fixing. The strategy guides' format claims (2 modules
+of 27, 32 minutes each, no guessing penalty) are still current against the verified
+spec above. This is a genuinely clean result, not a low-effort one: it confirms the
+content hasn't drifted or rotted since it was built, across several sessions and one
+content-count change (Expert tier, passages, and grammar were each grown at least once).
+
+**2. Domain mapping — accurate where it exists, confirmed nowhere near complete.**
+
+- **SAT Vocab's 6 categories + passage `words-in-context` questions → Craft and
+  Structure > Words in Context.** Accurate: the course's whole premise (`lib/wordbanks.js`
+  header, `CLAUDE.md` "Content rules" #1) is matching this exact skill — a sentence with
+  a blank, testing how a word functions, not "define this word." Confirmed correct, not
+  just asserted.
+- **Passage `central-idea` and `inference` questions → Information and Ideas >
+  Central Ideas and Details / Inferences respectively.** Accurate and correctly typed
+  (verified against every question's own `type` field while reading them).
+- **Grammar's two categories → Standard English Conventions, at high fidelity.**
+  `Boundaries` and `Form, Structure, and Sense` aren't just similarly-named — they're the
+  real domain's own two skills, and the 30 questions' `type` tags (subject-verb agreement,
+  pronoun agreement and case, verb tense, parallel structure, modifier placement, plus
+  comma splices, fragments, semicolons, colons, restrictive/nonrestrictive clauses,
+  appositives, dash pairs, conjunctive adverbs) cover the real domain's actual named
+  sub-rules directly, not an approximation of them. This is already documented in
+  `lib/satGrammar.js`'s own header; this audit confirms it holds under a fresh, careful
+  re-read.
+- **Confirmed gaps — nothing currently tests these real skills, at all:**
+  - **Expression of Ideas — the entire domain (20% of the real test).** Rhetorical
+    Synthesis and Transitions have zero content anywhere in the course. This is
+    deliberate, not an oversight: `lib/satGrammar.js` explicitly notes Transitions was
+    "deliberately left out rather than miscategorized" when Grammar was built, since it
+    belongs to this domain, not Standard English Conventions. This audit's job was to
+    confirm that gap plainly, not to fill it.
+  - **Text Structure and Purpose and Cross-Text Connections (both under Craft and
+    Structure).** Every passage question is one of exactly 3 types (central-idea,
+    inference, words-in-context — `lib/satPassages.js`'s own header); none asks what a
+    sentence is doing structurally or compares two texts. Cross-Text Connections in
+    particular would need an entirely new passage shape (a *pair* of short texts), not
+    just new questions on the existing one-passage format.
+  - **Command of Evidence, both Textual and Quantitative (under Information and
+    Ideas).** No passage question asks a learner to select which quote from the text
+    would best support a claim, or to read a chart/table alongside the text — the
+    quantitative half in particular would need a genuinely new question shape (this app
+    has no data-visualization content anywhere).
+
+**3. The practice test's question mix — measured precisely, confirmed not proportionate,
+and this was already known.** `lib/practiceTest.js`'s `TARGET_PASSAGE_QUESTIONS` (8) and
+`TARGET_GRAMMAR_QUESTIONS` (12) were sized against **pool freshness** (so repeat questions
+stay rare across several attempts — see "Add a timed practice-test mode" above), not
+against real domain weights — and its own header comment already said so ("Voco's three
+content pools don't map cleanly onto the real subdomains... a reasonable, genuinely mixed
+composition of what this app actually has"). This audit turns that acknowledged
+limitation into a measured number: simulating 200 practice tests (`domain_mix_measure.mjs`,
+the scratchpad pattern) and mapping every question to its real domain by tracing passage
+questions back to their own `type` field gives:
+
+| Domain | App's actual mix | Real weight |
+|---|---|---|
+| Craft and Structure | **65.7%** | 28% |
+| Information and Ideas | **12.1%** | 26% |
+| Standard English Conventions | **22.2%** | 26% |
+| Expression of Ideas | **0.0%** | 20% |
+
+Not proportionate, and not close — Craft and Structure (driven almost entirely by
+vocabulary questions, which dominate because the vocab pool is 249 questions against
+19 passage questions and 30 grammar questions) is more than **2.3×** its real weight,
+Information and Ideas runs at under half its real weight, Standard English Conventions
+is the closest of the three that exist at all (85% of its real weight), and Expression
+of Ideas is a complete absence. **This is a direct, mechanical consequence of pool size,
+not a selection-algorithm bug** — `buildPracticeTest()` is choosing correctly from what
+exists; what exists is just heavily vocab-weighted relative to the real test's own
+balance. Fixing the proportion requires more passage and grammar content (specifically:
+more Command of Evidence / Text Structure / Cross-Text passage questions and the entire
+Expression of Ideas domain), not a change to the selection algorithm itself — a genuine
+content gap, not a bug in code that already exists.
+
+## Transitions + Command of Evidence (2026-09-24) — closing two of the audit's gaps
+
+Direct follow-up to the domain audit above: two targeted content additions chosen
+specifically to move the measured skew, reusing existing question formats rather than
+building new UI, plus a re-measurement to confirm the skew actually moved rather than
+assuming it did.
+
+**1. Transitions (Expression of Ideas) — new 3rd category in the Grammar & Usage tab.**
+15 questions (5 Foundational, 5 Intermediate, 5 Advanced) in `lib/satGrammar.js`,
+identical data shape to Boundaries/Form-Structure-Sense (`{ type, prompt, options: [4
+full-text versions, correct first], correctIndex: 0, explanation }` — each option is the
+complete sentence with a different transition word substituted in, not a word-bank
+blank), so `/grammar/[levelId]/page.js` needed zero code changes to render it. Paid,
+matching Form, Structure, and Sense (`lib/purchase.js`'s `isGrammarCategoryLocked` locks
+anything that isn't `"boundaries"`, so no code change was needed there either).
+
+- **Tab placement was a genuine ambiguity, resolved by asking, not guessing.**
+  Transitions is Expression of Ideas, not Standard English Conventions — folding it into
+  the existing "Grammar" tab alongside Boundaries and Form/Structure/Sense would
+  technically mislabel it, even though it reads naturally as "grammar and usage" to a
+  learner. Presented 3 options (rename the tab, add it in with clear internal labeling,
+  or give it its own tab); the user picked **same tab, renamed "Grammar & Usage"** — max
+  reuse of the existing route/page/progress file, with the category's own `description`
+  field naming its real domain honestly rather than blurring it into the tab's label.
+  That "each category's own description names its real domain, even when the tab groups
+  differently-domained categories together" convention is now written into
+  `lib/satGrammar.js`'s header for future additions to follow. The rename touched 4
+  spots: `lib/wordbanks.js` (`getCourseSections` tab label), `app/practice-test/page.js`
+  (×2 — the pool-type tag and the results breakdown), and `app/terms/page.js` §4 (legal
+  text — see below). `components/GrammarList.js` needed no logic changes; it already
+  reads category data fully dynamically.
+- **Content discipline held under a live close-read.** One question (the engine/fuel
+  example, transitions-2) was rewritten mid-draft: the original second clause ("the
+  redesigned dashboard added three new safety alerts" replaced an earlier draft about a
+  weight-reduction fact) risked a genuine second defensible answer, since an engine
+  redesign could plausibly cause both fuel savings and weight reduction, making
+  "Consequently" nearly as defensible as the intended "Moreover." Exactly the kind of
+  ambiguity the manual close-read catches and the mechanical validator (`validate:
+  grammar`) cannot.
+
+**2. Command of Evidence, Textual (Information and Ideas) — new question type within the
+existing passage format.** 9 questions added: one each to 8 existing passages (all
+except the two literary/narrative ones, `the-ferry-window` and
+`the-last-two-on-the-platform`, which don't have a stated claim for a quote to support),
+plus a new 11th passage (`the-dimmed-block`, Social Science, purpose-built with an
+explicit claim-and-evidence structure) carrying 2 questions (1 Command of Evidence + 1
+inference). `type: "command-of-evidence"`, same `{ type, prompt, options: [4, correct
+first], correctIndex: 0, explanation }` shape as every other passage question — the 4
+options are real quotations from the passage text (never fabricated or paraphrased),
+one genuinely supporting the stated claim, the other three true-but-non-supporting (a
+different theory, the wrong side of a comparison, background/setup, or a conclusion
+drawn from the evidence rather than the evidence itself). `/passages/[passageId]/page.js`
+needed zero code changes. Passage question counts are now 1–3 (was 1–2) —
+`scripts/validate-passages.mjs` was updated for this, plus a new check that every
+command-of-evidence option is a verbatim substring of its passage's text.
+
+- **Two quote-fidelity bugs caught by that new verbatim check, both fixed before
+  shipping:** an option on `the-farrow-map` quoted the passage's words-in-context blank
+  as if it were already filled in with its answer ("...but of a clerical slip...") —
+  text that never actually appears on screen, since the blank renders as `______` for
+  every question type sharing that passage, not just the words-in-context one; and an
+  option on `the-ants-shortcut` used single curly quotes (‘ ’) around Fenn's quoted
+  speech where the source passage uses double (" "), so the substring match legitimately
+  failed. Both are exactly the class of bug the "every option must be a real quotation"
+  rule in `lib/satPassages.js`'s header now exists to prevent.
+- **Two near-miss second-defensible-answer risks caught and redesigned before
+  shipping** (same discipline as the Transitions catch above): `the-farrow-map`'s first
+  draft claim ("Farrow's own fieldwork wasn't the source of the error") had two
+  quotations that both genuinely supported it (the field-notes quote and the
+  engraver-transposition quote), which would have left a real ambiguity between two
+  options — redesigned around a claim only one quotation addresses ("caused real,
+  practical harm"). `the-ants-shortcut`'s first draft had the same problem (the
+  narrator's mechanism sentence and Fenn's own quoted words both supported the same
+  claim) — resolved by using only Fenn's quoted words as the correct option and choosing
+  distractors that don't overlap with it.
+
+**3. Practice-test targets re-tuned — empirically, not guessed, mirroring how the
+original 8/12 were chosen.** Adding content to the pools doesn't by itself change the
+practice test's in-test ratio, since vocabulary is defined as "whatever's left" to reach
+54 — `TARGET_PASSAGE_QUESTIONS` and `TARGET_GRAMMAR_QUESTIONS` (`lib/practiceTest.js`)
+had to move too. Pools grew from 19 passage / 30 grammar questions to 29 / 45. Both
+targets were raised to **12 / 18** (from 8 / 12) — chosen by 200-run simulation
+(`domain_mix_measure.mjs` in the scratchpad, extended to trace grammar questions back to
+their category via level id, and passage `command-of-evidence` questions to Information
+and Ideas) to preserve the *same pool-freshness ratio* the original values were chosen
+for (passages: 19/8 = 2.4 attempts-worth before a repeat, now 29/12 = 2.4; grammar:
+30/12 = 2.5, now 45/18 = 2.5), rather than picking round numbers. A more aggressive
+target (14/22) measured numerically closer to the real domain weights but was rejected
+because it makes vocabulary a minority of the test (31.9%, behind passages+grammar
+combined), which conflicts with this being fundamentally a vocabulary app's practice
+mode — the same principle the original targets' header comment already stated. 12/18
+keeps vocabulary the single largest pool (~43%) while still moving every deficient
+domain substantially.
+
+**4. Re-measured result — the skew moved, confirmed by re-running the same simulation,
+not assumed:**
+
+| Domain | Before (2026-09-24 audit) | After | Real weight |
+|---|---|---|---|
+| Craft and Structure | 65.7% | **46.2%** | 28% |
+| Information and Ideas | 12.1% | **20.4%** | 26% |
+| Standard English Conventions | 22.2% | **22.0%** | 26% |
+| Expression of Ideas | 0.0% | **11.3%** | 20% |
+
+Expression of Ideas moved from nonexistent to a real, double-digit share for the first
+time. Information and Ideas nearly doubled. Standard English Conventions held steady
+(new Transitions content dilutes its share of the grammar pool, but the larger grammar
+target offsets it almost exactly). Craft and Structure dropped by 19.5 points but is
+still the largest single domain — vocabulary is still Craft and Structure's Words in
+Context skill by design, and this was never going to reach exact parity with a vocab
+app's practice mode without either much more non-vocab content than "quality over
+padding" supports, or making vocabulary a minority of the test (rejected above). Full
+regression suite re-run clean after both content and target changes: `validate:passages`
+(198/198), `validate:grammar` (293/293), plus the scratchpad's `validate_courses.mjs`,
+`grammar_logic_test.mjs`, `passage_logic_test.mjs`, `practice_test_logic_test.mjs`, and
+`tonight_simulation.mjs` (all passing; the latter two scripts had stale hardcoded counts
+— 2 grammar categories, 10 passages — updated to match). Both new question types were
+also verified with real attempts in the live UI (a Transitions quiz, and Command of
+Evidence questions on both an existing passage and the new one), and the `/unlock` page's
+locked-content listing was confirmed to already reflect the new counts correctly with no
+code changes (it computes `lockedPassageCount`/`lockedGrammarQuestionCount` dynamically).
+
 ## Content rules — these matter a lot, please follow them exactly
 
 1. **Categories are organized per course's own logic — don't mix them.**
@@ -1177,10 +1405,12 @@ SAT Vocab category also has a 4th, optional **Expert** level. GRE Vocab's catego
 smaller (10/10/8) — see its entry below for why.
 
 **SAT Vocab** (`sat-vocab`, `lib/wordbanks.js` + `lib/satExpertTier.js`) — 249 words (204
-in the three original tiers + 45 Expert), plus 10 reading passages
-(`lib/satPassages.js`), 4 strategy guides (`lib/satStrategy.js`), and 30 grammar questions
-across 2 categories (`lib/satGrammar.js`: Boundaries, free — 15 questions; Form, Structure,
-and Sense, paid — 15 questions):
+in the three original tiers + 45 Expert), plus 11 reading passages
+(`lib/satPassages.js`, 29 questions — since 2026-09-24 including `command-of-evidence`),
+4 strategy guides (`lib/satStrategy.js`), and 45 grammar questions across 3 categories
+(`lib/satGrammar.js`: Boundaries, free — 15 questions; Form, Structure, and Sense, paid —
+15 questions; Transitions, paid, added 2026-09-24 — 15 questions), shown together in the
+"Grammar & Usage" tab:
 - ✅ `agreement-support` (free)
 - ✅ `disagreement-refutation`
 - ✅ `degree-intensity`
@@ -1353,12 +1583,19 @@ lib/
                          the dynamic study sets and getSetCategoryId() for
                          paywall gating
   satExpertTier.js        SAT Vocab's Expert level for each category (optional)
-  satPassages.js          SAT reading passages (original writing)
+  satPassages.js          SAT reading passages (original writing), incl.
+                         command-of-evidence questions since 2026-09-24
   satStrategy.js          SAT test-day strategy guides + guideReadingMinutes()
-  satGrammar.js           SAT Grammar & Standard English Conventions —
-                         Boundaries + Form, Structure, and Sense categories,
-                         each with its own 3-tier levels (a separate tree from
-                         `categories`, not vocabulary levels)
+  satGrammar.js           SAT Grammar & Usage tab — Boundaries + Form,
+                         Structure, and Sense (Standard English Conventions)
+                         plus Transitions (Expression of Ideas, added
+                         2026-09-24), each with its own 3-tier levels (a
+                         separate tree from `categories`, not vocabulary
+                         levels)
+  satDomains.js           Reference only, not imported at runtime: the real
+                         Digital SAT R&W's 4 official domains + weights,
+                         verified against the College Board's own spec — see
+                         "SAT domain accuracy audit"
   passageProgress.js      Per-passage results (voco_passages_v1) — separate
                          from vocabulary progress
   grammarProgress.js      Per-grammar-level results (voco_grammar_v1) —

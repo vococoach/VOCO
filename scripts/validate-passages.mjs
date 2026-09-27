@@ -4,13 +4,15 @@
 // This checks structure and mechanical rules only — options count and
 // distinctness, word/question counts, blank-count matching a words-in-context
 // question, no passage repeating a question type, a real mix of types across
-// the library, and (see checkNoPositionalLanguage below) that an explanation
-// never refers to an answer choice by its on-screen position. It does NOT
-// replace reading every new passage against its actual shuffled options on
-// screen — that close read is what has caught every real ambiguity bug so
-// far (see CLAUDE.md, "SAT Vocab has three sections"); this script only
-// catches the mechanical regressions a human read-through would be slow to
-// re-check by hand every time.
+// the library, every command-of-evidence option being a real quotation found
+// verbatim in the passage text (never a fabricated or paraphrased one), and
+// (see checkNoPositionalLanguage below) that an explanation never refers to
+// an answer choice by its on-screen position. It does NOT replace reading
+// every new passage against its actual shuffled options on screen — that
+// close read is what has caught every real ambiguity bug so far (see
+// CLAUDE.md, "SAT Vocab has three sections"); this script only catches the
+// mechanical regressions a human read-through would be slow to re-check by
+// hand every time.
 
 import { satPassages } from "../lib/satPassages.js";
 
@@ -46,7 +48,7 @@ ok("ids are url-safe slugs", satPassages.every((p) => /^[a-z0-9-]+$/.test(p.id))
 for (const p of satPassages) {
   const n = countWords(p.text.join(" "));
   ok(`${p.id}: ${n} words (want 100–150)`, n >= 100 && n <= 150);
-  ok(`${p.id}: 1–2 questions`, p.questions.length >= 1 && p.questions.length <= 2, String(p.questions.length));
+  ok(`${p.id}: 1–3 questions`, p.questions.length >= 1 && p.questions.length <= 3, String(p.questions.length));
 
   const blanks = (p.text.join(" ").match(/______/g) || []).length;
   const wic = p.questions.filter((q) => q.type === "words-in-context").length;
@@ -66,7 +68,17 @@ for (const p of satPassages) {
       `${w}: 4 distinct options, correctIndex 0`,
       q.options.length === 4 && new Set(q.options.map((o) => o.toLowerCase())).size === 4 && q.correctIndex === 0
     );
-    ok(`${w}: known type`, ["central-idea", "inference", "words-in-context"].includes(q.type));
+    ok(
+      `${w}: known type`,
+      ["central-idea", "inference", "words-in-context", "command-of-evidence"].includes(q.type)
+    );
+    if (q.type === "command-of-evidence") {
+      const fullText = p.text.join(" ");
+      ok(
+        `${w}: every option is a real quotation taken verbatim from the passage`,
+        q.options.every((o) => fullText.includes(o.replace(/^"|"$/g, "")))
+      );
+    }
     ok(`${w}: explanation present and addresses the wrong choices`, q.explanation.length > 120);
     ok(`${w}: explanation never refers to a choice by position`, !POSITIONAL_LANGUAGE.test(q.explanation));
     if (q.type !== "words-in-context") {
@@ -82,9 +94,10 @@ for (const p of satPassages) {
 
 const types = satPassages.flatMap((p) => p.questions.map((q) => q.type));
 const tally = types.reduce((acc, t) => ((acc[t] = (acc[t] || 0) + 1), acc), {});
+const KNOWN_TYPES = ["central-idea", "inference", "words-in-context", "command-of-evidence"];
 ok(
-  "a real mix of question types (all three used, each at least 3, none over 60% of the total)",
-  Object.keys(tally).length === 3 &&
+  "a real mix of question types (every known type used, each at least 3, none over 60% of the total)",
+  Object.keys(tally).length === KNOWN_TYPES.length &&
     Object.values(tally).every((n) => n >= 3) &&
     Math.max(...Object.values(tally)) <= types.length * 0.6,
   JSON.stringify(tally)

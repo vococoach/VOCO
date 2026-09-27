@@ -80,7 +80,7 @@ function PassageParagraph({ paragraph, theme }) {
   );
 }
 
-const POOL_LABEL = { vocab: "Vocabulary", passage: "Reading", grammar: "Grammar" };
+const POOL_LABEL = { vocab: "Vocabulary", passage: "Reading", grammar: "Grammar & Usage" };
 
 export default function PracticeTestPage() {
   const router = useRouter();
@@ -508,7 +508,7 @@ function ResultsScreen({ test, result, answers, courseId, theme }) {
             return (
               <div key={key} className="mb-2 last:mb-0">
                 <div className="flex justify-between text-sm mb-1" style={{ color: theme.text }}>
-                  <span className="capitalize">{key === "vocab" ? "Vocabulary" : key === "passages" ? "Passages" : "Grammar"}</span>
+                  <span className="capitalize">{key === "vocab" ? "Vocabulary" : key === "passages" ? "Passages" : "Grammar & Usage"}</span>
                   <span>
                     {b.correct}/{b.total}
                   </span>

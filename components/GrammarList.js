@@ -6,12 +6,16 @@ import { getScoreTier, TIERS } from "@/lib/scoreTier";
 import { TIER_ICONS } from "@/components/QuizResults";
 import { isGrammarCategoryLocked, PRICE_LABEL, TRIAL_LABEL } from "@/lib/purchase";
 
-// The "Grammar" section of a course page: each grammar category and its
-// levels. Quiz-only — there's no separate study/flashcard step the way
-// vocabulary levels have one, since a grammar level is a set of graded
-// questions, not words to review first. Gating is per category, like
-// vocabulary; results come from lib/grammarProgress.js (voco_grammar_v1),
-// tracked completely separately from vocabulary progress.
+// The "Grammar & Usage" section of a course page: each grammar/usage
+// category and its levels — Standard English Conventions (Boundaries, Form,
+// Structure, and Sense) and, since 2026-09-24, Expression of Ideas
+// (Transitions), sharing one tab because they read naturally as one thing to
+// a learner even though they're two different real Digital SAT domains; each
+// category's own description says which. Quiz-only — there's no separate
+// study/flashcard step the way vocabulary levels have one, since a level
+// here is a set of graded questions, not words to review first. Gating is
+// per category, like vocabulary; results come from lib/grammarProgress.js
+// (voco_grammar_v1), tracked completely separately from vocabulary progress.
 //
 // `ready` is false until the page has read localStorage — locked/unlocked
 // and score state aren't known before then, so nothing renders prematurely.
