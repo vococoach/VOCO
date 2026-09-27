@@ -22,13 +22,18 @@ function shuffledIndices(count) {
   return order;
 }
 
-// One grammar level: a series of Standard English Conventions questions, each
-// presenting 4 full versions of a sentence where only one is correct — not 4
-// words filling a blank, since this tests construction, not word meaning.
-// Reuses the same option/feedback pattern as vocabulary and passage quizzes.
-// Results are stored on their own (lib/grammarProgress.js) — grammar never
-// touches spaced repetition, streaks or milestones. Gating is per category,
-// enforced here the same way /sets/[setId]/quiz and /passages/[passageId] do.
+// One grammar level: a series of Standard English Conventions (or, since
+// 2026-09-24/27, Expression of Ideas) questions, each presenting 4 full
+// versions of a sentence where only one is correct — not 4 words filling a
+// blank, since this tests construction, not word meaning. Reuses the same
+// option/feedback pattern as vocabulary and passage quizzes. A Rhetorical
+// Synthesis question also carries `notes`/`goal` (lib/satGrammar.js); when
+// present, they render as a bulleted list + goal statement above the prompt
+// — every other question type leaves both fields undefined and renders
+// exactly as before. Results are stored on their own (lib/grammarProgress.js)
+// — grammar never touches spaced repetition, streaks or milestones. Gating
+// is per category, enforced here the same way /sets/[setId]/quiz and
+// /passages/[passageId] do.
 export default function GrammarQuizPage() {
   const params = useParams();
   const router = useRouter();
@@ -112,6 +117,19 @@ export default function GrammarQuizPage() {
             </p>
 
             <div className="rounded-2xl p-6 mb-5" style={{ backgroundColor: theme.card }}>
+              {q.notes && (
+                <div className="mb-4">
+                  <ul className="text-sm space-y-1 mb-3" style={{ color: theme.text }}>
+                    {q.notes.map((note, i) => (
+                      <li key={i} className="flex gap-2">
+                        <span aria-hidden="true" style={{ color: theme.subtext }}>&bull;</span>
+                        <span>{note}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-sm font-medium leading-relaxed" style={{ color: theme.text }}>{q.goal}</p>
+                </div>
+              )}
               <p className="text-xs mb-3" style={{ color: theme.subtext }}>{q.prompt}</p>
               <div className="space-y-2">
                 {order.map((idx) => {

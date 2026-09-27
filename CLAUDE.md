@@ -853,16 +853,18 @@ working unchanged; these are the decisions made with the owner (don't re-litigat
   **Any new code that decides whether a category/course is *complete* must use
   `requiredLevels()`, not `category.levels`.** Agreement & Support's Expert level is free
   (it follows its category); the others follow the subscription.
-- **Reading passages** (`lib/satPassages.js`, route `/passages/[passageId]`): 11 original
-  passages (grown from an initial 5 on 2026-09-22, then 10, then 11 on 2026-09-24), 100–150
-  words, 1–3 questions each, a real mix of types — `central-idea`, `inference`,
-  `words-in-context` (a `______` blank drawn from *inside* the passage — the same
-  mechanic as the vocabulary quizzes) and, since 2026-09-24, `command-of-evidence` (a
-  claim plus 4 real quotations from the passage, asking which one best supports it — see
-  "Transitions + Command of Evidence" below). No passage repeats a question type, and
-  across the library no one type is allowed to dominate (each of the 4 must appear at
-  least 3 times and none may exceed 60% of the total — a proportional version of the
-  original "none more than 5" check, updated when 5 passages became 10; re-check this if
+- **Reading passages** (`lib/satPassages.js`, route `/passages/[passageId]`): 16 original
+  passages (grown from an initial 5 on 2026-09-22, then 10, then 11 on 2026-09-24, then 16
+  on 2026-09-27), 1–4 questions each (100–150 words for a normal passage; 25–90 for a
+  command-of-evidence-quantitative one, deliberately shorter since its chart carries the
+  evidentiary weight — see "The last four SAT domains" below), a real mix of types —
+  `central-idea`, `inference`, `words-in-context` (a `______` blank drawn from *inside* the
+  passage), `command-of-evidence` (added 2026-09-24), and, since 2026-09-27,
+  `text-structure-purpose` and `command-of-evidence-quantitative` (the latter carrying a
+  `chart`, rendered by `components/PassageChart.js` — see "The last four SAT domains" for
+  both). No passage repeats a question type, and across the library no one type is allowed
+  to dominate (each of the 6 must appear at least 3 times and none may exceed 60% of the
+  total — a proportional version of the original "none more than 5" check; re-check this if
   the library grows again). **Originality is the rule
   that matters most here**: invented people, places, data and quotes; nothing derived from,
   modeled on or paraphrased from any real SAT or test-prep passage. Options are
@@ -896,10 +898,14 @@ working unchanged; these are the decisions made with the owner (don't re-litigat
 - **Decision — one free passage.** `FREE_PASSAGE_BY_COURSE` / `isPassageLocked()`
   (`lib/purchase.js`): *The Tide Pool Census* is free to everyone (mirroring "one free
   category per course", and it doubles as the free sample of the passage layout); the other
-  four need the subscription. Gated exactly like the levels: `/passages/[passageId]` shows
+  15 need the subscription. Gated exactly like the levels: `/passages/[passageId]` shows
   nothing until subscription status is known (cached, then reconciled), then redirects a
   non-subscriber to `/unlock`; the passage list shows locked cards with the price. As
-  everywhere, this is UI-level gating — all content ships in the client bundle.
+  everywhere, this is UI-level gating — all content ships in the client bundle. Since
+  2026-09-27, **Cross-Text Connections pairs** (`lib/satCrossText.js`, route
+  `/cross-text/[pairId]`) reuse this exact same gating function and the exact same
+  `voco_passages_v1` progress store — see "The last four SAT domains" below for why a pair
+  isn't its own separate system. They have no free sample of their own.
 - **Test-day strategy guides** (`lib/satStrategy.js`, route `/strategy/[guideId]`): four
   short written guides (words-in-context routine, pacing, common traps, unknown words) —
   **free to everyone, no gate, nothing recorded**. Written as `blocks` (heading, paragraph,
@@ -908,19 +914,21 @@ working unchanged; these are the decisions made with the owner (don't re-litigat
   the College Board for current details, plus a "not affiliated with the College Board"
   line — formats change, so re-check those sentences if the test does.
 - **Grammar & Usage** (`lib/satGrammar.js`, route `/grammar/[levelId]`, added 2026-09-22,
-  3rd category and tab rename added 2026-09-24): correct sentence construction, not word
-  meaning — organized around real College Board subdomains, not invented ones, but
-  spanning **two different real domains under one tab** because they read naturally as
-  one thing to a learner. **Boundaries** and **Form, Structure, and Sense** (punctuation
-  and sentence boundaries; subject-verb agreement, pronoun agreement and case, verb
-  tense/mood, parallel structure, modifier placement) are Standard English Conventions.
-  **Transitions** (choosing the transition word/phrase matching the actual logical
-  relationship between two ideas) is Expression of Ideas — originally left out for
-  exactly that reason (see the domain audit above), then added once a specific need
-  (moving the practice test's measured domain skew) justified building it, with the tab
-  renamed from "Grammar" to "Grammar & Usage" rather than mislabeling Transitions as
-  Standard English Conventions. Full reasoning, the navigation-placement decision, and
-  the content itself: see "Transitions + Command of Evidence" below. Each category's own
+  3rd category and tab rename added 2026-09-24, 4th category added 2026-09-27): correct
+  sentence construction, not word meaning — organized around real College Board subdomains,
+  not invented ones, but spanning **two different real domains under one tab** because they
+  read naturally as one thing to a learner. **Boundaries** and **Form, Structure, and
+  Sense** (punctuation and sentence boundaries; subject-verb agreement, pronoun agreement
+  and case, verb tense/mood, parallel structure, modifier placement) are Standard English
+  Conventions. **Transitions** (choosing the transition word/phrase matching the actual
+  logical relationship between two ideas) and **Rhetorical Synthesis** (given bulleted
+  notes and a stated goal, choosing the sentence that best accomplishes it) are Expression
+  of Ideas — originally left out for exactly that reason (see the domain audit above), then
+  added once a specific need (moving the practice test's measured domain skew) justified
+  building them, with the tab renamed from "Grammar" to "Grammar & Usage" rather than
+  mislabeling either as Standard English Conventions. Full reasoning, the navigation-
+  placement decisions, and the content itself: see "Transitions + Command of Evidence" and
+  "The last four SAT domains" below. Each category's own
   `description` names its real domain honestly, even though the tab groups them
   together.
   - **Same 3-tier structure as vocabulary, but its own separate tree.** `course.grammar =
@@ -1027,8 +1035,9 @@ working unchanged; these are the decisions made with the owner (don't re-litigat
     typical-case checked.
   - **Decision — repeats are allowed once the pool is exhausted, and the UI says so.**
     Discussed with the owner, chosen over silently repeating or refusing to build a test:
-    the full pool (323 questions as of 2026-09-24: 249 vocab + 29 passage across 11 passages
-    + 45 grammar) is small enough that repeats are inevitable well before a learner would
+    the full pool (355 questions as of 2026-09-27: 249 vocab + 46 passage-pool questions
+    across 16 passages and 4 cross-text pairs + 60 grammar) is small enough that repeats
+    are inevitable well before a learner would
     stop practicing. Measured, not guessed: across several consecutive attempts, vocabulary
     stays fresh the longest, but passages and grammar — much smaller pools — start recycling
     sooner. `usedIds` (every question id from every past attempt, via
@@ -1038,10 +1047,12 @@ working unchanged; these are the decisions made with the owner (don't re-litigat
     from earlier practice tests...") rather than silently repeating. `TARGET_PASSAGE_QUESTIONS`
     was deliberately lowered from an initial 10 to 8 after measuring that 10 let a *second*
     attempt already need to reuse a whole passage — 8 bought roughly 2–3 fresh attempts before
-    any passage repeats, a real, measured tradeoff, not an arbitrary constant. Both targets
-    were raised again on 2026-09-24 (to 12/18, alongside the pools growing to 29/45) to
-    preserve that same freshness ratio rather than let it silently tighten — see "Transitions
-    + Command of Evidence."
+    any passage repeats, a real, measured tradeoff, not an arbitrary constant. Raised to 12/18
+    on 2026-09-24 (pools grew to 29/45) to preserve that same freshness ratio — see
+    "Transitions + Command of Evidence." Raised again to 15/21 on 2026-09-27 (pools grew to
+    46/60), this time NOT simply to preserve the ratio but chosen directly for domain balance,
+    deliberately ending vocabulary's run as the single largest pool — see "The last four SAT
+    domains" for that reasoning in full.
   - **Decision — entirely paid, no free attempt.** Unlike every other section here (one free
     category, one free passage, one free grammar category), Practice Test has no free
     sample. Reason: a genuinely mixed 54-question test needs the full pool; a free-only
@@ -1336,6 +1347,173 @@ Evidence questions on both an existing passage and the new one), and the `/unloc
 locked-content listing was confirmed to already reflect the new counts correctly with no
 code changes (it computes `lockedPassageCount`/`lockedGrammarQuestionCount` dynamically).
 
+## The last four SAT domains (2026-09-27) — every real Digital SAT R&W sub-skill now has content
+
+Direct follow-up to the two sections above: closes the four gaps the domain audit found and
+"Transitions + Command of Evidence" didn't — Text Structure and Purpose, Rhetorical
+Synthesis, Cross-Text Connections, and Command of Evidence (Quantitative). Built easiest to
+hardest, each validated (mechanically and by close read) before the next started, per the
+task's own instruction, with 3 genuine "ask before deciding" checkpoints for the parts that
+needed new layout — none of them guessed at.
+
+**1. Text Structure and Purpose (Craft and Structure) — new question type, zero new code.**
+8 questions added to 8 existing passages (`lib/satPassages.js`), `type: "text-structure-
+purpose"`, same shape as every other passage question. Either "which choice best describes
+the function of [a quoted sentence] in the text as a whole" or "...the overall structure of
+the text" — the quoted sentence is written directly into the prompt (same trick Command of
+Evidence's quotes use), so there's no "underlined sentence" markup to build and
+`/passages/[passageId]/page.js` needed no changes. **Mechanical catch:** the first draft of
+5 of the 8 questions had a real length-tell (`validate:passages`'s "correct option is not
+the longest" check) — nuanced "it establishes X, so Y" correct answers were consistently
+much longer than simpler wrong ones; fixed by rebalancing option lengths, not by
+suppressing the check.
+
+**2. Rhetorical Synthesis (Expression of Ideas) — new 4th Grammar & Usage category, one
+small new UI block.** 15 questions (3 tiers × 5) in `lib/satGrammar.js`. Given short
+bulleted notes and a stated goal ("the writer wants to emphasize a contrast..."), choose
+the sentence that best accomplishes that specific goal — every wrong option is factually
+consistent with the notes, just doesn't match the stated goal (a different goal's answer, a
+plain fact with no rhetorical shaping, or the right topic with the wrong emphasis).
+- **Layout was a genuine "propose before building" checkpoint.** Two options were
+  presented: host it in Grammar & Usage with a small new notes/goal block, or fold it into
+  Passages by writing the notes as flowing prose. The user picked the Grammar & Usage
+  option. Implementation: two new optional fields, `notes: string[]` and `goal: string`
+  (every other grammar question leaves both undefined); `/grammar/[levelId]/page.js` renders
+  `notes` as a bulleted list and `goal` as a statement in a card above the (unchanged)
+  prompt/options/explanation flow, only when `notes` is present.
+- **A real bug this caught, not just a content issue:** `lib/practiceTest.js`'s
+  `grammarBlock()` didn't pass `notes`/`goal` through to the practice-test's normalized
+  question shape — a Rhetorical Synthesis question pulled into a practice test would have
+  shown the generic prompt with no notes or goal at all, making it unanswerable. Fixed
+  before it ever shipped (`grammarBlock()` now passes both through; every other question
+  type leaves them undefined, so it's a no-op there), then verified live inside an actual
+  practice-test run.
+
+**3. Cross-Text Connections (Craft and Structure) — new content shape, new route, one
+extracted shared component.** 4 pairs (`lib/satCrossText.js`, new file — the two-text shape
+doesn't fit `lib/satPassages.js`'s one-text shape) of short, related original passages
+(differing interpretations of similar evidence, or a claim and a complicating
+observation), one question per pair about how they relate.
+- **Layout was the second "propose before building" checkpoint.** Three options were
+  presented for showing two passages together: both visible at once stacked, tabbed, or
+  sequential-with-the-first-collapsible. The user picked **both visible at once, stacked**
+  — simplest, no new interaction state, and both texts stay referenceable while answering,
+  which this question type usually needs. `components/PassageCard.js` was extracted from
+  `/passages/[passageId]/page.js`'s previously-inline passage-text card so both the
+  single-passage page and the new two-passage page render it identically without
+  duplicating markup; `app/cross-text/[pairId]/page.js` is nearly identical to
+  `/passages/[passageId]/page.js` otherwise (same option/feedback mechanic, same
+  `QuizResults`).
+- **Navigation: a new labeled block inside the existing "Passages" tab, not a new tab.**
+  `components/CrossTextList.js` mirrors `PassageList.js` (same card layout, same gating),
+  rendered directly below it. This didn't need its own "ask before deciding" checkpoint —
+  unlike the Grammar & Usage tab rename, there's no domain-mislabeling risk (Cross-Text
+  Connections and single passages are both genuinely reading-comprehension content), so
+  maximum reuse of the existing tab was a safe, unambiguous call.
+- **Tracked in the SAME store as single passages** (`lib/passageProgress.js`,
+  `voco_passages_v1`) — a pair id is just another id in that store, since the tracking need
+  (completedAt/score/attempts per item) is identical. Pair ids are namespaced (`xt-…`),
+  checked by an automated validator rule to never collide with a passage id sharing the
+  same store. No free sample of its own — the existing free passage already samples this
+  tab.
+- **Gap caught in `app/unlock/page.js`:** its locked-content summary and per-course list
+  only ever knew about `course.passages`/`course.grammar` — cross-text pairs were entirely
+  invisible there (a subscriber would never be told they exist). Fixed: `lockedByCourse`
+  now also collects `crossTextPairs`, and the pitch text and per-course list both mention
+  them (`"...15 reading passages beyond the free one, 4 cross-text pairs and 45 grammar
+  questions..."`, `"Cross-text pairs (4)"`).
+
+**4. Command of Evidence, Quantitative (Information and Ideas) — new question type, new
+minimal chart rendering.** 5 new short passages (`lib/satPassages.js` — purpose-built, not
+retrofitted onto existing ones, since the whole point is data the text doesn't already
+state in prose), `type: "command-of-evidence-quantitative"`, each pairing a short claim or
+expectation with a `chart` the learner has to actually read to judge what the data shows.
+- **Rendering approach was the third "propose before building" checkpoint**, framed
+  explicitly as the one place in the whole task where over-engineering was a real risk.
+  Chosen: a plain HTML `<table>` for tabular data, plus a small hand-rolled inline-SVG
+  horizontal bar chart for magnitude/trend data — no charting library, matching this app's
+  existing minimal-dependency discipline. `components/PassageChart.js` dispatches on
+  `chart.kind` ("table" | "bar"); bars are horizontal specifically so labels never need
+  rotating or truncating to fit phone width. `chart` lives on the *question* (not the
+  passage), since it's that question's specific evidence, rendered above its prompt.
+  Verified visually at both desktop and true 375px mobile width — clean at both, no
+  overflow.
+- **Content discipline:** every chart number is one a specific wrong answer directly
+  contradicts (a "steadily improved" distractor next to a table whose last row is the
+  worst value; a "no relationship" distractor next to a real, if uneven, pattern) — the
+  same "genuinely wrong in this specific case" standard as every other distractor in this
+  app, just checked against numbers instead of prose. Stimulus length is deliberately short
+  (25–90 words, vs. 100–150 for a full passage) since the chart carries the evidentiary
+  weight — a new, separate word-count rule in `validate:passages`, not a relaxation of the
+  existing one.
+- **A real bug this caught, not just a content issue:** `lib/practiceTest.js`'s
+  `passageBlock()` didn't pass `chart` through either — the same class of bug as the
+  Rhetorical Synthesis catch above, independently present in the passage path. Fixed the
+  same way (pass it through, undefined everywhere else), then verified live: a real
+  practice-test run happened to draw one of these questions and rendered its table
+  correctly, matching the same chart data and layout as the standalone passage page.
+
+**5. Practice-test targets re-tuned again — and this time, deliberately, vocabulary is no
+longer kept the single largest pool.** Cross-text pairs now count as passage-pool blocks
+too (`crossTextBlock()` in `lib/practiceTest.js`, same "passage" `poolType`, a second
+`passageText2`/`passageTitle2`/`passageSubject2` on the normalized question that the
+practice-test UI renders as a second text card when present). Pools grew from 29 passage- /
+45 grammar-pool questions to 46 / 60. `TARGET_PASSAGE_QUESTIONS`/`TARGET_GRAMMAR_QUESTIONS`
+moved from 12/18 to **15/21** — measured via the same 200-run simulation technique as
+before, but this time the simplest freshness-preserving choice (scale both targets up with
+their pools, as before) was rejected in favor of directly optimizing for domain balance,
+because the grammar pool is now an even 50/50 split between Standard English Conventions
+(Boundaries + Form/Structure/Sense) and Expression of Ideas (Transitions + Rhetorical
+Synthesis) — getting Expression of Ideas to genuine, meaningful representation needs a
+grammar target large enough that it exceeds vocabulary's remainder. There is no target
+choice that hits real representation for all four domains AND keeps vocabulary strictly
+the largest pool; 15/21 was chosen as the balance that gets every previously-deficient
+domain within single digits of its real weight. Pool freshness is comfortably *better* than
+the 2026-09-24 baseline despite the higher targets, since both pools grew faster than their
+targets did (passages: 2.4 attempts-worth before a repeat → 3.1; grammar: 2.5 → 2.9). Full
+reasoning, including the rejected alternative, is in `lib/practiceTest.js`'s own comments —
+this is exactly the kind of tradeoff that belongs in code, not just here.
+
+**6. Re-measured result — every real sub-skill covered, and the numbers to prove it moved:**
+
+| Domain | 2026-09-24 (Transitions + CoE) | 2026-09-27, before retune | 2026-09-27, final | Real weight |
+|---|---|---|---|---|
+| Craft and Structure | 46.2% | 51.2% | **41.8%** | 28% |
+| Information and Ideas | 20.4% | 15.4% | **19.3%** | 26% |
+| Standard English Conventions | 22.0% | 16.8% | **19.6%** | 26% |
+| Expression of Ideas | 11.3% | 16.5% | **19.3%** | 20% |
+
+The "before retune" column is worth keeping: it shows that simply adding this task's
+content, at the OLD 12/18 targets, would have made Craft and Structure's over-
+representation *worse* (46.2% → 51.2%), not better — Text Structure and Purpose and
+Cross-Text Connections are both Craft and Structure, and outnumber the one new Information-
+and-Ideas addition (Command of Evidence Quantitative) within the passage pool. Retuning the
+targets, not just adding content, is what actually closed the gap. Final result: Expression
+of Ideas and Standard English Conventions both land within striking distance of their real
+26%/20% weights for the first time, Information and Ideas is close behind, and Craft and
+Structure — still the furthest from its real weight — is structurally guaranteed to
+over-represent for as long as vocabulary (100% Craft and Structure by design) is a sizable
+share of the test, which is the accepted, explained tradeoff from keeping this fundamentally
+a vocabulary app's practice mode (see `lib/practiceTest.js` for the full reasoning on why a
+target hitting exact parity was rejected).
+
+**7. Verification.** Full regression suite re-run clean after every content and target
+change: `validate:passages` (333/333, including new checks for the two new question types'
+chart shape and quote/word-count rules), `validate:grammar` (389/389), plus the
+scratchpad's `grammar_logic_test.mjs`, `passage_logic_test.mjs` (both extended with cross-
+text coverage), `practice_test_logic_test.mjs` (also extended for cross-text-aware pool
+exhaustion), and `tonight_simulation.mjs` — all passing. `rm -rf .next && npm run build`
+clean, twice (once before the unlock-page fix, once after). Every one of the four new
+question types was verified with real attempts in the live UI, both on its own dedicated
+page/route AND inside an actual practice-test run (module 1 of a real attempt was scanned
+question-by-question specifically to confirm Rhetorical Synthesis's notes/goal block,
+Cross-Text Connections' two-passage card, and Command of Evidence Quantitative's table all
+render correctly there, not just on their standalone pages — this is exactly how the two
+`practiceTest.js` pass-through bugs above were caught, before a learner ever could). No
+console errors at any point. Verified at true mobile width (375px) as well as desktop for
+both new chart types, specifically because narrow-width chart legibility was the stated
+risk for that part.
+
 ## Content rules — these matter a lot, please follow them exactly
 
 1. **Categories are organized per course's own logic — don't mix them.**
@@ -1405,12 +1583,15 @@ SAT Vocab category also has a 4th, optional **Expert** level. GRE Vocab's catego
 smaller (10/10/8) — see its entry below for why.
 
 **SAT Vocab** (`sat-vocab`, `lib/wordbanks.js` + `lib/satExpertTier.js`) — 249 words (204
-in the three original tiers + 45 Expert), plus 11 reading passages
-(`lib/satPassages.js`, 29 questions — since 2026-09-24 including `command-of-evidence`),
-4 strategy guides (`lib/satStrategy.js`), and 45 grammar questions across 3 categories
+in the three original tiers + 45 Expert), plus 16 reading passages (`lib/satPassages.js`,
+46 questions — `central-idea`/`inference`/`words-in-context` from the start,
+`command-of-evidence` since 2026-09-24, `text-structure-purpose` and
+`command-of-evidence-quantitative` since 2026-09-27), 4 cross-text pairs
+(`lib/satCrossText.js`, added 2026-09-27, listed inside the same "Passages" tab), 4
+strategy guides (`lib/satStrategy.js`), and 60 grammar questions across 4 categories
 (`lib/satGrammar.js`: Boundaries, free — 15 questions; Form, Structure, and Sense, paid —
-15 questions; Transitions, paid, added 2026-09-24 — 15 questions), shown together in the
-"Grammar & Usage" tab:
+15 questions; Transitions, paid, added 2026-09-24 — 15 questions; Rhetorical Synthesis,
+paid, added 2026-09-27 — 15 questions), shown together in the "Grammar & Usage" tab:
 - ✅ `agreement-support` (free)
 - ✅ `disagreement-refutation`
 - ✅ `degree-intensity`
@@ -1477,6 +1658,11 @@ app/
                          each category's own "still learning" card); for a
                          course with passages/guides, tabs above it
   passages/[passageId]/   One reading passage + its questions (SAT Vocab)
+  cross-text/[pairId]/    Two related passages, stacked, + one or more
+                         questions about how they relate (SAT Vocab, added
+                         2026-09-27) — nearly identical to passages/
+                         [passageId]/ otherwise; see "The last four SAT
+                         domains"
   grammar/[levelId]/      One grammar level's questions (SAT Vocab) — same
                          multi-question flow as sets/[setId]/quiz, full-
                          sentence options rendered like passages'
@@ -1521,6 +1707,19 @@ components/
                          levels completed" line (home cards + course page)
   PassageList.js          The Passages tab: cards, free/locked state, results,
                          "N of M passages completed"
+  CrossTextList.js        A second block inside the same Passages tab, below
+                         PassageList — Cross-Text Connections pairs, added
+                         2026-09-27, mirroring PassageList's card layout and
+                         gating exactly (same progress store)
+  PassageCard.js          The passage title/subject/text card, extracted
+                         2026-09-27 from passages/[passageId]/ so cross-text/
+                         [pairId]/ can render two of them without duplicating
+                         markup; also exports PassageText (the ______-blank
+                         renderer)
+  PassageChart.js         The table/bar-chart renderer for a command-of-
+                         evidence-quantitative question (added 2026-09-27) —
+                         plain HTML table or hand-rolled inline-SVG bars, no
+                         charting library; dispatches on chart.kind
   GrammarList.js          The Grammar tab: categories and levels, quiz-only
                          (no study mode), locked-category card with price
   StrategyList.js         The Strategy tab: one card per guide
@@ -1583,21 +1782,29 @@ lib/
                          the dynamic study sets and getSetCategoryId() for
                          paywall gating
   satExpertTier.js        SAT Vocab's Expert level for each category (optional)
-  satPassages.js          SAT reading passages (original writing), incl.
-                         command-of-evidence questions since 2026-09-24
+  satPassages.js          SAT reading passages (original writing): incl.
+                         command-of-evidence questions since 2026-09-24, and
+                         text-structure-purpose + command-of-evidence-
+                         quantitative (the latter carrying `chart` data)
+                         since 2026-09-27
+  satCrossText.js         Cross-Text Connections pairs (added 2026-09-27) — a
+                         different shape from satPassages.js (two texts, not
+                         one), gated and tracked the same way regardless
   satStrategy.js          SAT test-day strategy guides + guideReadingMinutes()
   satGrammar.js           SAT Grammar & Usage tab — Boundaries + Form,
                          Structure, and Sense (Standard English Conventions)
-                         plus Transitions (Expression of Ideas, added
-                         2026-09-24), each with its own 3-tier levels (a
-                         separate tree from `categories`, not vocabulary
-                         levels)
+                         plus Transitions (added 2026-09-24) and Rhetorical
+                         Synthesis (added 2026-09-27, carries `notes`/`goal`)
+                         (Expression of Ideas), each with its own 3-tier
+                         levels (a separate tree from `categories`, not
+                         vocabulary levels)
   satDomains.js           Reference only, not imported at runtime: the real
                          Digital SAT R&W's 4 official domains + weights,
                          verified against the College Board's own spec — see
                          "SAT domain accuracy audit"
   passageProgress.js      Per-passage results (voco_passages_v1) — separate
-                         from vocabulary progress
+                         from vocabulary progress; since 2026-09-27, also
+                         used as-is for Cross-Text Connections pairs
   grammarProgress.js      Per-grammar-level results (voco_grammar_v1) —
                          separate from vocabulary progress, mirrors
                          passageProgress.js
@@ -1618,8 +1825,10 @@ lib/
                          "Paid unlock" above
 scripts/
   validate-passages.mjs   `npm run validate:passages` — structural checks on
-                         lib/satPassages.js, incl. the positional-language
-                         check; does not replace the manual close read
+                         lib/satPassages.js AND lib/satCrossText.js (added
+                         2026-09-27), incl. the positional-language check and
+                         (since 2026-09-24) verbatim-quote and chart-shape
+                         checks; does not replace the manual close read
   validate-grammar.mjs    `npm run validate:grammar` — the same, for
                          lib/satGrammar.js (built 2026-09-22)
 ```

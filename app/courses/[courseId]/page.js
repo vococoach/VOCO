@@ -7,6 +7,7 @@ import { ArrowLeft } from "lucide-react";
 import CategoryList from "@/components/CategoryList";
 import CourseProgress from "@/components/CourseProgress";
 import PassageList from "@/components/PassageList";
+import CrossTextList from "@/components/CrossTextList";
 import GrammarList from "@/components/GrammarList";
 import PracticeTestTab from "@/components/PracticeTestTab";
 import StrategyList from "@/components/StrategyList";
@@ -126,7 +127,10 @@ export default function CoursePage() {
               </>
             )}
             {section === "passages" && (
-              <PassageList passages={course.passages} records={passageRecords} subscribed={subscribed} ready={ready} />
+              <>
+                <PassageList passages={course.passages} records={passageRecords} subscribed={subscribed} ready={ready} />
+                <CrossTextList pairs={course.crossTextPairs} records={passageRecords} subscribed={subscribed} ready={ready} />
+              </>
             )}
             {section === "grammar" && (
               <GrammarList categories={course.grammar} records={grammarRecords} subscribed={subscribed} ready={ready} />

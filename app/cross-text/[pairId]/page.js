@@ -4,17 +4,16 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Check, X, ArrowLeft } from "lucide-react";
-import { findPassage } from "@/lib/wordbanks";
+import { findCrossTextPair } from "@/lib/wordbanks";
 import { isPassageLocked, isSubscribedCached, shouldRefreshStatus, refreshSubscriptionStatus } from "@/lib/purchase";
 import { recordPassageResult } from "@/lib/passageProgress";
 import { getActivityTheme, NIGHT } from "@/lib/timeTheme";
 import QuizResults from "@/components/QuizResults";
 import PassageCard from "@/components/PassageCard";
-import PassageChart from "@/components/PassageChart";
 
 // Options are listed correct-first in the data (correctIndex: 0); shuffle the
 // display order on the client only, after mount, so the server and first client
-// render match — same approach as the vocabulary quizzes.
+// render match — same approach as every other quiz on the site.
 function shuffledIndices(count) {
   const order = Array.from({ length: count }, (_, i) => i);
   for (let i = order.length - 1; i > 0; i--) {
@@ -24,19 +23,20 @@ function shuffledIndices(count) {
   return order;
 }
 
-// One reading passage followed by one or more questions (lib/satPassages.js).
-// A command-of-evidence-quantitative question also carries `chart` (a table
-// or a small inline-SVG bar chart — components/PassageChart.js), rendered
-// above that question's prompt; every other question type leaves `chart`
-// undefined and renders exactly as before. Results are stored on their own
-// (lib/passageProgress.js) — passages never touch spaced repetition, streaks
-// or milestones. The first passage is free; the rest need the subscription,
-// enforced here the same way /sets/[setId] enforces it.
-export default function PassagePage() {
+// A Cross-Text Connections pair (lib/satCrossText.js): two related passages,
+// both shown at once, stacked, followed by one or more questions about how
+// they relate. Nearly identical to /passages/[passageId] — same option/
+// feedback mechanic, same PassageCard component (now shared, twice) — the
+// only real difference is two texts instead of one. Results are stored in
+// the SAME store as single passages (lib/passageProgress.js), since a pair
+// id is just another id in that store; gating reuses isPassageLocked() the
+// same way. Never gets its own free sample — the existing free passage
+// already samples this tab.
+export default function CrossTextPage() {
   const params = useParams();
   const router = useRouter();
-  const found = findPassage(params.passageId);
-  const passage = found ? found.passage : null;
+  const found = findCrossTextPair(params.pairId);
+  const pair = found ? found.pair : null;
   const course = found ? found.course : null;
   const [subscribed, setSubscribed] = useState(null); // null = not checked yet
   const [step, setStep] = useState(0);
@@ -50,7 +50,7 @@ export default function PassagePage() {
   useEffect(() => {
     // Cached status first (no loading flash), then re-verified with Stripe at
     // most once a day — if that comes back different (a cancellation), `locked`
-    // flips and the learner is sent to /unlock even mid-passage.
+    // flips and the learner is sent to /unlock even mid-pair.
     setSubscribed(isSubscribedCached());
     if (shouldRefreshStatus()) refreshSubscriptionStatus().then(setSubscribed);
     setTheme(getActivityTheme(new Date()));
@@ -60,18 +60,18 @@ export default function PassagePage() {
     setOrder(shuffledIndices(4));
   }, [step]);
 
-  const locked = subscribed !== null && passage !== null && isPassageLocked(passage.id, subscribed);
+  const locked = subscribed !== null && pair !== null && isPassageLocked(pair.id, subscribed);
   useEffect(() => {
     if (locked) router.replace("/unlock");
   }, [locked, router]);
 
   if (subscribed === null || locked) return null;
 
-  if (!passage) {
+  if (!pair) {
     return (
       <main className={`min-h-dvh ${theme.page} flex items-center justify-center px-4`}>
         <div className="text-center">
-          <p className="mb-4" style={{ color: theme.text }}>That passage doesn't exist.</p>
+          <p className="mb-4" style={{ color: theme.text }}>That pair doesn't exist.</p>
           <Link href="/" className="text-sm" style={{ color: theme.accent }}>
             Back home
           </Link>
@@ -81,8 +81,8 @@ export default function PassagePage() {
   }
 
   const backHref = `/courses/${course.id}?section=passages`;
-  const total = passage.questions.length;
-  const q = passage.questions[step];
+  const total = pair.questions.length;
+  const q = pair.questions[step];
 
   function answer(idx) {
     if (selected !== null) return;
@@ -95,7 +95,7 @@ export default function PassagePage() {
       setStep(step + 1);
       setSelected(null);
     } else {
-      recordPassageResult(passage.id, score, total);
+      recordPassageResult(pair.id, score, total);
       setDone(true);
     }
   }
@@ -107,6 +107,8 @@ export default function PassagePage() {
     setDone(false);
   }
 
+  const pairTitle = `${pair.passageA.title} & ${pair.passageB.title}`;
+
   return (
     <main className={`min-h-dvh ${theme.page} px-4 py-8`}>
       <div className="max-w-md mx-auto">
@@ -114,7 +116,15 @@ export default function PassagePage() {
           <ArrowLeft size={14} /> Back
         </Link>
 
-        <PassageCard title={passage.title} subject={passage.subject} text={passage.text} theme={theme} titleTag="h1" />
+        <p className="text-xs uppercase tracking-wide mb-3" style={{ color: theme.subtext }}>
+          Text 1
+        </p>
+        <PassageCard title={pair.passageA.title} subject={pair.passageA.subject} text={pair.passageA.text} theme={theme} />
+
+        <p className="text-xs uppercase tracking-wide mb-3" style={{ color: theme.subtext }}>
+          Text 2
+        </p>
+        <PassageCard title={pair.passageB.title} subject={pair.passageB.subject} text={pair.passageB.text} theme={theme} />
 
         {!done ? (
           <div>
@@ -123,7 +133,6 @@ export default function PassagePage() {
             </p>
 
             <div className="rounded-2xl p-6 mb-5" style={{ backgroundColor: theme.card }}>
-              <PassageChart chart={q.chart} theme={theme} />
               <p className="font-display text-lg mb-4 leading-relaxed" style={{ color: theme.text }}>{q.prompt}</p>
               <div className="space-y-2">
                 {order.map((idx) => {
@@ -170,15 +179,15 @@ export default function PassagePage() {
               copy={{
                 perfect: {
                   headline: "Every question right.",
-                  note: `${passage.title}. Careful reading paid off.`,
+                  note: `${pairTitle}. Careful reading paid off.`,
                 },
                 good: {
                   headline: "Most of it landed.",
-                  note: [`${passage.title}.`, "Read it once more and see which choice slipped."],
+                  note: [`${pairTitle}.`, "Read both passages once more and see which choice slipped."],
                 },
                 watch: {
                   headline: "Worth another read.",
-                  note: "Passage questions reward slow, careful reading. Read it again and see what the text actually supports.",
+                  note: "Connecting two texts rewards slow, careful reading. Read them again and see how they actually relate.",
                 },
               }}
             >
@@ -188,7 +197,7 @@ export default function PassagePage() {
                   className="flex-1 text-sm rounded-xl px-3 py-2 border"
                   style={{ borderColor: `${theme.text}33`, color: theme.text }}
                 >
-                  Read it again
+                  Read again
                 </button>
                 <Link
                   href={backHref}

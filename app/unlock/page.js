@@ -75,10 +75,15 @@ export default function UnlockPage() {
       course,
       categories: course.categories.filter((c) => !isFreeCategory(c.id)),
       passages: (course.passages || []).filter((p) => isPassageLocked(p.id, false)),
+      crossTextPairs: (course.crossTextPairs || []).filter((p) => isPassageLocked(p.id, false)),
       grammar: (course.grammar || []).filter((g) => isGrammarCategoryLocked(g.id, false)),
     }))
-    .filter((group) => group.categories.length > 0 || group.passages.length > 0 || group.grammar.length > 0);
+    .filter(
+      (group) =>
+        group.categories.length > 0 || group.passages.length > 0 || group.crossTextPairs.length > 0 || group.grammar.length > 0
+    );
   const lockedPassageCount = lockedByCourse.reduce((sum, group) => sum + group.passages.length, 0);
+  const lockedCrossTextCount = lockedByCourse.reduce((sum, group) => sum + group.crossTextPairs.length, 0);
   const lockedGrammarQuestionCount = lockedByCourse.reduce(
     (sum, group) =>
       sum + group.grammar.reduce((s, g) => s + g.levels.reduce((s2, l) => s2 + l.questions.length, 0), 0),
@@ -174,15 +179,16 @@ export default function UnlockPage() {
                 with a {TRIAL_LABEL}, then {PRICE_LABEL}.
                 {lockedPassageCount > 0 &&
                   ` That includes ${lockedPassageCount} reading passages beyond the free one`}
+                {lockedCrossTextCount > 0 && `, ${lockedCrossTextCount} cross-text pairs`}
                 {lockedGrammarQuestionCount > 0 && ` and ${lockedGrammarQuestionCount} grammar questions`}
-                {(lockedPassageCount > 0 || lockedGrammarQuestionCount > 0) &&
+                {(lockedPassageCount > 0 || lockedCrossTextCount > 0 || lockedGrammarQuestionCount > 0) &&
                   "; the strategy guides are free for everyone."}
               </p>
             </div>
 
             <div className="bg-[#20223F] rounded-2xl p-4 mb-6 space-y-3">
               <p className="text-xs text-[#9B97C4]">One subscription unlocks all of these:</p>
-              {lockedByCourse.map(({ course, categories: locked, passages, grammar }) => (
+              {lockedByCourse.map(({ course, categories: locked, passages, crossTextPairs, grammar }) => (
                 <div key={course.id} className="space-y-2">
                   <p className="text-xs uppercase tracking-wide text-[#8B85FF]">{course.title}</p>
                   {locked.map((c) => (
@@ -195,6 +201,12 @@ export default function UnlockPage() {
                     <div className="flex items-center gap-2 text-sm text-[#EDEBFF]">
                       <Lock size={14} color="#6E699B" />
                       Reading passages ({passages.length})
+                    </div>
+                  )}
+                  {crossTextPairs.length > 0 && (
+                    <div className="flex items-center gap-2 text-sm text-[#EDEBFF]">
+                      <Lock size={14} color="#6E699B" />
+                      Cross-text pairs ({crossTextPairs.length})
                     </div>
                   )}
                   {grammar.map((g) => (

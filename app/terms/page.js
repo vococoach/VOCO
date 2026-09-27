@@ -18,7 +18,7 @@ export default function TermsPage() {
           <span className="font-display text-lg text-[#EDEBFF]">Voco</span>
         </div>
         <h1 className="font-display text-2xl text-[#EDEBFF] mb-1">Terms of Service</h1>
-        <p className="text-xs text-[#6E699B] mb-8">Last updated September 24, 2026</p>
+        <p className="text-xs text-[#6E699B] mb-8">Last updated September 27, 2026</p>
 
         <div className="space-y-6 text-sm text-[#9B97C4] leading-relaxed">
           <section>
@@ -56,10 +56,10 @@ export default function TermsPage() {
               the SAT Vocab strategy guides are also free.
             </p>
             <p className="mb-2">
-              Every other category, in every course, the remaining SAT Vocab reading passages, and
-              the Form, Structure, and Sense and Transitions categories in SAT Vocab require an
-              active subscription: $1.99/month, with a 7-day free trial for new subscribers. One
-              subscription unlocks all of them.
+              Every other category, in every course, the remaining SAT Vocab reading passages and
+              cross-text pairs, and the Form, Structure, and Sense, Transitions, and Rhetorical
+              Synthesis categories in SAT Vocab require an active subscription: $1.99/month, with
+              a 7-day free trial for new subscribers. One subscription unlocks all of them.
             </p>
             <p className="mb-2">
               Subscriptions are billed and processed entirely by Stripe, our payment processor. We

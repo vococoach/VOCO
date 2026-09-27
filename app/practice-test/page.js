@@ -16,6 +16,7 @@ import {
 } from "@/lib/practiceTest";
 import { recordPracticeTestAttempt, getUsedQuestionIds } from "@/lib/practiceTestProgress";
 import QuizResults from "@/components/QuizResults";
+import PassageChart from "@/components/PassageChart";
 
 // Timed, simulated Reading & Writing practice test — see lib/practiceTest.js
 // for the question-selection algorithm and format source. This page owns the
@@ -410,6 +411,32 @@ function ModuleScreen({
             {question.passageText.map((para, i) => (
               <PassageParagraph key={i} paragraph={para} theme={theme} />
             ))}
+          </div>
+        )}
+        {question.poolType === "passage" && question.passageText2 && (
+          <div className="rounded-xl p-4 mb-4" style={{ backgroundColor: theme.isDawn ? "#FFFFFF" : "#14152B" }}>
+            <p className="text-[10px] uppercase tracking-wide mb-1" style={{ color: theme.subtext }}>{question.passageSubject2}</p>
+            <p className="font-display text-base mb-2" style={{ color: theme.text }}>{question.passageTitle2}</p>
+            {question.passageText2.map((para, i) => (
+              <PassageParagraph key={i} paragraph={para} theme={theme} />
+            ))}
+          </div>
+        )}
+        {question.poolType === "passage" && question.chart && (
+          <PassageChart chart={question.chart} theme={theme} />
+        )}
+
+        {question.poolType === "grammar" && question.notes && (
+          <div className="mb-4">
+            <ul className="text-sm space-y-1 mb-3" style={{ color: theme.text }}>
+              {question.notes.map((note, i) => (
+                <li key={i} className="flex gap-2">
+                  <span aria-hidden="true" style={{ color: theme.subtext }}>&bull;</span>
+                  <span>{note}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-sm font-medium leading-relaxed mb-2" style={{ color: theme.text }}>{question.goal}</p>
           </div>
         )}
 
