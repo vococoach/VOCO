@@ -11,7 +11,8 @@
     "validate:grammar": "node scripts/validate-grammar.mjs",
     "test:first-visit": "node --no-warnings --import ./scripts/register-loader.mjs scripts/test-first-visit.mjs",
     "test:access": "node --no-warnings --import ./scripts/register-loader.mjs scripts/test-access.mjs",
-    "test": "npm run validate:passages && npm run validate:grammar && npm run test:first-visit && npm run test:access"
+    "test:stripe": "node --no-warnings --import ./scripts/register-loader.mjs scripts/test-stripe-routes.mjs",
+    "test": "npm run validate:passages && npm run validate:grammar && npm run test:first-visit && npm run test:access && npm run test:stripe"
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",

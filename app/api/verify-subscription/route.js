@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import Stripe from "stripe";
+import { getStripe, readJsonObject, isCheckoutSessionId, classifyStripeError } from "@/lib/stripeServer";
 
 // Must match the recurring Payment Link configured in the Stripe
 // Dashboard for the subscription unlock (see lib/purchase.js
@@ -7,16 +7,21 @@ import Stripe from "stripe";
 // paid Checkout Session from some other product.
 const EXPECTED_PAYMENT_LINK_ID = "plink_1UIAT8HSW53IY9shBH3iARzX";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
 export async function POST(request) {
-  const { sessionId } = await request.json();
-  if (!sessionId) {
-    return NextResponse.json({ error: "Missing sessionId" }, { status: 400 });
+  const body = await readJsonObject(request);
+  if (!body || !isCheckoutSessionId(body.sessionId)) {
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+  }
+
+  let stripe;
+  try {
+    stripe = getStripe();
+  } catch (e) {
+    return NextResponse.json({ error: "Could not verify subscription" }, { status: 503 });
   }
 
   try {
-    const session = await stripe.checkout.sessions.retrieve(sessionId, {
+    const session = await stripe.checkout.sessions.retrieve(body.sessionId, {
       expand: ["subscription"],
     });
 
@@ -35,6 +40,7 @@ export async function POST(request) {
       status,
     });
   } catch (e) {
-    return NextResponse.json({ error: "Could not verify subscription" }, { status: 400 });
+    const status = classifyStripeError(e) === "missing" ? 400 : 502;
+    return NextResponse.json({ error: "Could not verify subscription" }, { status });
   }
 }

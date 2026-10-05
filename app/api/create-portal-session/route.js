@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import Stripe from "stripe";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+import { getStripe, readJsonObject, isCustomerId, classifyStripeError } from "@/lib/stripeServer";
 
 // Given a Stripe customer id (cached client-side from a past verified
 // checkout), creates a Stripe-hosted Billing Portal session for that
@@ -10,18 +8,26 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 // request's own origin for the return link rather than a hardcoded
 // domain, so this works identically on localhost and in production.
 export async function POST(request) {
-  const { customerId } = await request.json();
-  if (!customerId) {
-    return NextResponse.json({ error: "Missing customerId" }, { status: 400 });
+  const body = await readJsonObject(request);
+  if (!body || !isCustomerId(body.customerId)) {
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+  }
+
+  let stripe;
+  try {
+    stripe = getStripe();
+  } catch (e) {
+    return NextResponse.json({ error: "Could not open subscription management" }, { status: 503 });
   }
 
   try {
     const session = await stripe.billingPortal.sessions.create({
-      customer: customerId,
+      customer: body.customerId,
       return_url: request.nextUrl.origin + "/",
     });
     return NextResponse.json({ url: session.url });
   } catch (e) {
-    return NextResponse.json({ error: "Could not open subscription management" }, { status: 400 });
+    const status = classifyStripeError(e) === "missing" ? 400 : 502;
+    return NextResponse.json({ error: "Could not open subscription management" }, { status });
   }
 }
