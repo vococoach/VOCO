@@ -54,14 +54,24 @@ re-litigated or silently changed.
     the fresh answer disagrees (e.g. cancelled), the page re-renders
     locked and, on `/sets/[setId]/study` or `/quiz`, redirects to
     `/unlock` immediately — even mid-session.
-  - **Fail open on errors, fail closed on a real answer.** If Stripe
-    genuinely reports no active subscription, that's a confirmed
-    revocation — access locks. If the *check itself* fails (network
-    hiccup, Stripe outage, bad key), the API route returns a non-2xx
-    status and the client explicitly keeps the last known status instead
-    of caching a false "inactive" — a transient failure should never look
-    like a cancellation. Don't collapse this distinction when touching
-    `refreshSubscriptionStatus()` or `/api/subscription-status`.
+  - **Fail open on errors, fail closed on a real answer (tightened 2026-10-05).**
+    `/api/subscription-status` returns one of two kinds of "no". *Definitive* —
+    Stripe answered: no active subscription, canceled, or **no such customer**
+    (a made-up id, a deleted customer, or an id from the other Stripe mode; Stripe
+    reports all three as `resource_missing`) → `200 {status:"inactive"}`, and the
+    client locks. *No answer* — outage, timeout, rate limit, a bad or missing API
+    key, anything unrecognised → 502/503, and the client keeps the last known
+    status. Client side, `refreshSubscriptionStatus()` revokes on a 200 "inactive"
+    and on any 4xx other than 408/429, and fails open only on a network error, its
+    own 10 s timeout, 5xx, 408 or 429. Why: before, *every* Stripe error was a 502
+    and fail-open, so a forged customer id plus a forged cached "active" kept paid
+    pages open forever — the daily check could never say "no". A bad API key must
+    still fail open (our misconfiguration is not a cancellation), which is why only
+    `resource_missing` counts as definitive. Don't collapse either distinction.
+    The routes are unauthenticated and accept any well-formed customer id (no accounts
+    by design), so they will confirm whether an id is subscribed to anyone who sends
+    it; ids are unguessable, but that is the limit of the protection. Bodies are
+    validated (`400 {"error":"Invalid request"}`) and Stripe error text is never echoed.
   - **Still per-device, not a real account.** No accounts/database, per
     the point above — `voco_customer_id_v1` and
     `voco_subscription_status_v1` don't sync across browsers or survive a
@@ -1988,6 +1998,9 @@ lib/
                          Leitner-system spaced repetition tracker
                          (REVIEW_SESSION_CAP lives here; PASSAGES_KEY,
                          GRAMMAR_KEY, PRACTICE_TESTS_KEY too)
+  stripeServer.js         Server-only helpers for the three Stripe routes: lazy
+                         client (so the build needs no key), body validation,
+                         definitive-vs-transient classification, checkSubscription()
   purchase.js              Subscription constants (incl. the free category,
                          free passage, and free grammar category in each
                          course) + localStorage helpers (voco_customer_id_v1,
@@ -2008,6 +2021,10 @@ scripts/
   test-access.mjs         `npm run test:access` — the free set tier by tier,
                          seeded-progress filtering, suggestions, samples,
                          route wiring, rendered Terms/Privacy (added 2026-10-05)
+  test-stripe-routes.mjs  `npm run test:stripe` — the three Stripe routes and the
+                         client's fail-open/fail-closed reaction, against a MOCKED
+                         Stripe (never proves live Stripe behavior; the real check
+                         is a subscribe test on a deploy)
   loader-hooks.mjs / register-loader.mjs  Let plain Node import the app's own
                          extensionless/"@/" modules for those two scripts
                          (`npm test` runs all four scripts)
