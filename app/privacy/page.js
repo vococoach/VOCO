@@ -38,7 +38,7 @@ export default function PrivacyPage() {
               There's no sign-up, login, or user profile. We don't collect your name, email, or
               any personal information just to use the free content. Your study progress — which
               words you've studied, quiz scores, reading-passage results, grammar quiz results,
-              streaks, and spaced-repetition scheduling — is stored only in your browser's local
+              practice-test results, streaks, and spaced-repetition scheduling — is stored only in your browser's local
               storage (
               <code>localStorage</code>) on your device. We have no access to it, no copy of it, and
               no way to see it.
@@ -46,9 +46,9 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-[#EDEBFF] font-medium mb-2">3. Subscribing (Paid Categories)</h2>
+            <h2 className="text-[#EDEBFF] font-medium mb-2">3. Subscribing</h2>
             <p className="mb-2">
-              If you subscribe to unlock the paid categories, checkout is handled entirely by
+              If you subscribe to unlock the paid content, checkout is handled entirely by
               Stripe, our payment processor. Stripe collects your email and payment details
               directly — we never see or store your card number.
             </p>
@@ -107,7 +107,8 @@ export default function PrivacyPage() {
               learners are students, many of whom are minors. Because we don't collect personal information for the free content, there's
               nothing for us to knowingly collect from children under 13. Subscribing requires a
               payment method, which Stripe's own terms require the account holder to be able to
-              legally provide.
+              legally provide, and our Terms ask anyone under 18 to have a parent or guardian
+              subscribe for them.
             </p>
           </section>
 

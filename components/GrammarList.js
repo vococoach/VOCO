@@ -43,6 +43,13 @@ export default function GrammarList({ categories, records, subscribed, ready }) 
                   </span>
                   <span className="block text-[10px] text-[#6E699B] mt-0.5">{TRIAL_LABEL}</span>
                 </Link>
+                {/* One real sample question — shows the format before paying (app/preview). */}
+                <Link
+                  href={`/preview/${category.id}`}
+                  className="mt-3 inline-flex items-center min-h-[40px] rounded-xl px-3.5 text-xs font-medium text-[#8B85FF] border border-[#8B85FF66]"
+                >
+                  Try a sample question
+                </Link>
               </div>
             ) : (
               <div className="space-y-2">

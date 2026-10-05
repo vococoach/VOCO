@@ -5,11 +5,14 @@ import { Lock, Target } from "lucide-react";
 import { getScoreTier, TIERS } from "@/lib/scoreTier";
 import { TIER_ICONS } from "@/components/QuizResults";
 import { missedWordsId } from "@/lib/wordbanks";
-import { isCategoryLocked, PRICE_LABEL, TRIAL_LABEL } from "@/lib/purchase";
+import { isCategoryLocked, isLevelLocked, PRICE_LABEL, TRIAL_LABEL } from "@/lib/purchase";
 
 // One course's categories, each with its levels (or the locked card with a
 // sample-question link), and a "still learning" drill when the learner has
-// missed words in it. This is the category list the home screen used to render
+// missed words in it. A course's free category is open only at its Foundational
+// and Intermediate tiers: its other tiers show as locked cards of their own,
+// each with its own price and sample-question link (lib/purchase.js has the one
+// definition of what's free). This is the category list the home screen used to render
 // directly, now shown on a course's page (app/courses/[courseId]/page.js).
 //
 // `ready` is false until the page has read localStorage — locked/unlocked
@@ -19,6 +22,8 @@ export default function CategoryList({ categories, progress, struggleCounts, sub
     <div className="space-y-7">
       {categories.map((category) => {
         const struggleCount = struggleCounts[category.id] || 0;
+        // The whole category is behind the subscription (every category but
+        // each course's free one)…
         const locked = ready && isCategoryLocked(category.id, subscribed);
 
         return (
@@ -53,6 +58,32 @@ export default function CategoryList({ categories, progress, struggleCounts, sub
             ) : (
               <div className="space-y-2">
                 {category.levels.map((level) => {
+                  // …or just this tier of a free category.
+                  if (ready && isLevelLocked(category.id, level.level, subscribed)) {
+                    return (
+                      <div key={level.id} className="rounded-2xl p-4 bg-[#20223F] border border-[#ffffff1a]">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="flex items-center gap-2 text-sm font-medium text-[#9B97C4]">
+                            <Lock size={14} />
+                            {level.label}
+                          </span>
+                          <span className="text-xs text-[#6E699B]">{level.words.length} words</span>
+                        </div>
+                        <Link href="/unlock" className="block">
+                          <span className="block text-xs font-medium text-[#8B85FF] mt-2">
+                            {PRICE_LABEL} for full access to every course
+                          </span>
+                          <span className="block text-[10px] text-[#6E699B] mt-0.5">{TRIAL_LABEL}</span>
+                        </Link>
+                        <Link
+                          href={`/preview/${level.id}`}
+                          className="mt-3 inline-flex items-center min-h-[40px] rounded-xl px-3.5 text-xs font-medium text-[#8B85FF] border border-[#8B85FF66]"
+                        >
+                          Try a sample question
+                        </Link>
+                      </div>
+                    );
+                  }
                   const p = progress[level.id] || {};
                   const studied = Boolean(p.studiedAt);
                   const quizzed = Boolean(p.lastQuizAt);

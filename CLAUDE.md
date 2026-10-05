@@ -17,10 +17,11 @@ re-litigated or silently changed.
   scope decision, not an oversight — don't add auth/Supabase/a database
   without discussing it first.
 - **Paid unlock via a Stripe subscription — still no accounts or database.**
-  One category in each course is free forever (`FREE_CATEGORY_BY_COURSE` in
-  `lib/purchase.js`: Agreement & Support in SAT Vocab, Precise Description in
-  Everyday Vocabulary, Meetings & Negotiation in Professional Vocabulary); every
-  other category, in every course, requires an
+  Each course has one free category, and only that category's **Foundational and
+  Intermediate** tiers are free (the free set was narrowed on 2026-10-05 — see
+  "The free set" below, which is the one place to read what's free; the
+  definition itself lives once, at the top of `lib/purchase.js`). Everything
+  else, in every course, requires an
   active or trialing subscription (`PRICE_LABEL` = "$1.99/month",
   `TRIAL_LABEL` = "7-day free trial", both in `lib/purchase.js`, backed by
   a recurring Payment Link in the Stripe Dashboard). This is deliberately
@@ -88,18 +89,39 @@ re-litigated or silently changed.
     with spaced repetition review" — deliberately no hardcoded counts, which
     would drift as the word bank grows) are separate surfaces; keep them
     consistent too.
-  - **The actual gate.** `getSetCategoryId(setId)` (`lib/wordbanks.js`)
-    resolves any setId (real level, per-category "still learning" id, or
-    `null` for `DUE_FOR_REVIEW_ID`) back to its category, and both
-    `/sets/[setId]/study` and `/sets/[setId]/quiz` use it plus
-    `isCategoryLocked(categoryId, subscribed)` to redirect to `/unlock` if
-    that category isn't free and the (cached, then reconciled) subscribed
-    state says no — this is the real enforcement; the home screen's lock
-    icon + price on locked category cards is just UI on top of it.
-    `/review` and the due-for-review study course are deliberately left
-    ungated: they only ever surface words the learner already studied
-    once, which means that word's category was unlocked at the time, so
-    there's nothing new to gate there.
+  - **The actual gate — by tier, not by category (changed 2026-10-05).**
+    `isLevelLocked(categoryId, levelNumber, subscribed)` (`lib/purchase.js`) is
+    the one rule: a level is open if the learner is subscribed, or if it is
+    tier 1 or 2 of a free category. `/sets/[setId]/study` and `/quiz` look the
+    level up with `findLevel()` and redirect to `/unlock` when it is locked,
+    rendering nothing meanwhile (they return `null` until the cached-then-
+    reconciled subscription state is known); a missed-words id is gated as a
+    whole when its category is entirely paid, and otherwise by which of its
+    *words* are open (see below). `isCategoryLocked()` now means only "this
+    whole category is paid" (it is what picks the locked card over the level
+    list on a course page); a free category is never "locked" at that level —
+    two of its tiers are, and the course page shows each as its own locked card.
+    This is the real enforcement; lock icons and prices are UI on top of it.
+  - **Saved progress outlives the rules, so every list built from it is
+    filtered** (`lib/access.js`; reversing the earlier "`/review` is left
+    ungated" decision, whose premise — a word was studied, so its category was
+    open then — stopped being true once the free set shrank, and was already
+    false for lapsed subscribers). `/review`, the due-for-review study set, the
+    per-category Missed Words sets, the home screen's due count and "still
+    learning" rows, and their counts all go through `accessibleWordIds()` /
+    `getAccessibleDueWordIds()`, which drop words from locked tiers
+    **before** the 20-word cap (a locked word never takes a slot). Nothing is
+    ever deleted: the records stay in `voco_word_srs_v1` and the words come
+    back the moment the learner subscribes again. Tonight's study and Last
+    night's words judge each level separately (`isLocked(categoryId, level)`),
+    skip locked tiers, and `getTonight()` walks past an in-progress category
+    whose only remaining levels are locked instead of stopping there. Milestones
+    and share cards render numbers and course/category titles, never word or
+    question content, so they needed no filtering; mastery milestones are
+    untouched and a free learner simply cannot reach one (their Advanced tier is
+    locked) — intended. `useSubscription()` now also returns `known`, so a
+    screen that builds a list from saved progress waits for the cached state
+    rather than briefly serving a subscriber the free-only list.
   - **Self-service management via Stripe's Customer Portal — and the
     "active but ending" state that comes with it.** `openBillingPortal()`
     (`lib/purchase.js`) POSTs the stored customer id to
@@ -507,21 +529,30 @@ re-litigated or silently changed.
   share can't be exercised in desktop/headless browsers — it was verified by
   stubbing `navigator.share` and checking the file, name, type and text it is
   handed; copy and download were verified for real.
-- **Try one real question in a locked category before paying**
-  (`/preview/[categoryId]`, `lib/preview.js`; a "Try a sample question" link
-  on each locked card *beside* the price, which stays and still links to
-  `/unlock`). It is one **fixed** question per locked category (in any course) — the
-  first word of the first level — in the real words-in-context format, not a
-  mockup (the page names the course it's from), and
-  deliberately **unmetered**: no login, no tracking, no limit; revisiting shows
-  the same question. It records nothing (no progress, no spaced-repetition
-  history) and grants nothing: the category stays locked and
-  `/sets/[setId]/study|quiz` still redirect to `/unlock`. After answering, a
-  "$1.99/month for full access" prompt links straight to the Stripe Payment
-  Link (plus "See what's included" → `/unlock`). Unknown ids, a course's
-  free category, and already-subscribed visitors are redirected home. (All content
-  ships in the client bundle regardless — the paywall is UI-level, per the
-  notes above — so previews reveal nothing new.)
+- **Try one real question in anything locked before paying**
+  (`/preview/[id]`, `lib/preview.js`; a "Try a sample question" link on each
+  locked card *beside* the price, which stays and still links to `/unlock`).
+  One **fixed** question per locked thing: a wholly-paid vocabulary category
+  (first word of its first level), a locked **tier** of a free category (first
+  word of that tier — Advanced everywhere, plus SAT's Expert), a Grammar &
+  Usage category (first question of its first level, with its notes/goal block
+  for Rhetorical Synthesis), a reading passage (the passage and its first
+  question, chart included), or a cross-text pair (both texts and the
+  question). Since 2026-10-05 nothing in Passages or Grammar is free, so those
+  tabs have no free taste of their own — the samples are what stand in for it.
+  All ids are unique across the library (checked by `scripts/test-access.mjs`),
+  so one route serves them all; the folder is still named `[categoryId]` from
+  when it was categories only. In the real format, not a mockup (the page names
+  the course), deliberately **unmetered**: no login, no tracking, no limit;
+  revisiting shows the same question. It records nothing and grants nothing: the
+  item stays locked and its real routes still redirect to `/unlock`. After
+  answering, "$1.99/month for full access to every course" (the existing scope
+  wording) with the start-trial button and "7 days free, then $1.99/month.
+  Cancel anytime." beside it, plus "See what's included" → `/unlock`. Unknown
+  ids, anything free, and already-subscribed visitors are redirected home. (All
+  content ships in the client bundle regardless — the paywall is UI-level, per
+  the notes above — so previews reveal nothing new.) The practice test has no
+  sample: it is a test, not a category or tier.
 - **The due-for-review card also has a Study option**, not just Review.
   `DUE_FOR_REVIEW_ID = "due-for-review"` (`lib/wordbanks.js`) special-cases
   `/sets/[setId]/study` the same way the per-category courses do, via
@@ -598,16 +629,51 @@ untouched (its array is `satVocabCoreCategories`) and the Expert level is append
 separate file — the original three tiers were proven byte-identical by hash
 (`f65f7e793d183d8a`, Expert stripped).
 
-**Entitlement: one free category per course** (a decision made when the second course
-was added, so each course can be genuinely tried before paying):
-`FREE_CATEGORY_BY_COURSE` in `lib/purchase.js` — Agreement & Support (SAT Vocab),
-Precise Description (Everyday Vocabulary), Meetings & Negotiation (Professional
-Vocabulary) and Positive Charge (GRE Vocab); each is its course's first category. Everything else, in every course, is
-one subscription. When adding a course, give it a free category there and update the
-terms free-category sentence; when adding a category, nothing else changes. A category's
-Expert tier follows the category: Agreement & Support's Expert level is free, the other
-five need the subscription (the gate is per category, so nothing extra was needed). SAT
-reading passages have their own small gate — see "SAT Vocab has three sections".
+**Entitlement: one free category per course — and, since 2026-10-05, only its first two
+tiers.** See "The free set" below for the rule and the reason. When adding a course, give
+it a free category in `FREE_CATEGORY_BY_COURSE` (`lib/purchase.js`) and the Terms
+free-set text updates itself (it is computed); when adding a category, nothing else
+changes. A free category's Advanced tier and SAT's Expert tier are locked (the gate is per
+tier, `isLevelLocked()`); the other categories are wholly paid. Passages, cross-text pairs
+and grammar have no free item at all now — see "SAT Vocab has five sections".
+
+## The free set (narrowed 2026-10-05) — decided with the owner, don't re-litigate
+
+**What a non-subscriber can open:** in each course, its one free category
+(Agreement & Support, Precise Description, Meetings & Negotiation, Positive Charge) at
+**Foundational and Intermediate only** — 8 levels, 92 words — plus the four SAT strategy
+guides. **Everything else needs an active or trialing subscription:** every Advanced tier
+(including those of the free categories), SAT's Expert tier, every other category in every
+course, every reading passage (including *The Tide Pool Census*, which used to be free),
+every cross-text pair, every Grammar & Usage category (including Boundaries, which used to
+be free), and the practice test. Subscribers see no change. The definition is written
+once, at the top of `lib/purchase.js` (`FREE_CATEGORY_BY_COURSE`, `FREE_TIER_NUMBERS`,
+and the empty `FREE_PASSAGE_BY_COURSE` / `FREE_GRAMMAR_CATEGORY_BY_COURSE` that a future
+free sample would be added to); tiers are identified by each level's own `level` number
+(1 Foundational, 2 Intermediate, 3 Advanced, 4 SAT Expert), never by parsing ids.
+
+**Why:** the old rule (one whole free category) let a learner finish a category's hardest
+tier for free, i.e. see the best of what the subscription sells. Two tiers is still a real
+taste — 24 words per course, with quizzes and spaced repetition — but leaves a clear next
+step, and the point is to push visitors toward the $1.99 trial. Free learners can no
+longer reach category mastery (it needs every required tier); that is intended and no
+milestone rule changed.
+
+**Where it's enforced** (all of it — a direct URL to anything locked redirects to
+`/unlock` without rendering the content; checked in a real browser with a recorder of
+every piece of text that ever appeared in the DOM, not just the final screen): the study
+and quiz routes by tier; `/passages`, `/cross-text`, `/grammar` and `/practice-test` by
+their own gates; the review/Missed Words/due-for-review pools and the home screen by
+`lib/access.js` (see "The actual gate"). `scripts/test-access.mjs` (`npm run test:access`)
+pins the whole definition level by level, the seeded-progress behavior (including 25
+locked + 5 free due words → a 5-word session), the suggestion logic for free and paid
+learners, that every locked category/tier/grammar category/passage/pair has a sample and
+nothing free does, and the rendered Terms/Privacy text.
+
+**Copy that follows from it, all computed from the data and this definition, never typed
+by hand:** `/unlock` (counts, free categories, free tier labels, the locked-tier list per
+course) and Terms §4 (the free and paid lists). Privacy and Terms were revised on
+2026-10-05 together — see "Terms of Service & Privacy Policy".
 
 **The home screen has two layers.** *Top, unscoped to any course:* the daily habit loop
 — last night's words (morning), tonight's study (evening), due for review, words
@@ -935,17 +1001,18 @@ working unchanged; these are the decisions made with the owner (don't re-litigat
   repetition, missed words, milestones, or either streak. Reason: a passage tests
   reading, not word retention, and forcing it into the SRS would have polluted the review
   queue. Known trade-off: a day with only a passage does not extend the daily streak.
-- **Decision — one free passage.** `FREE_PASSAGE_BY_COURSE` / `isPassageLocked()`
-  (`lib/purchase.js`): *The Tide Pool Census* is free to everyone (mirroring "one free
-  category per course", and it doubles as the free sample of the passage layout); the other
-  15 need the subscription. Gated exactly like the levels: `/passages/[passageId]` shows
-  nothing until subscription status is known (cached, then reconciled), then redirects a
-  non-subscriber to `/unlock`; the passage list shows locked cards with the price. As
-  everywhere, this is UI-level gating — all content ships in the client bundle. Since
-  2026-09-27, **Cross-Text Connections pairs** (`lib/satCrossText.js`, route
-  `/cross-text/[pairId]`) reuse this exact same gating function and the exact same
+- **Decision — no free passage (changed 2026-10-05; there used to be one).**
+  `FREE_PASSAGE_BY_COURSE` is now empty, so `isPassageLocked()` is true for every
+  passage for a non-subscriber; *The Tide Pool Census* was the free one and doubled as the
+  free sample of the passage layout, so each locked passage now has a "Try a sample
+  question" link (see the preview bullet). Gated exactly like the levels:
+  `/passages/[passageId]` shows nothing until subscription status is known (cached, then
+  reconciled), then redirects a non-subscriber to `/unlock`; the passage list shows locked
+  cards with the price. As everywhere, this is UI-level gating — all content ships in the
+  client bundle. Since 2026-09-27, **Cross-Text Connections pairs** (`lib/satCrossText.js`,
+  route `/cross-text/[pairId]`) reuse this exact same gating function and the exact same
   `voco_passages_v1` progress store — see "The last four SAT domains" below for why a pair
-  isn't its own separate system. They have no free sample of their own.
+  isn't its own separate system.
 - **Test-day strategy guides** (`lib/satStrategy.js`, route `/strategy/[guideId]`): four
   short written guides (words-in-context routine, pacing, common traps, unknown words) —
   **free to everyone, no gate, nothing recorded**. Written as `blocks` (heading, paragraph,
@@ -1012,14 +1079,13 @@ working unchanged; these are the decisions made with the owner (don't re-litigat
     `voco_word_srs_v1`, streaks, or milestones — verified by test (isolation is asserted, not
     assumed) and confirmed live in the browser (only `voco_grammar_v1` appears in storage
     after finishing a level).
-  - **Decision — one free category, mirroring the passage and vocabulary-category
-    precedent.** `FREE_GRAMMAR_CATEGORY_BY_COURSE` / `isGrammarCategoryLocked()`
-    (`lib/purchase.js`): Boundaries is free to everyone (all 3 tiers); Form, Structure, and
-    Sense requires the subscription. Gated exactly like vocabulary categories: the
-    `/grammar/[levelId]` page shows nothing until subscription status is known (cached, then
-    reconciled), then redirects a non-subscriber to `/unlock`; the grammar list on the course
-    page shows a locked card with the price for the paid category. UI-level gating, same as
-    everywhere else — all content ships in the client bundle.
+  - **Decision — no free grammar category (changed 2026-10-05; Boundaries used to be
+    free).** `FREE_GRAMMAR_CATEGORY_BY_COURSE` is now empty, so every grammar category needs
+    the subscription. Gated like vocabulary categories: the `/grammar/[levelId]` page
+    shows nothing until subscription status is known (cached, then reconciled), then
+    redirects a non-subscriber to `/unlock`; the grammar list on the course page shows a
+    locked card with the price and a sample-question link for each category. UI-level
+    gating, same as everywhere else — all content ships in the client bundle.
   - **Decision — a new 4th tab, not nested under Vocabulary.** `getCourseSections()` already
     generalized to N optional sections when Passages and Strategy were added, so Grammar is
     one more `if ((course.grammar || []).length > 0)` line, no new architecture. Nesting it as
@@ -1042,11 +1108,11 @@ working unchanged; these are the decisions made with the owner (don't re-litigat
     catch: one explanation calling a missing-comma-before-a-conjunction error a "run-on"
     (imprecise — a true run-on has no connector at all; fixed to name the error precisely
     instead).
-- **Copy that changed with it:** `/unlock` lists "Reading passages (9)" and "Form, Structure,
-  and Sense (15 questions)" under SAT Vocab; terms §4 names the free passage, the free
-  grammar category, and the free guides; privacy §2 lists reading-passage and grammar-quiz
-  results among what stays on the device. (Passages count updated and grammar added
-  2026-09-22 — see "Reading passages" above for why the passage count moved from 5 to 10.)
+- **Copy that changed with it:** `/unlock` lists the locked passages, cross-text pairs and
+  grammar categories (counts computed from the data, so they track the content), terms §4
+  lists the paid ones, privacy §2 lists reading-passage and grammar-quiz results among what
+  stays on the device. (Originally written 2026-09-22 when one passage and one grammar
+  category were free; both are now paid — see "The free set".)
 - **Practice Test** (`lib/practiceTest.js`, `lib/practiceTestProgress.js`, route
   `/practice-test`, tab component `components/PracticeTestTab.js`, added 2026-09-23): a
   timed, simulated Reading & Writing section built entirely from the vocabulary/passage/
@@ -1093,9 +1159,9 @@ working unchanged; these are the decisions made with the owner (don't re-litigat
     46/60), this time NOT simply to preserve the ratio but chosen directly for domain balance,
     deliberately ending vocabulary's run as the single largest pool — see "The last four SAT
     domains" for that reasoning in full.
-  - **Decision — entirely paid, no free attempt.** Unlike every other section here (one free
-    category, one free passage, one free grammar category), Practice Test has no free
-    sample. Reason: a genuinely mixed 54-question test needs the full pool; a free-only
+  - **Decision — entirely paid, no free attempt.** Practice Test never had a free attempt
+    (and since 2026-10-05, with passages and grammar paid too, nothing else in SAT Vocab
+    beyond a free category's first two tiers and the guides is free either). Reason: a genuinely mixed 54-question test needs the full pool; a free-only
     version would either have to leak paid category/passage/grammar content to non-subscribers
     or be built only from the free pool (about 59 questions total), which would be too thin
     to reuse-avoid for even one attempt and too vocab-skewed to be a real mixed test. Gated
@@ -1831,6 +1897,9 @@ lib/
                          on-screen option order
   analytics.js            The three custom events + trackEvent() (the only
                          place track() is called)
+  access.js               Subscription-aware views of the due / still-learning
+                         word lists (drop words from locked tiers before the
+                         review cap); see "The actual gate"
   timeOfDay.js            Local-time phases (morning/midday/evening),
                          "last night's words", and "tonight's study" —
                          priority 1 finish an in-progress category
@@ -1907,9 +1976,12 @@ scripts/
                          visitor detection, the pre-paint script's agreement
                          with it, the copy lint, onboarding really gone,
                          analytics wiring (added 2026-10-05)
+  test-access.mjs         `npm run test:access` — the free set tier by tier,
+                         seeded-progress filtering, suggestions, samples,
+                         route wiring, rendered Terms/Privacy (added 2026-10-05)
   loader-hooks.mjs / register-loader.mjs  Let plain Node import the app's own
-                         extensionless/"@/" modules for that script
-                         (`npm test` runs it with the two validators)
+                         extensionless/"@/" modules for those two scripts
+                         (`npm test` runs all four scripts)
 ```
 
 ## Paid unlock — built and verified end-to-end on production, both in Stripe test mode and live
@@ -2009,22 +2081,33 @@ version, but not the actual fix.
 ## Terms of Service & Privacy Policy
 
 `/terms` and `/privacy` are real routes (`app/terms/page.js`,
-`app/privacy/page.js`), linked from the home screen footer — not files
-sitting unused. Content is written to match how the app actually works,
-not generic boilerplate: no accounts, progress lives only in
+`app/privacy/page.js`), linked from the home screen footer and the first-visit
+screen — not files sitting unused. Content is written to match how the app actually
+works, not generic boilerplate: no accounts, progress lives only in
 `localStorage` on-device (explicitly *not* synced or backed up, and lost
 on a cleared browser or new device), billing handled entirely by Stripe
 (we hold a customer id + subscription status, never card details), and
 **cookieless Vercel Web Analytics plus the three anonymous events** (Privacy §1, §4, §5 — it
-said "no analytics" from 2026-09-22 until 2026-10-05, which was wrong, and was corrected on
-2026-10-05; if analytics changes again, Privacy needs updating to match, not just the code). Contact
-email on both: `itsowentodd@icloud.com`. If the subscription price,
-trial length, or free/paid category split ever changes, update the
-Terms' "Subscription & Billing" section to match — don't let it drift
-from `lib/purchase.js`. (Both pages were updated on 2026-09-20 for the
-second course: one free category per course, and "the paid categories"
-instead of a hardcoded count. Terms §2 and §4 were updated again for the third
-course: §2 no longer names the courses, §4 lists each course's free category. On
-2026-09-21, for SAT Vocab's passages and guides: §4 says the first reading passage and the
-strategy guides are free and the remaining passages need the subscription; privacy §2 lists
-reading-passage results among what is stored on the device.)
+said "no analytics" from 2026-09-22 until 2026-10-05, which was wrong, and was fixed). Contact
+email on both: `itsowentodd@icloud.com`. Both were revised on **2026-10-05** ("Last updated
+October 5, 2026"):
+- **Terms §4** lists what is free and what needs a subscription — **computed from the data and
+  `lib/purchase.js`**, so it cannot drift (`test-access` checks the rendered text): the four free
+  categories by course, "only the Foundational and Intermediate levels are free", the strategy
+  guides, and the paid list (Advanced and Expert tiers of the free categories, every other
+  category, all passages and cross-text pairs, the four Grammar & Usage categories, the practice
+  test). It also states price and trial, that cancelling before the trial ends means no charge,
+  that the trial converts automatically and then **renews monthly until cancelled**, and an **age /
+  parental-permission** line (18+, or a parent or guardian subscribes). Privacy §6 points to it.
+- **Terms §5** now leads with the in-app **Manage subscription** route (Stripe's Billing Portal)
+  on the device that subscribed, then email, and says access continues to the end of the period
+  already started.
+- **Not decided here — owner's call, flagged rather than invented:** (1) **a refund policy** (neither
+  page says anything about refunds; what Stripe is configured to do is outside this repo);
+  (2) whether Stripe actually sends the receipt/management email Terms used to promise (a $0
+  trial may produce no receipt, so §5 now says such an email "may" include a link instead of
+  promising one); (3) the age line is plain-language, not counsel-reviewed, and COPPA/age-of-
+  consent questions for a product used by many under-18s are for a lawyer; (4) the exact wording
+  about Vercel's analytics should be checked against Vercel's current docs. If the price, trial
+  length or free/paid split ever changes, Terms follows the code automatically for the lists but
+  the prose around them (trial, renewal, age) is hand-written — keep it matching `lib/purchase.js`.

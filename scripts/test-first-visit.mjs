@@ -20,7 +20,7 @@ const { isReturningVisitor, clearLegacyFlags, RETURNING_KEYS } = await import(".
 const { PRE_HYDRATION_SCRIPT } = await import("../lib/preHydration.js");
 const { SLEEP_SCIENCE, SCIENCE_FACTS } = await import("../lib/sleepScience.js");
 const { THEME_CSS, NIGHT, DAWN } = await import("../lib/timeTheme.js");
-const { TRIAL_TERMS, FREE_CATEGORY_IDS } = await import("../lib/purchase.js");
+const { TRIAL_TERMS, isLevelLocked, FREE_CATEGORY_IDS } = await import("../lib/purchase.js");
 const { findLevel } = await import("../lib/wordbanks.js");
 
 // ---------- the question ----------
@@ -29,7 +29,7 @@ const { findLevel } = await import("../lib/wordbanks.js");
   ok("first-visit question exists", Boolean(q && q.word && q.quiz));
   ok("it is from a free category", FREE_CATEGORY_IDS.includes(q.category.id));
   const found = findLevel(FIRST_VISIT_LEVEL_ID);
-  ok("it is from a free category's level", FREE_CATEGORY_IDS.includes(found.category.id));
+  ok("it is from a level a non-subscriber can open", !isLevelLocked(found.category.id, found.level.level, false));
   ok("it is a word of that level", found.level.words.some((w) => w.word === q.word.word));
   ok("exactly one blank in the sentence", (q.quiz.sentence.match(/______/g) || []).length === 1);
   ok("four distinct options", new Set(q.quiz.options).size === 4 && q.quiz.options.length === 4);

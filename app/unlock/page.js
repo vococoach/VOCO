@@ -7,6 +7,9 @@ import TrialLink from "@/components/TrialLink";
 import { courses } from "@/lib/wordbanks";
 import {
   isFreeCategory,
+  isFreeLevel,
+  isCategoryLocked,
+  isLevelLocked,
   isPassageLocked,
   isGrammarCategoryLocked,
   PRICE_LABEL,
@@ -65,23 +68,36 @@ export default function UnlockPage() {
     }
   }, []);
 
-  // Each course has one free category; everything else unlocks together.
+  // Everything below is computed from the data and the one free-set definition
+  // in lib/purchase.js — no counts or names are written by hand here, so the
+  // pitch can't drift when content grows or the free set changes.
+  const wordsIn = (levels) => levels.reduce((n, level) => n + level.words.length, 0);
   const freeCategories = courses.flatMap((course) => course.categories.filter((c) => isFreeCategory(c.id)));
-  // A course's reading passages: the first is free, the rest unlock with the
-  // categories. Grammar categories are gated the same way vocabulary
-  // categories are — one free, the rest paid. (Strategy guides are free to
-  // everyone, so they never appear here.)
+  const freeLevels = freeCategories.flatMap((c) => c.levels.filter((l) => isFreeLevel(c.id, l.level)));
+  const freeTierLabels = [...new Set(freeLevels.map((l) => l.label))];
+  // Per course: whole categories that are locked, plus the locked tiers of a
+  // free category (e.g. Advanced, and SAT Vocab's Expert), then passages,
+  // cross-text pairs and grammar, none of which have a free sample any more.
+  // (Strategy guides are free to everyone, so they never appear here.)
   const lockedByCourse = courses
     .map((course) => ({
       course,
-      categories: course.categories.filter((c) => !isFreeCategory(c.id)),
+      categories: course.categories.filter((c) => isCategoryLocked(c.id, false)),
+      tiers: course.categories
+        .filter((c) => !isCategoryLocked(c.id, false))
+        .map((c) => ({ category: c, levels: c.levels.filter((l) => isLevelLocked(c.id, l.level, false)) }))
+        .filter((t) => t.levels.length > 0),
       passages: (course.passages || []).filter((p) => isPassageLocked(p.id, false)),
       crossTextPairs: (course.crossTextPairs || []).filter((p) => isPassageLocked(p.id, false)),
       grammar: (course.grammar || []).filter((g) => isGrammarCategoryLocked(g.id, false)),
     }))
     .filter(
       (group) =>
-        group.categories.length > 0 || group.passages.length > 0 || group.crossTextPairs.length > 0 || group.grammar.length > 0
+        group.categories.length > 0 ||
+        group.tiers.length > 0 ||
+        group.passages.length > 0 ||
+        group.crossTextPairs.length > 0 ||
+        group.grammar.length > 0
     );
   const lockedPassageCount = lockedByCourse.reduce((sum, group) => sum + group.passages.length, 0);
   const lockedCrossTextCount = lockedByCourse.reduce((sum, group) => sum + group.crossTextPairs.length, 0);
@@ -91,10 +107,10 @@ export default function UnlockPage() {
     0
   );
   const lockedCategories = lockedByCourse.flatMap((group) => group.categories);
-  const lockedWordCount = lockedCategories.reduce(
-    (sum, c) => sum + c.levels.reduce((s, l) => s + l.words.length, 0),
-    0
-  );
+  const lockedTierLevels = lockedByCourse.flatMap((group) => group.tiers.flatMap((t) => t.levels));
+  const lockedWordCount =
+    wordsIn(lockedCategories.flatMap((c) => c.levels)) + wordsIn(lockedTierLevels);
+  const lockedTierLabels = [...new Set(lockedTierLevels.map((l) => l.label))];
   const freeTitles = joinList(freeCategories.map((c) => c.title));
 
   return (
@@ -174,12 +190,12 @@ export default function UnlockPage() {
               <Lock size={28} color="#8B85FF" className="mx-auto mb-3" />
               <p className="font-display text-xl text-[#EDEBFF] mb-2">Unlock every course</p>
               <p className="text-sm text-[#9B97C4]">
-                One subscription gives you full access to every course.{" "}
-                {freeTitles || "One category in each course"} stay{freeCategories.length === 1 ? "s" : ""} free; the
-                other {lockedCategories.length} — {lockedWordCount} more words — all unlock together
-                with a {TRIAL_LABEL}, then {PRICE_LABEL}.
-                {lockedPassageCount > 0 &&
-                  ` That includes ${lockedPassageCount} reading passages beyond the free one`}
+                One subscription gives you full access to every course. The {joinList(freeTierLabels)} levels of{" "}
+                {freeTitles} stay free ({wordsIn(freeLevels)} words, with quizzes and spaced repetition); everything
+                else — {lockedCategories.length} more categories, the {joinList(lockedTierLabels)}{" "}
+                {lockedTierLabels.length === 1 ? "level" : "levels"} of the free ones, {lockedWordCount} more words in
+                all — unlocks together with a {TRIAL_LABEL}, then {PRICE_LABEL}.
+                {lockedPassageCount > 0 && ` That includes ${lockedPassageCount} reading passages`}
                 {lockedCrossTextCount > 0 && `, ${lockedCrossTextCount} cross-text pairs`}
                 {lockedGrammarQuestionCount > 0 && ` and ${lockedGrammarQuestionCount} grammar questions`}
                 {(lockedPassageCount > 0 || lockedCrossTextCount > 0 || lockedGrammarQuestionCount > 0) &&
@@ -189,9 +205,15 @@ export default function UnlockPage() {
 
             <div className="bg-[#20223F] rounded-2xl p-4 mb-6 space-y-3">
               <p className="text-xs text-[#9B97C4]">One subscription unlocks all of these:</p>
-              {lockedByCourse.map(({ course, categories: locked, passages, crossTextPairs, grammar }) => (
+              {lockedByCourse.map(({ course, categories: locked, tiers, passages, crossTextPairs, grammar }) => (
                 <div key={course.id} className="space-y-2">
                   <p className="text-xs uppercase tracking-wide text-[#8B85FF]">{course.title}</p>
+                  {tiers.map(({ category, levels }) => (
+                    <div key={category.id} className="flex items-center gap-2 text-sm text-[#EDEBFF]">
+                      <Lock size={14} color="#6E699B" />
+                      {category.title} — {joinList(levels.map((l) => l.label))} ({wordsIn(levels)} words)
+                    </div>
+                  ))}
                   {locked.map((c) => (
                     <div key={c.id} className="flex items-center gap-2 text-sm text-[#EDEBFF]">
                       <Lock size={14} color="#6E699B" />

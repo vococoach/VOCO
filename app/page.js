@@ -12,9 +12,10 @@ import { streakCard } from "@/lib/milestones";
 import { getPhase, findLastNightsLevel, getTonight } from "@/lib/timeOfDay";
 import { pickScienceFact } from "@/lib/sleepScience";
 import { courses, categories, getCategoryCourse, missedWordsId, DUE_FOR_REVIEW_ID } from "@/lib/wordbanks";
-import { getAllProgress, getStreak, getNightToMorningStreak, resetProgress, getDueWordIds } from "@/lib/progress";
-import { isCategoryLocked, openBillingPortal } from "@/lib/purchase";
-import { useSubscription, computeStruggleCounts } from "@/lib/useLearnerState";
+import { getAllProgress, getStreak, getNightToMorningStreak, resetProgress, getDueWordIds, getStruggleWordIds } from "@/lib/progress";
+import { isLevelLocked, openBillingPortal } from "@/lib/purchase";
+import { accessibleWordIds, countByCategory } from "@/lib/access";
+import { useSubscription } from "@/lib/useLearnerState";
 import { isReturningVisitor, clearLegacyFlags } from "@/lib/visitor";
 
 function formatDate(iso) {
@@ -52,8 +53,11 @@ export default function Home() {
   // there is no hydration mismatch and nothing waits on JavaScript to appear.
   const [returning, setReturning] = useState(false);
   const [ready, setReady] = useState(false);
-  const [dueCount, setDueCount] = useState(0);
-  const [struggleCounts, setStruggleCounts] = useState({});
+  // The raw saved lists. What the learner may actually open is worked out in
+  // render from these plus `subscribed` (lib/access.js), so the due count and
+  // the "still learning" rows never include words from a locked tier.
+  const [dueIds, setDueIds] = useState([]);
+  const [struggleIds, setStruggleIds] = useState([]);
   const { subscribed, cancelAt } = useSubscription();
   const [openingPortal, setOpeningPortal] = useState(false);
   // Local device time, read on the client only (the page is prerendered, so
@@ -70,8 +74,8 @@ export default function Home() {
       setProgress(getAllProgress());
       setStreak(getStreak());
       setNightToMorningStreak(getNightToMorningStreak());
-      setDueCount(getDueWordIds().length);
-      setStruggleCounts(computeStruggleCounts());
+      setDueIds(getDueWordIds());
+      setStruggleIds(getStruggleWordIds());
     }
     document.addEventListener("visibilitychange", refresh);
     window.addEventListener("focus", refresh);
@@ -88,8 +92,8 @@ export default function Home() {
     setProgress(getAllProgress());
     setStreak(getStreak());
     setNightToMorningStreak(getNightToMorningStreak());
-    setDueCount(getDueWordIds().length);
-    setStruggleCounts(computeStruggleCounts());
+    setDueIds(getDueWordIds());
+    setStruggleIds(getStruggleWordIds());
     setReady(true);
   }, []);
 
@@ -99,8 +103,8 @@ export default function Home() {
     setProgress({});
     setStreak(0);
     setNightToMorningStreak(0);
-    setStruggleCounts({});
-    setDueCount(0);
+    setStruggleIds([]);
+    setDueIds([]);
     // A device with nothing left saved is a first visit again (unless it still
     // has a cached subscription), so the home screen follows.
     setReturning(isReturningVisitor());
@@ -120,7 +124,9 @@ export default function Home() {
   // Morning: last night's words, if any. Midday / anything else: the neutral
   // view. Only framing — nothing here ever locks or hides the quiz.
   const phase = now ? getPhase(now) : null;
-  const isLocked = (categoryId) => isCategoryLocked(categoryId, subscribed);
+  const isLocked = (categoryId, level) => isLevelLocked(categoryId, level.level, subscribed);
+  const dueCount = ready ? accessibleWordIds(dueIds, subscribed).length : 0;
+  const struggleCounts = ready ? countByCategory(accessibleWordIds(struggleIds, subscribed)) : {};
   const lastNight = ready && phase === "morning" ? findLastNightsLevel(categories, progress, now, isLocked) : null;
   const tonight = ready && phase === "evening" ? getTonight(courses, progress, now, isLocked) : null;
 
@@ -128,7 +134,7 @@ export default function Home() {
   // is deliberate — see lib/wordbanks.js), gathered across every course.
   const stillLearning = ready
     ? categories
-        .filter((category) => struggleCounts[category.id] > 0 && !isLocked(category.id))
+        .filter((category) => struggleCounts[category.id] > 0)
         .map((category) => ({ category, course: getCategoryCourse(category.id), count: struggleCounts[category.id] }))
     : [];
   const stillLearningTotal = stillLearning.reduce((n, row) => n + row.count, 0);

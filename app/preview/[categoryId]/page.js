@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Check, X, ArrowLeft } from "lucide-react";
-import { getPreviewSample } from "@/lib/preview";
+import PassageCard from "@/components/PassageCard";
+import PassageChart from "@/components/PassageChart";
 import TrialLink from "@/components/TrialLink";
+import { getPreviewSample } from "@/lib/preview";
 import { PRICE_LABEL, TRIAL_LABEL, TRIAL_TERMS, isSubscribedCached } from "@/lib/purchase";
 import { getActivityTheme, NIGHT } from "@/lib/timeTheme";
 
@@ -21,10 +23,13 @@ function shuffledIndices(count) {
   return order;
 }
 
-// One real, unmetered sample question from a locked category — the actual
-// words-in-context format, not a mockup. It records NOTHING (no progress, no
-// spaced-repetition history) and grants nothing: the category stays locked,
-// and this page only ever renders the single sample from lib/preview.js.
+// One real, unmetered sample question from a locked item — the actual format,
+// not a mockup: a vocabulary category or tier, a Grammar & Usage category, a
+// reading passage or a cross-text pair (lib/preview.js decides which, from the
+// id in the URL; the folder is still named [categoryId] from when it was only
+// categories). It records NOTHING (no progress, no spaced-repetition history)
+// and grants nothing: the item stays locked, and this page only ever renders
+// the single sample from lib/preview.js.
 export default function PreviewPage() {
   const params = useParams();
   const router = useRouter();
@@ -41,8 +46,8 @@ export default function PreviewPage() {
     setTheme(getActivityTheme(new Date()));
   }, []);
 
-  // Not a paid category (unknown id, or the free one), or already
-  // subscribed — nothing to preview, so go home.
+  // Not something locked (unknown id, or free), or already subscribed —
+  // nothing to preview, so go home.
   useEffect(() => {
     if (subscribed === null) return;
     if (!sample || subscribed) router.replace("/");
@@ -50,9 +55,9 @@ export default function PreviewPage() {
 
   if (subscribed === null || !sample || subscribed) return null;
 
-  const { course, category, word, totalQuestions } = sample;
-  const q = word.quiz;
+  const { course, title, countLine, kind } = sample;
   const answered = selected !== null;
+  const longOptions = kind !== "vocab";
 
   return (
     <main className={`min-h-dvh ${theme.page} px-4 py-8`}>
@@ -61,17 +66,37 @@ export default function PreviewPage() {
           <ArrowLeft size={14} /> Back
         </Link>
 
-        <p className="text-xs uppercase tracking-wide mb-1" style={{ color: theme.subtext }}>Sample question — {category.title}</p>
+        <p className="text-xs uppercase tracking-wide mb-1" style={{ color: theme.subtext }}>Sample question — {title}</p>
         <p className="text-xs mb-4" style={{ color: theme.subtext }}>
           One real question from {course ? course.title : "the course"}. No sign-up needed.
         </p>
 
+        {sample.passages.map((p, i) => (
+          <PassageCard key={i} title={p.title} subject={p.subject} text={p.text} theme={theme} />
+        ))}
+
         <div className="rounded-2xl p-6 mb-5" style={{ backgroundColor: theme.card }}>
-          <p className="text-xs mb-2" style={{ color: theme.subtext }}>Which word best completes the sentence?</p>
-          <p className="font-display text-lg mb-4 leading-relaxed" style={{ color: theme.text }}>{q.sentence}</p>
-          <div className="space-y-2">
+          <PassageChart chart={sample.chart} theme={theme} />
+          {sample.notes && (
+            <div className="mb-4">
+              <ul className="text-sm space-y-1 mb-3" style={{ color: theme.text }}>
+                {sample.notes.map((note, i) => (
+                  <li key={i} className="flex gap-2">
+                    <span aria-hidden="true" style={{ color: theme.subtext }}>&bull;</span>
+                    <span>{note}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-sm font-medium leading-relaxed" style={{ color: theme.text }}>{sample.goal}</p>
+            </div>
+          )}
+          {sample.cue && <p className="text-xs mb-2" style={{ color: theme.subtext }}>{sample.cue}</p>}
+          {sample.stem && (
+            <p className="font-display text-lg mb-4 leading-relaxed" style={{ color: theme.text }}>{sample.stem}</p>
+          )}
+          <div className={`space-y-2 ${sample.stem ? "" : "mt-3"}`}>
             {order.map((idx) => {
-              const isCorrect = idx === q.correctIndex;
+              const isCorrect = idx === sample.correctIndex;
               const isSelected = idx === selected;
               let style = theme.optionIdle;
               if (answered) {
@@ -82,25 +107,24 @@ export default function PreviewPage() {
                 <button
                   key={idx}
                   onClick={() => !answered && setSelected(idx)}
-                  className={`w-full text-left rounded-xl px-4 py-3 border ${style} flex items-center justify-between`}
+                  className={`w-full text-left rounded-xl px-4 py-3 border ${style} flex items-center justify-between gap-3`}
                   style={{ color: theme.text }}
                 >
-                  {q.options[idx]}
-                  {answered && isCorrect && <Check size={16} color="#7BC9A0" />}
-                  {answered && isSelected && !isCorrect && <X size={16} color="#E08A9E" />}
+                  <span className={longOptions ? "leading-relaxed" : undefined}>{sample.options[idx]}</span>
+                  {answered && isCorrect && <Check size={16} color="#7BC9A0" className="shrink-0" />}
+                  {answered && isSelected && !isCorrect && <X size={16} color="#E08A9E" className="shrink-0" />}
                 </button>
               );
             })}
           </div>
-          {answered && <p className="text-sm mt-4" style={{ color: theme.subtext }}>{q.explanation}</p>}
+          {answered && <p className="text-sm mt-4" style={{ color: theme.subtext }}>{sample.explanation}</p>}
         </div>
 
         {answered && (
           <div className="rounded-2xl p-5 border text-center" style={{ backgroundColor: theme.card, borderColor: `${theme.accent}66` }}>
-            <p className="font-display text-xl mb-1" style={{ color: theme.text }}>{PRICE_LABEL} for full access</p>
+            <p className="font-display text-xl mb-1" style={{ color: theme.text }}>{PRICE_LABEL} for full access to every course</p>
             <p className="text-sm mb-4" style={{ color: theme.subtext }}>
-              That was 1 of {totalQuestions} questions in {category.title}. One subscription unlocks every
-              course.
+              {countLine} One subscription unlocks every course.
             </p>
             <TrialLink
               placement="preview"
