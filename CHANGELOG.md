@@ -8,6 +8,11 @@ example the 2026-10-05 free-tier cut, which made passages and grammar fully paid
 contradicts a block, `CLAUDE.md` is correct and the block is the record of how it
 got there.
 
+Scripts named in these blocks (`validate_courses.mjs`, `grammar_logic_test.mjs`,
+`passage_logic_test.mjs`, `practice_test_logic_test.mjs`, `tonight_simulation.mjs`,
+`domain_mix_measure.mjs`) were scratch files that were never saved to the repo and no
+longer exist; `scripts/` is the real test suite.
+
 ## 2026-09-24 → 2026-09-27: SAT domain audit and the content built from it
 
 Three consecutive sections, moved together because each follows from the previous.

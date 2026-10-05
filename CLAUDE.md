@@ -749,7 +749,7 @@ category while an **in-progress** one still had levels left (nothing about "firs
 unstudied in array order" prefers "has some progress" over "hasn't been touched"),
 and once a course was picked it was the *only* course suggested from until entirely
 exhausted, real tunnel vision. Verified with a from-scratch Node simulation
-(`tonight_simulation.mjs` in the scratchpad pattern) that plays 45 consecutive
+(a throwaway script that was **not saved to the repo**, so it can't be re-run; it would need rewriting) that plays 45 consecutive
 perfect evenings across all 4 courses and asserts the exact properties above (no
 duplicate suggestion, `choose` exactly once, every course visited, momentum
 preserved when interrupted by an out-of-order manual study session, imperfect
