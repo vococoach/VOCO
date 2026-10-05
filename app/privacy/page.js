@@ -43,6 +43,20 @@ export default function PrivacyPage() {
               <code>localStorage</code>) on your device. We have no access to it, no copy of it, and
               no way to see it.
             </p>
+            <p className="mt-2">
+              The only things Voco saves there are: your progress on each level (when you
+              studied and quizzed, and your scores); the review schedule for each word; reading
+              passage and cross-text results; grammar quiz results; practice-test attempts; the
+              days counted toward your night-to-morning streak; which one-time milestone cards
+              you've already seen; and, if you subscribe, your Stripe customer ID together with
+              the last subscription status we checked, the date it was checked, and the date it
+              ends if you've canceled. Voco's own pages don't set cookies or use session storage. Stripe's checkout and billing pages are run by Stripe and have their own privacy practices.
+            </p>
+            <p className="mt-2">
+              You can delete all of this by clearing your browser's site data for Voco; "Reset
+              progress on this device" on the home screen deletes your study progress but keeps
+              your subscription details, so you stay unlocked.
+            </p>
           </section>
 
           <section>

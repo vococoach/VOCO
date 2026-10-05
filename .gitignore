@@ -1,6 +1,10 @@
 node_modules
 .next
 .vercel
-.env*.local
 .DS_Store
 .claude/settings.local.json
+
+# Secrets: never commit an env file. A template named .env.example stays tracked.
+.env
+.env.*
+!.env.example

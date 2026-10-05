@@ -9,9 +9,12 @@
     "lint": "next lint",
     "validate:passages": "node scripts/validate-passages.mjs",
     "validate:grammar": "node scripts/validate-grammar.mjs",
+    "validate:vocab": "node --no-warnings --import ./scripts/register-loader.mjs scripts/validate-vocab.mjs",
     "test:first-visit": "node --no-warnings --import ./scripts/register-loader.mjs scripts/test-first-visit.mjs",
     "test:access": "node --no-warnings --import ./scripts/register-loader.mjs scripts/test-access.mjs",
-    "test": "npm run validate:passages && npm run validate:grammar && npm run test:first-visit && npm run test:access"
+    "test:practice": "node --no-warnings --import ./scripts/register-loader.mjs scripts/test-practice-test.mjs",
+    "test:browser": "for f in verify1 verify2 verify3; do node --no-warnings --import ./scripts/register-loader.mjs scripts/browser/$f.mjs || exit 1; done",
+    "test": "npm run validate:passages && npm run validate:grammar && npm run validate:vocab && npm run test:first-visit && npm run test:access && npm run test:practice"
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",

@@ -1,3 +1,4 @@
+import { TRADEMARK_NOTICE } from "@/lib/legal";
 import Link from "next/link";
 import { Moon, ArrowLeft } from "lucide-react";
 import { courses } from "@/lib/wordbanks";
@@ -65,6 +66,7 @@ export default function TermsPage() {
               repetition and words-in-context quizzes. It's meant for personal study use — we
               don't guarantee any particular test score or outcome.
             </p>
+            <p className="mt-2">{TRADEMARK_NOTICE}</p>
           </section>
 
           <section>
