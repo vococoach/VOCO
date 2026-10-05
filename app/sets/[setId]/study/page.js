@@ -14,7 +14,8 @@ import {
   DUE_FOR_REVIEW_ID,
 } from "@/lib/wordbanks";
 import { markStudied, getStruggleWordIds, getDueWordIds, REVIEW_SESSION_CAP } from "@/lib/progress";
-import { isCategoryLocked, isSubscribedCached, shouldRefreshStatus, refreshSubscriptionStatus } from "@/lib/purchase";
+import { isCategoryLocked, isLevelLocked, isSubscribedCached, shouldRefreshStatus, refreshSubscriptionStatus } from "@/lib/purchase";
+import { accessibleWordIds } from "@/lib/access";
 import { getPhase } from "@/lib/timeOfDay";
 import { getActivityTheme, NIGHT } from "@/lib/timeTheme";
 import StudyClose from "@/components/StudyClose";
@@ -27,12 +28,16 @@ export default function StudyPage() {
   const isDueForReview = params.setId === DUE_FOR_REVIEW_ID;
   const isDynamic = isMissedWords || isDueForReview;
   const categoryId = getSetCategoryId(params.setId);
+  // A real level is gated tier by tier (a free category's Advanced tier is
+  // locked); the dynamic sets below are gated by which of their WORDS the
+  // learner can open (lib/access.js) rather than as a whole.
+  const realLevel = isDynamic ? null : findLevel(params.setId);
   // "Back" returns to the course this level belongs to (its category list);
   // the due-for-review set spans every course, so that one goes home.
   const course = categoryId ? getCategoryCourse(categoryId) : null;
   const backHref = course ? `/courses/${course.id}` : "/";
-  const [struggleIds, setStruggleIds] = useState(null); // null = not loaded yet (missed-words only)
-  const [dueIds, setDueIds] = useState(null); // null = not loaded yet (due-for-review only)
+  const [struggleIds, setStruggleIds] = useState(null); // all saved box-1 ids; null = not loaded yet (missed-words only)
+  const [allDueIds, setAllDueIds] = useState(null); // all saved due ids; null = not loaded yet (due-for-review only)
   const [subscribed, setSubscribed] = useState(null); // null = not checked yet
   const [index, setIndex] = useState(0);
   // null while studying; set on "Done studying" to show the closing screen.
@@ -49,8 +54,9 @@ export default function StudyPage() {
     }
     if (isDueForReview) {
       // Same priority order and cap as /review, so studying previews
-      // exactly what that quiz session will cover.
-      setDueIds(getDueWordIds().slice(0, REVIEW_SESSION_CAP));
+      // exactly what that quiz session will cover. The cap is applied after
+      // the access filter below (a locked word must not use up a slot).
+      setAllDueIds(getDueWordIds());
     }
     // Show the cached subscription state immediately, then re-verify with
     // Stripe in the background (at most once a day). If that comes back
@@ -64,7 +70,11 @@ export default function StudyPage() {
     setTheme(getActivityTheme(new Date()));
   }, [isMissedWords, isDueForReview]);
 
-  const locked = subscribed !== null && categoryId !== null && isCategoryLocked(categoryId, subscribed);
+  const locked =
+    subscribed !== null &&
+    (realLevel
+      ? isLevelLocked(realLevel.category.id, realLevel.level.level, subscribed)
+      : isMissedWords && isCategoryLocked(missedCategoryId, subscribed));
 
   useEffect(() => {
     if (locked) router.replace("/unlock");
@@ -79,15 +89,15 @@ export default function StudyPage() {
   if (subscribed === null || locked) {
     return null;
   }
-  if ((isMissedWords && struggleIds === null) || (isDueForReview && dueIds === null)) {
+  if ((isMissedWords && struggleIds === null) || (isDueForReview && allDueIds === null)) {
     return null;
   }
 
   const found = isMissedWords
-    ? getMissedWordsLevel(missedCategoryId, struggleIds)
+    ? getMissedWordsLevel(missedCategoryId, accessibleWordIds(struggleIds, subscribed))
     : isDueForReview
-    ? getDueForReviewLevel(dueIds)
-    : findLevel(params.setId);
+    ? getDueForReviewLevel(accessibleWordIds(allDueIds, subscribed).slice(0, REVIEW_SESSION_CAP))
+    : realLevel;
 
   if (isDynamic && found.level.words.length === 0) {
     return (
@@ -131,8 +141,11 @@ export default function StudyPage() {
   }
 
   const { category, level } = found;
-  const word = level.words[index];
-  const isLast = index === level.words.length - 1;
+  // Clamped: if a subscription check comes back "no" mid-session, the word list
+  // can shrink under the current position.
+  const position = Math.min(index, level.words.length - 1);
+  const word = level.words[position];
+  const isLast = position === level.words.length - 1;
 
   function finish() {
     markStudied(level.id);

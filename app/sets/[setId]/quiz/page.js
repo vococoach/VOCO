@@ -24,7 +24,8 @@ import {
 } from "@/lib/progress";
 import { getPhase, findLastNightsLevel } from "@/lib/timeOfDay";
 import { getActivityTheme, NIGHT } from "@/lib/timeTheme";
-import { isCategoryLocked, isSubscribedCached, shouldRefreshStatus, refreshSubscriptionStatus } from "@/lib/purchase";
+import { isCategoryLocked, isLevelLocked, isSubscribedCached, shouldRefreshStatus, refreshSubscriptionStatus } from "@/lib/purchase";
+import { accessibleWordIds } from "@/lib/access";
 import QuizResults from "@/components/QuizResults";
 import MilestoneCards from "@/components/MilestoneCards";
 import ShareButton from "@/components/ShareButton";
@@ -48,6 +49,9 @@ export default function QuizPage() {
   const missedCategoryId = missedWordsCategoryId(params.setId);
   const isMissedWords = missedCategoryId !== null;
   const categoryId = getSetCategoryId(params.setId);
+  // A real level is gated tier by tier; the "still learning" set is gated by
+  // which of its words the learner can open (lib/access.js).
+  const realLevel = isMissedWords ? null : findLevel(params.setId);
   // "Back" returns to the course this level belongs to (its category list).
   const course = categoryId ? getCategoryCourse(categoryId) : null;
   const backHref = course ? `/courses/${course.id}` : "/";
@@ -91,7 +95,11 @@ export default function QuizPage() {
     setTheme(getActivityTheme(new Date()));
   }, [isMissedWords]);
 
-  const locked = subscribed !== null && categoryId !== null && isCategoryLocked(categoryId, subscribed);
+  const locked =
+    subscribed !== null &&
+    (realLevel
+      ? isLevelLocked(realLevel.category.id, realLevel.level.level, subscribed)
+      : isMissedWords && isCategoryLocked(missedCategoryId, subscribed));
 
   useEffect(() => {
     if (locked) router.replace("/unlock");
@@ -108,8 +116,8 @@ export default function QuizPage() {
     cycleChecked.current = true;
     const now = new Date();
     if (getPhase(now) !== "morning") return;
-    const featured = findLastNightsLevel(categories, getAllProgress(), now, (id) =>
-      isCategoryLocked(id, subscribed)
+    const featured = findLastNightsLevel(categories, getAllProgress(), now, (id, level) =>
+      isLevelLocked(id, level.level, subscribed)
     );
     if (featured && featured.level.id === params.setId) setCycleEligible(true);
   }, [subscribed, isMissedWords, params.setId]);
@@ -131,7 +139,9 @@ export default function QuizPage() {
     return null;
   }
 
-  const found = isMissedWords ? getMissedWordsLevel(missedCategoryId, struggleIds) : findLevel(params.setId);
+  const found = isMissedWords
+    ? getMissedWordsLevel(missedCategoryId, accessibleWordIds(struggleIds, subscribed))
+    : realLevel;
 
   if (isMissedWords && found.level.words.length === 0) {
     return (
@@ -165,7 +175,10 @@ export default function QuizPage() {
 
   const { category, level } = found;
   const words = level.words;
-  const q = words[step].quiz;
+  // Clamped: if a subscription check comes back "no" mid-session, a "still
+  // learning" list can shrink under the current position.
+  const current = words[Math.min(step, words.length - 1)];
+  const q = current.quiz;
 
   function answer(idx) {
     if (selected !== null) return;
@@ -175,7 +188,7 @@ export default function QuizPage() {
     // "Still learning" entries carry their true source id in srsId, so
     // scoring here updates the word's real box instead of a disconnected
     // record keyed off the virtual per-category level id.
-    recordWordResult(words[step].srsId || wordId(level.id, words[step].word), correct);
+    recordWordResult(current.srsId || wordId(level.id, current.word), correct);
   }
 
   function next() {

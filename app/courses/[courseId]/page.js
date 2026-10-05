@@ -12,11 +12,12 @@ import GrammarList from "@/components/GrammarList";
 import PracticeTestTab from "@/components/PracticeTestTab";
 import StrategyList from "@/components/StrategyList";
 import { getCourse, getCourseSections } from "@/lib/wordbanks";
-import { getAllProgress } from "@/lib/progress";
+import { getAllProgress, getStruggleWordIds } from "@/lib/progress";
+import { accessibleWordIds, countByCategory } from "@/lib/access";
 import { getAllPassageRecords } from "@/lib/passageProgress";
 import { getAllGrammarRecords } from "@/lib/grammarProgress";
 import { getAllPracticeTestAttempts } from "@/lib/practiceTestProgress";
-import { useSubscription, computeStruggleCounts } from "@/lib/useLearnerState";
+import { useSubscription } from "@/lib/useLearnerState";
 
 // One course's category list — what the home screen showed before Voco had
 // more than one course, scoped to this course's categories. The daily-habit
@@ -43,7 +44,7 @@ export default function CoursePage() {
   const section = sections && sections.some((s) => s.id === requested) ? requested : "vocabulary";
   const { subscribed } = useSubscription();
   const [progress, setProgress] = useState({});
-  const [struggleCounts, setStruggleCounts] = useState({});
+  const [struggleIds, setStruggleIds] = useState([]);
   const [passageRecords, setPassageRecords] = useState({});
   const [grammarRecords, setGrammarRecords] = useState({});
   const [practiceTestAttempts, setPracticeTestAttempts] = useState([]);
@@ -54,7 +55,7 @@ export default function CoursePage() {
     setPassageRecords(getAllPassageRecords());
     setGrammarRecords(getAllGrammarRecords());
     setPracticeTestAttempts(getAllPracticeTestAttempts());
-    setStruggleCounts(computeStruggleCounts());
+    setStruggleIds(getStruggleWordIds());
     setReady(true);
   }, []);
 
@@ -63,6 +64,10 @@ export default function CoursePage() {
   }, [course, router]);
 
   if (!course) return null;
+
+  // Only words in tiers this learner can open count toward "still learning"
+  // (lib/access.js) — the drill can't serve the others.
+  const struggleCounts = countByCategory(accessibleWordIds(struggleIds, subscribed));
 
   // Switching tabs only rewrites the URL (no navigation), so it is instant.
   function selectSection(id) {

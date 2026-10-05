@@ -1,9 +1,38 @@
 import Link from "next/link";
 import { Moon, ArrowLeft } from "lucide-react";
+import { courses } from "@/lib/wordbanks";
+import { PRICE_LABEL, TRIAL_LABEL, isFreeCategory, isFreeLevel, isLevelLocked, isGrammarCategoryLocked } from "@/lib/purchase";
 
 export const metadata = {
   title: "Terms of Service — Voco",
 };
+
+// "A", "A and B", "A, B, and C".
+function joinList(items) {
+  if (items.length <= 2) return items.join(" and ");
+  return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
+}
+
+// What is free and what needs a subscription is written out below, so it has to
+// match the app exactly. These lists are therefore computed from the same data
+// and the same one free-set definition (lib/purchase.js) the app enforces — not
+// typed by hand — and scripts/test-access.mjs checks that this page renders
+// them. Course and category names are the app's own.
+const freeCategories = courses.flatMap((course) =>
+  course.categories.filter((c) => isFreeCategory(c.id)).map((category) => ({ course, category }))
+);
+const freeCategoryText = joinList(freeCategories.map(({ course, category }) => `${category.title} in ${course.title}`));
+const freeTierLabels = joinList([
+  ...new Set(freeCategories.flatMap(({ category }) => category.levels.filter((l) => isFreeLevel(category.id, l.level)).map((l) => l.label))),
+]);
+const lockedTierLabels = joinList([
+  ...new Set(freeCategories.flatMap(({ category }) => category.levels.filter((l) => isLevelLocked(category.id, l.level, false)).map((l) => l.label))),
+]);
+// Semicolons, because one of the titles ("Form, Structure, and Sense") has commas of its own.
+const lockedGrammarTitles = courses
+  .flatMap((course) => (course.grammar || []).filter((g) => isGrammarCategoryLocked(g.id, false)).map((g) => g.title))
+  .map((title, i, all) => (i === all.length - 1 && all.length > 1 ? `and ${title}` : title))
+  .join("; ");
 
 export default function TermsPage() {
   return (
@@ -18,7 +47,7 @@ export default function TermsPage() {
           <span className="font-display text-lg text-[#EDEBFF]">Voco</span>
         </div>
         <h1 className="font-display text-2xl text-[#EDEBFF] mb-1">Terms of Service</h1>
-        <p className="text-xs text-[#6E699B] mb-8">Last updated September 27, 2026</p>
+        <p className="text-xs text-[#6E699B] mb-8">Last updated October 5, 2026</p>
 
         <div className="space-y-6 text-sm text-[#9B97C4] leading-relaxed">
           <section>
@@ -49,27 +78,33 @@ export default function TermsPage() {
           <section>
             <h2 className="text-[#EDEBFF] font-medium mb-2">4. Subscription & Billing</h2>
             <p className="mb-2">
-              One category in each course is free forever: Agreement &amp; Support in SAT Vocab,
-              Precise Description in Everyday Vocabulary, Meetings &amp; Negotiation in
-              Professional Vocabulary, and Positive Charge in GRE Vocab. The first reading
-              passage in SAT Vocab, the Boundaries grammar category in SAT Vocab, and all of
-              the SAT Vocab strategy guides are also free.
+              <span className="text-[#EDEBFF]">What's free.</span> Each course has one free
+              category: {freeCategoryText}. In those categories, only the {freeTierLabels} levels
+              are free. All of the SAT Vocab strategy guides are also free.
             </p>
             <p className="mb-2">
-              Every other category, in every course, the remaining SAT Vocab reading passages and
-              cross-text pairs, and the Form, Structure, and Sense, Transitions, and Rhetorical
-              Synthesis categories in SAT Vocab require an active subscription: $1.99/month, with
-              a 7-day free trial for new subscribers. One subscription unlocks all of them.
+              <span className="text-[#EDEBFF]">What needs a subscription.</span> Everything else,
+              in every course: the {lockedTierLabels} levels of those free categories (where a
+              category has them), every other category, all SAT Vocab reading passages and
+              cross-text pairs, the SAT Vocab Grammar &amp; Usage categories ({lockedGrammarTitles}),
+              and the SAT Vocab practice test. One subscription unlocks all of it.
+            </p>
+            <p className="mb-2">
+              <span className="text-[#EDEBFF]">Price and trial.</span> A subscription costs {PRICE_LABEL}
+              . New subscribers get a {TRIAL_LABEL}: you pay nothing during the trial, and if you
+              cancel before it ends you won't be charged. If you don't cancel, the trial
+              automatically becomes a paid subscription when the 7 days end, and it then renews
+              every month, charging {PRICE_LABEL} to the payment method you gave at checkout, until
+              you cancel.
             </p>
             <p className="mb-2">
               Subscriptions are billed and processed entirely by Stripe, our payment processor. We
               never see or store your card details.
             </p>
             <p className="mb-2">
-              Your trial automatically converts to a paid subscription at the end of 7 days unless
-              you cancel first. You can cancel anytime — see "Canceling Your Subscription" below.
-              Canceling stops future billing; access continues until the end of the current
-              billing period.
+              <span className="text-[#EDEBFF]">Age.</span> You must be 18 or older, or have the
+              permission of a parent or guardian, to start a subscription. If you're under 18,
+              please ask a parent or guardian to subscribe for you.
             </p>
             <p>
               Prices may change; we'll do our best to give notice before any change takes effect
@@ -79,13 +114,21 @@ export default function TermsPage() {
 
           <section>
             <h2 className="text-[#EDEBFF] font-medium mb-2">5. Canceling Your Subscription</h2>
-            <p>
-              The easiest way to cancel is through the subscription management link included in
-              your payment receipt email from Stripe. You can also email us at{" "}
+            <p className="mb-2">
+              You can cancel anytime. On the device you subscribed on, tap "Manage subscription"
+              on the Voco home screen. It opens Stripe's secure subscription page, where you can
+              cancel and update your payment method. If you can't use that (for example, you're on
+              a different device or browser), email us at{" "}
               <a href="mailto:itsowentodd@icloud.com" className="text-[#8B85FF]">
                 itsowentodd@icloud.com
               </a>{" "}
-              and we'll cancel it on our end.
+              and we'll cancel it for you. Any email from Stripe about your subscription may also
+              include a link to manage it.
+            </p>
+            <p>
+              Canceling stops future billing. You keep access until the end of the period you've
+              already started (the end of your trial, or of the month you've paid for), and then
+              the paid content locks again.
             </p>
           </section>
 

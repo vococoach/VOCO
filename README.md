@@ -36,10 +36,10 @@ To keep this MVP simple and reliable, based on what we decided:
     Certainty & Doubt, and Tone & Attitude. The course page has five tabs:
     **Vocabulary** (the categories, including the Expert level, whose
     distractors are extremely close near-synonyms), **Passages** (10 original
-    reading passages with questions — one free, the rest with the
+    reading passages with questions, all with the
     subscription; tracked separately from vocabulary progress), **Grammar**
-    (30 Standard English Conventions questions across Boundaries, free, and
-    Form, Structure, and Sense, paid — also tracked separately), **Practice
+    (Standard English Conventions and Expression of Ideas questions across four
+    categories, all with the subscription — also tracked separately), **Practice
     Test** (a timed, simulated 54-question Reading & Writing section drawn from
     the vocabulary/passage/grammar content above — paid only, its own tracking),
     and **Strategy** (4 short test-day guides, free for everyone).
@@ -57,7 +57,7 @@ To keep this MVP simple and reliable, based on what we decided:
   The home screen does adapt to the time of day (evenings suggest tonight's
   study, mornings surface last night's words), but that's only a suggestion —
   nothing is ever locked by the clock.
-- **One subscription, no ads.** One category in each course is free forever; a
+- **One subscription, no ads.** In each course, one category's Foundational and Intermediate levels are free forever (its Advanced level, SAT's Expert level and everything else need the subscription); a
   single $1.99/month subscription (7-day free trial, via Stripe) unlocks every
   category in every course. Still no accounts — see `CLAUDE.md`.
 

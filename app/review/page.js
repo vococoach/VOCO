@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Check, X, ArrowLeft, Sparkles } from "lucide-react";
 import { getAllWordsFlat, courses } from "@/lib/wordbanks";
-import { getDueWordIds, recordWordResult, REVIEW_SESSION_CAP } from "@/lib/progress";
+import { recordWordResult, REVIEW_SESSION_CAP } from "@/lib/progress";
+import { getAccessibleDueWordIds, isWordIdLocked } from "@/lib/access";
+import { useSubscription } from "@/lib/useLearnerState";
 import { getActivityTheme, NIGHT } from "@/lib/timeTheme";
 import QuizResults from "@/components/QuizResults";
 import MilestoneCards from "@/components/MilestoneCards";
@@ -23,6 +25,11 @@ function shuffledIndices(count) {
 }
 
 export default function ReviewPage() {
+  // Which tiers this learner can open (lib/access.js). The review only ever
+  // draws from those: saved due words from a locked tier — one that was free
+  // before the free set was narrowed, or a category a lapsed subscriber used to
+  // have — stay saved but are never served until they subscribe again.
+  const { subscribed, known } = useSubscription();
   const [dueWords, setDueWords] = useState(null); // null = still loading
   const [overflowCount, setOverflowCount] = useState(0);
   const [step, setStep] = useState(0);
@@ -40,14 +47,26 @@ export default function ReviewPage() {
   // Real time of day, not "review = always dawn" — see lib/timeTheme.js.
   const [theme, setTheme] = useState(NIGHT);
 
+  // Built once the subscription state is known (cached first). If the
+  // background Stripe check later says "no" while a session is under way, the
+  // words already loaded are filtered rather than rebuilt, so a revoked
+  // subscription stops serving locked words without reshuffling the session.
+  // A locked word never takes one of the 20 slots.
+  const built = useRef(false);
   useEffect(() => {
-    const dueIds = getDueWordIds(); // pre-sorted: lowest box first, then most overdue
-    const byId = new Map(getAllWordsFlat().map((w) => [w.id, w]));
-    const prioritized = dueIds.map((id) => byId.get(id)).filter(Boolean);
-    setDueWords(prioritized.slice(0, REVIEW_SESSION_CAP));
-    setOverflowCount(Math.max(0, prioritized.length - REVIEW_SESSION_CAP));
+    if (!known) return;
     setTheme(getActivityTheme(new Date()));
-  }, []);
+    if (!built.current) {
+      built.current = true;
+      const dueIds = getAccessibleDueWordIds(subscribed); // pre-sorted: lowest box first, then most overdue
+      const byId = new Map(getAllWordsFlat().map((w) => [w.id, w]));
+      const prioritized = dueIds.map((id) => byId.get(id)).filter(Boolean);
+      setDueWords(prioritized.slice(0, REVIEW_SESSION_CAP));
+      setOverflowCount(Math.max(0, prioritized.length - REVIEW_SESSION_CAP));
+    } else {
+      setDueWords((previous) => previous && previous.filter((w) => !isWordIdLocked(w.id, subscribed)));
+    }
+  }, [known, subscribed]);
 
   useEffect(() => {
     setOrder(shuffledIndices(4));
@@ -74,7 +93,8 @@ export default function ReviewPage() {
     );
   }
 
-  const current = dueWords[step];
+  // Clamped: a mid-session revocation can shrink the list under the position.
+  const current = dueWords[Math.min(step, dueWords.length - 1)];
   const q = current.quiz;
 
   function answer(idx) {

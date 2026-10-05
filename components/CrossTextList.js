@@ -39,16 +39,25 @@ export default function CrossTextList({ pairs, records, subscribed, ready }) {
               </p>
 
               {locked ? (
-                <Link href="/unlock" className="block">
-                  <span className="flex items-center gap-2 text-sm text-[#9B97C4]">
-                    <Lock size={14} />
-                    Locked
-                  </span>
-                  <span className="block text-xs font-medium text-[#8B85FF] mt-2">
-                    {PRICE_LABEL} for full access to every course
-                  </span>
-                  <span className="block text-[10px] text-[#6E699B] mt-0.5">{TRIAL_LABEL}</span>
+                <>
+                  <Link href="/unlock" className="block">
+                    <span className="flex items-center gap-2 text-sm text-[#9B97C4]">
+                      <Lock size={14} />
+                      Locked
+                    </span>
+                    <span className="block text-xs font-medium text-[#8B85FF] mt-2">
+                      {PRICE_LABEL} for full access to every course
+                    </span>
+                    <span className="block text-[10px] text-[#6E699B] mt-0.5">{TRIAL_LABEL}</span>
+                  </Link>
+                  {/* One real sample question — shows the format before paying (app/preview). */}
+                  <Link
+                  href={`/preview/${pair.id}`}
+                  className="mt-3 inline-flex items-center min-h-[40px] rounded-xl px-3.5 text-xs font-medium text-[#8B85FF] border border-[#8B85FF66]"
+                >
+                  Try a sample question
                 </Link>
+                </>
               ) : (
                 <>
                   <p
