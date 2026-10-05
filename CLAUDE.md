@@ -379,13 +379,10 @@ re-litigated or silently changed.
   arriving. `/courses/[courseId]` shows its course immediately for a first
   visitor — it is a plausible landing page and has no gate any more.
   **Palette:** it follows the real time of day (dawn in the morning, night
-  otherwise), like every learning screen. Two additions to the palettes, used by
-  this screen and the preview page only: `ctaText` (DAWN's white-on-orange
-  button text is only ~2:1; it is now the dawn plum, ~5.9:1) and `subtextAA`
-  (DAWN's subtext is ~3.4–4.0:1 on the dawn background; the darker plum is
-  ~5.2:1). The existing screens' look is unchanged, so they still use
-  `onAccent` and `subtext` — a known, pre-existing contrast gap on the dawn
-  quiz/study buttons that was not changed here.
+  otherwise), like every learning screen. It adds one thing to the palettes:
+  `subtextAA` (DAWN's subtext is ~3.4–4.0:1 on the dawn background; the darker plum
+  is ~5.2:1), used by this screen only. Button text is `onAccent`, like everywhere —
+  see "Contrast on dawn orange" below.
   **Fonts** now load through `next/font` (self-hosted, preloaded, size-matched
   fallback) instead of a render-blocking `@import` of fonts.googleapis.com;
   `lib/shareCard.js` reads the generated family names from the
@@ -844,6 +841,25 @@ results screen rendered at night, `deep`-vs-`accent` swap included — was confi
 visually, not just by computed style, and reads cleanly. `/preview/[categoryId]` (the
 locked-category sample question, not explicitly named in the original ask but the same
 exact bug) was found during the audit and fixed the same way.
+
+## Contrast on dawn orange (fixed 2026-10-05) — dark text, never white
+
+**Rule: text on the dawn orange (`#FF9B5C`) is dark, never white.** White on that orange is
+only ~2.1:1, under the 4.5:1 minimum for button text. `DAWN.onAccent` in `lib/timeTheme.js`
+is now `#3D2B4F` (the dawn text color) — **6.09:1** on the orange — and every primary-action
+button already reads its text from `theme.onAccent`, so quiz, study (and its closing screen),
+review, reading passages, cross-text, grammar, the practice test (intro, module nav, submit,
+transition, results), the sample-question page, the first-visit screen and every results
+screen picked it up from that one value. **A new screen must use `theme.onAccent`; hardcoding
+a text color on `theme.accent` is the bug.** NIGHT is unchanged: `#14152B` on `#8B85FF` is
+**5.89:1** (midday and evening both use NIGHT; morning is the only dawn phase).
+Measured, not assumed: every accent-colored button on every screen above was swept in a real
+browser with the clock override at 08:00, 14:00 and 21:00 and its computed text vs. background
+ratio taken — minimum **6.09 (morning), 5.89 (midday), 5.89 (evening)**, none under 4.5.
+Known and *not* changed (outside "orange buttons"): the unanswered practice-test question
+numbers on dawn are `#8A6E7D` on `#FFF9F2`, **4.36:1** (just under), and orange used as *text*
+(links like "Back home", small notes) on the light dawn card is roughly 2:1; both want a darker
+dawn subtext / a darker orange for text, which would change the look of every dawn screen.
 
 ## SAT Vocab has five sections — Vocabulary, Passages, Grammar & Usage, Practice Test, Strategy (Practice Test added 2026-09-23; Grammar renamed "Grammar & Usage" 2026-09-24 — see "Transitions + Command of Evidence" below)
 

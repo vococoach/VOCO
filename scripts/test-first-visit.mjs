@@ -147,6 +147,23 @@ ok("no render-blocking font @import in globals.css", !/@import/.test(globals));
 ok("fonts load through next/font", /next\/font\/google/.test(readFileSync(path.join(root, "app/layout.js"), "utf8")));
 
 
+// ---------- button contrast (dark text on the dawn orange) ----------
+function ratio(a, b) {
+  const lum = (hex) => {
+    const [r, g, bl] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * bl;
+  };
+  const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+for (const [name, theme] of [["NIGHT", NIGHT], ["DAWN", DAWN]]) {
+  const r = ratio(theme.accent, theme.onAccent);
+  ok(`${name}: button text on the accent is at least 4.5:1`, r >= 4.5, r.toFixed(2));
+}
+ok("DAWN button text is never white", DAWN.onAccent.toUpperCase() !== "#FFFFFF");
+const hardcoded = sources.filter((f) => /backgroundColor:\s*theme\.accent,\s*color:\s+(?!theme\.onAccent)\S/.test(readFileSync(f, "utf8"))).map((f) => path.relative(root, f));
+ok("no screen hardcodes a text color on theme.accent (must be theme.onAccent)", hardcoded.length === 0, hardcoded.join(", "));
+
 // ---------- analytics ----------
 const analytics = readFileSync(path.join(root, "lib/analytics.js"), "utf8");
 ok("exactly the three funnel events", ["first_question_answered", "keep_going_clicked", "trial_cta_clicked"].every((e) => analytics.includes(e)));

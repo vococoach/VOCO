@@ -105,7 +105,7 @@ export default function PreviewPage() {
             <TrialLink
               placement="preview"
               className="block w-full rounded-xl px-4 py-3 font-medium text-center mb-2"
-              style={{ backgroundColor: theme.accent, color: theme.ctaText }}
+              style={{ backgroundColor: theme.accent, color: theme.onAccent }}
             >
               Start {TRIAL_LABEL}
             </TrialLink>
