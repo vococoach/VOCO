@@ -20,6 +20,22 @@ body {
 html[data-returning] .vc-first { display: none; }
 html[data-returning] body { background: #1A1C3A; }
 
+/* Returning-device loading state (components/HomeLoading.js): in every page
+   load's HTML but hidden unless the pre-paint script marked this device as
+   returning, so a new visitor never sees it. */
+.vc-loading { display: none; }
+html[data-returning] .vc-loading { display: block; }
+/* Opacity only, so the browser can run the pulse on its compositor thread and it
+   doesn't compete with hydration for the main thread on a slow phone. */
+@keyframes vc-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+.vc-skeleton { background-color: #2A2C52; animation: vc-pulse 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .vc-skeleton { animation: none; }
+}
+
 /* Perfect-score card (components/QuizResults.js): one calm entrance, once. */
 @keyframes voco-rise {
   from { opacity: 0; transform: translateY(8px); }

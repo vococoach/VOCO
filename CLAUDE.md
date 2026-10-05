@@ -393,11 +393,36 @@ re-litigated or silently changed.
   `:root`, DAWN under `html[data-phase="morning"]`) instead of a
   JavaScript-chosen theme, and `html[data-returning] .vc-first {display:none}`
   hides it for a returning device. Measured in a real browser: a morning visit
-  is painted in dawn colors on the first frame; a returning device never has
-  the first-visit view visible; a returning device sees a brief empty dark
-  screen (the body color) until hydration puts the home on it — the one
-  remaining "gap", unavoidable without a server-side signal, and no first-visit
-  content shows in it. The only layout shift is 0.01 CLS, from the web font
+  is painted in dawn colors on the first frame, and a returning device never has
+  the first-visit view visible. **Returning devices see a loading state, not a
+  blank screen (added 2026-10-05):** `components/HomeLoading.js` is in every page
+  load's HTML but `display:none`; the same `data-returning` attribute that hides
+  the first-visit view shows it (`html[data-returning] .vc-loading`), so it is
+  painted from first paint and a new visitor never sees it (no JS-gated swap, so
+  no flash). It is deliberately content-free — the Voco wordmark and grey
+  placeholder shapes only; no greeting, count, streak, suggestion or course name,
+  because every one of those depends on saved progress or the clock and could turn
+  out wrong when the real home replaces it (`test-first-visit` enforces "Voco is
+  the only text"). Its background is the home's own dark shell `#1A1C3A`, **not**
+  the time-of-day palette: the real home is that colour at every hour (dawn only
+  appears as a card inside it), so a dawn shell would flip colours at the swap.
+  Same padding and widths as the real home so the swap doesn't jump; no info icon
+  (inert, it would be a button that does nothing). The pulse animates opacity only
+  (compositor-friendly, so it doesn't compete with hydration) and stops under
+  `prefers-reduced-motion`. **Measured** (same profile as the speed numbers
+  above, iPhone 13 emulation, ~Slow 3G + 6× CPU, 5 runs): a returning device's
+  first contentful paint went from ~8.8 s (a blank dark screen from ~1.35 s until
+  the home hydrated) to ~1.4 s; the home itself still arrives at ~8.7 s (unchanged
+  — this adds a placeholder, it doesn't speed hydration, and it did not slow it);
+  a new visitor still sees the question at ~1.35 s and never has the loading state
+  visible (checked frame by frame and with a mutation observer).
+  **`data-returning` is re-synced after hydration** (`setReturningAttribute()`,
+  `lib/visitor.js`, via `syncReturning()` in `app/page.js`): before this, "Reset
+  progress on this device" turned a returning device into a new visitor in React
+  but left the attribute set, so the first-visit view stayed hidden and the screen
+  went blank until a reload — a real bug on `main`, found while building this.
+  Whenever React re-decides returning-or-not, the attribute follows.
+  The only layout shift is 0.01 CLS, from the web font
   arriving. `/courses/[courseId]` shows its course immediately for a first
   visitor — it is a plausible landing page and has no gate any more.
   **Palette:** it follows the real time of day (dawn in the morning, night
@@ -1858,6 +1883,9 @@ components/
                          headline, figure, note) — score tiers AND milestones
   MilestoneCards.js       One-time milestone cards under the score card
   ShareButton.js          Trigger + dialog: share/copy/download the image
+  HomeLoading.js          The content-free loading state a returning device sees
+                         from first paint until the home hydrates (CSS-shown by
+                         data-returning; never visible to a new visitor)
   FirstVisit.js           The first-visit home screen (headline, one real free
                          question, Keep going / trial link) + the course list
                          below it — see "First-visit screen instead of onboarding"
@@ -1892,7 +1920,8 @@ lib/
                          clearLegacyFlags() (tidies the removed onboarding /
                          explainer flags)
   preHydration.js         The inline <head> script: data-phase + data-returning
-                         on <html> before first paint
+                         on <html> before first paint (the attribute is kept in
+                         step afterwards by setReturningAttribute in visitor.js)
   firstVisit.js           The first-visit question (Uphold) and its fixed
                          on-screen option order
   analytics.js            The three custom events + trackEvent() (the only

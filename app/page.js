@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Moon, Flame, RotateCcw, Sparkles, Target, Info, Sunrise, ChevronRight } from "lucide-react";
 import NightThemeExplainer from "@/components/NightThemeExplainer";
 import FirstVisit from "@/components/FirstVisit";
+import HomeLoading from "@/components/HomeLoading";
 import ShareButton from "@/components/ShareButton";
 import CourseProgress from "@/components/CourseProgress";
 import ScienceNote from "@/components/ScienceNote";
@@ -16,7 +17,7 @@ import { getAllProgress, getStreak, getNightToMorningStreak, resetProgress, getD
 import { isLevelLocked, openBillingPortal } from "@/lib/purchase";
 import { accessibleWordIds, countByCategory } from "@/lib/access";
 import { useSubscription } from "@/lib/useLearnerState";
-import { isReturningVisitor, clearLegacyFlags } from "@/lib/visitor";
+import { isReturningVisitor, setReturningAttribute, clearLegacyFlags } from "@/lib/visitor";
 
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
@@ -64,12 +65,20 @@ export default function Home() {
   // the server has no meaningful "now"). null until mounted.
   const [now, setNow] = useState(null);
 
+  // Re-read whether this device is a returning one and keep <html data-returning>
+  // (which decides, in CSS, what shows before hydration) in step with it.
+  function syncReturning() {
+    const isReturning = isReturningVisitor();
+    setReturningAttribute(isReturning);
+    setReturning(isReturning);
+  }
+
   // A tab left open overnight shouldn't keep showing last night's evening
   // framing at breakfast — re-read the clock and progress on coming back.
   useEffect(() => {
     function refresh() {
       if (document.visibilityState !== "visible") return;
-      setReturning(isReturningVisitor());
+      syncReturning();
       setNow(new Date());
       setProgress(getAllProgress());
       setStreak(getStreak());
@@ -87,7 +96,7 @@ export default function Home() {
 
   useEffect(() => {
     clearLegacyFlags();
-    setReturning(isReturningVisitor());
+    syncReturning();
     setNow(new Date());
     setProgress(getAllProgress());
     setStreak(getStreak());
@@ -107,7 +116,7 @@ export default function Home() {
     setDueIds([]);
     // A device with nothing left saved is a first visit again (unless it still
     // has a cached subscription), so the home screen follows.
-    setReturning(isReturningVisitor());
+    syncReturning();
   }
 
   async function handleManageSubscription() {
@@ -146,7 +155,15 @@ export default function Home() {
   else if (lastNight) subtitle = "Good morning. A quiz now shows what stuck overnight.";
 
   if (!returning) {
-    return <FirstVisit />;
+    // Both are in the server HTML; CSS (html[data-returning], set before first
+    // paint) shows exactly one: the first-visit view for a new device, the
+    // content-free loading state for a returning one while this hydrates.
+    return (
+      <>
+        <FirstVisit />
+        <HomeLoading />
+      </>
+    );
   }
 
   return (
