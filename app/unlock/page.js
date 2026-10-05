@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Moon, Lock, Check, X, Sparkles } from "lucide-react";
 import TrialLink from "@/components/TrialLink";
+import { TRADEMARK_NOTICE } from "@/lib/legal";
 import { courses } from "@/lib/wordbanks";
 import {
   isFreeCategory,
@@ -257,6 +258,7 @@ export default function UnlockPage() {
             </Link>
           </div>
         )}
+        <p className="text-[10px] leading-snug text-[#9B97C4] text-center mt-6">{TRADEMARK_NOTICE}</p>
       </div>
     </main>
   );

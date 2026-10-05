@@ -13,6 +13,7 @@ import { streakCard } from "@/lib/milestones";
 import { getPhase, findLastNightsLevel, getTonight } from "@/lib/timeOfDay";
 import { pickScienceFact } from "@/lib/sleepScience";
 import { courses, categories, getCategoryCourse, missedWordsId, DUE_FOR_REVIEW_ID } from "@/lib/wordbanks";
+import { TRADEMARK_NOTICE } from "@/lib/legal";
 import { getAllProgress, getStreak, getNightToMorningStreak, resetProgress, getDueWordIds, getStruggleWordIds } from "@/lib/progress";
 import { isLevelLocked, openBillingPortal } from "@/lib/purchase";
 import { accessibleWordIds, countByCategory } from "@/lib/access";
@@ -416,6 +417,7 @@ export default function Home() {
             Privacy Policy
           </Link>
         </div>
+        <p className="text-[10px] leading-snug text-[#9B97C4] text-center mt-3">{TRADEMARK_NOTICE}</p>
       </div>
     </main>
   );
