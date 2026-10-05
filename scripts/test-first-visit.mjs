@@ -16,7 +16,7 @@ const ok = (name, cond, extra = "") => {
 };
 
 const { getFirstVisitQuestion, FIRST_VISIT_LEVEL_ID, FIRST_VISIT_OPTION_ORDER } = await import("../lib/firstVisit.js");
-const { isReturningVisitor, clearLegacyFlags, RETURNING_KEYS } = await import("../lib/visitor.js");
+const { isReturningVisitor, clearLegacyFlags, setReturningAttribute, RETURNING_KEYS } = await import("../lib/visitor.js");
 const { PRE_HYDRATION_SCRIPT } = await import("../lib/preHydration.js");
 const { SLEEP_SCIENCE, SCIENCE_FACTS } = await import("../lib/sleepScience.js");
 const { THEME_CSS, NIGHT, DAWN } = await import("../lib/timeTheme.js");
@@ -72,6 +72,18 @@ ok("returning keys cover everything resetProgress() clears", ["voco_progress_v1"
   withStorage(store, clearLegacyFlags);
   ok("clearLegacyFlags removes the old flag and nothing else", !("voco_onboarded_v1" in store) && "voco_progress_v1" in store);
   ok("clearLegacyFlags is safe to repeat and with blocked storage", (() => { try { withStorage({}, clearLegacyFlags, { blocked: true }); withStorage(store, clearLegacyFlags); return true; } catch (e) { return false; } })());
+}
+
+// ---------- keeping <html data-returning> in step ----------
+{
+  const attrs = {};
+  globalThis.document = { documentElement: { setAttribute: (k, v) => (attrs[k] = v), removeAttribute: (k) => delete attrs[k] } };
+  setReturningAttribute(true);
+  ok("setReturningAttribute(true) sets data-returning", attrs["data-returning"] === "1");
+  setReturningAttribute(false);
+  ok("setReturningAttribute(false) clears it (so Reset progress can't leave the first-visit view hidden)", !("data-returning" in attrs));
+  delete globalThis.document;
+  ok("setReturningAttribute is a no-op without a document (server render)", (() => { try { setReturningAttribute(true); return true; } catch (e) { return false; } })());
 }
 
 // ---------- the pre-paint script agrees with the rule above ----------
@@ -146,6 +158,22 @@ const globals = readFileSync(path.join(root, "app/globals.css"), "utf8");
 ok("no render-blocking font @import in globals.css", !/@import/.test(globals));
 ok("fonts load through next/font", /next\/font\/google/.test(readFileSync(path.join(root, "app/layout.js"), "utf8")));
 
+
+// ---------- the returning-device loading state ----------
+{
+  const loading = readFileSync(path.join(root, "components/HomeLoading.js"), "utf8");
+  const globalsCss = readFileSync(path.join(root, "app/globals.css"), "utf8");
+  const code = loading.replace(/\/\/.*$/gm, "");
+  const jsxText = [...code.matchAll(/>([^<>{}]+)</g)].map((m) => m[1].trim()).filter((t) => /[A-Za-z0-9]/.test(t));
+  ok("loading state's only visible text is the Voco wordmark (nothing that could turn out wrong)", jsxText.length === 1 && jsxText[0] === "Voco", JSON.stringify(jsxText));
+  ok("loading state has no hooks, state or data imports (pure markup + CSS)", !/\buse[A-Z]\w*\(/.test(code) && !/from "@\/lib/.test(code));
+  ok("loading state is hidden by default and shown only for a returning device", /\.vc-loading\s*\{\s*display:\s*none;?\s*\}/.test(globalsCss) && /html\[data-returning\]\s+\.vc-loading\s*\{\s*display:\s*block;?\s*\}/.test(globalsCss));
+  ok("the first-visit view is hidden for a returning device", /html\[data-returning\]\s+\.vc-first\s*\{\s*display:\s*none;?\s*\}/.test(globalsCss));
+  ok("the pulse is opacity-only and stops under prefers-reduced-motion", /@keyframes vc-pulse[^}]*opacity[\s\S]*?prefers-reduced-motion[\s\S]*?\.vc-skeleton\s*\{\s*animation:\s*none/.test(globalsCss) && !/vc-pulse[^}]*background-color:\s*#/.test(globalsCss.slice(globalsCss.indexOf("@keyframes vc-pulse"), globalsCss.indexOf(".vc-skeleton {"))));
+  const home = readFileSync(path.join(root, "app/page.js"), "utf8");
+  ok("home renders both views for a not-yet-known device and lets CSS pick (no JS-gated flash)", /<FirstVisit \/>\s*<HomeLoading \/>/.test(home));
+  ok("home keeps the attribute in step wherever it re-decides returning", (home.match(/setReturningAttribute\(/g) || []).length === 1 && (home.match(/syncReturning\(\)/g) || []).length >= 3 && !/setReturning\(isReturningVisitor\(\)\)/.test(home));
+}
 
 // ---------- button contrast (dark text on the dawn orange) ----------
 function ratio(a, b) {
