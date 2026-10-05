@@ -67,15 +67,15 @@ const statusFor = async (impl) => {
 };
 {
   let r = await statusFor({ list: async () => { throw missing("customer"); } });
-  ok("made-up / deleted / wrong-mode customer (Stripe: resource_missing) → 200 inactive (definitive no)", r.status === 200 && r.body.status === "inactive", JSON.stringify(r));
+  ok("made-up / deleted / wrong-mode customer (Stripe: resource_missing) → 200 inactive (definitive no)", r.status === 200 && r.body.status === "inactive" && r.body.verdict === "no_such_customer", JSON.stringify(r));
   r = await statusFor({ list: async () => ({ data: [sub("canceled")] }) });
-  ok("only canceled subscriptions → 200 inactive", r.status === 200 && r.body.status === "inactive");
+  ok("only canceled subscriptions → 200 inactive + verdict no_active_subscription", r.status === 200 && r.body.status === "inactive" && r.body.verdict === "no_active_subscription");
   r = await statusFor({ list: async () => ({ data: [sub("past_due"), sub("incomplete_expired")] }) });
   ok("past_due / incomplete_expired only → inactive", r.body.status === "inactive");
   r = await statusFor({ list: async () => ({ data: [] }) });
   ok("customer with no subscriptions → inactive", r.status === 200 && r.body.status === "inactive");
   r = await statusFor({ list: async () => ({ data: [sub("active")] }) });
-  ok("active → 200 active", r.status === 200 && r.body.status === "active" && r.body.cancelAt === null);
+  ok("active → 200 active + verdict subscribed", r.status === 200 && r.body.status === "active" && r.body.verdict === "subscribed" && r.body.cancelAt === null);
   r = await statusFor({ list: async () => ({ data: [sub("trialing")] }) });
   ok("trialing → 200 trialing", r.status === 200 && r.body.status === "trialing");
   r = await statusFor({ list: async () => ({ data: [sub("canceled"), sub("trialing", { cancel_at: 1900000000, cancel_at_period_end: true })] }) });
@@ -98,8 +98,8 @@ const statusFor = async (impl) => {
 
 // ---------- 3. malformed bodies: 400 with a safe message, never 500 ----------
 stripeServer.setStripeForTests(fakeStripe({}));
-for (const [label, route] of [["subscription-status", statusRoute], ["create-portal-session", portalRoute]]) {
-  const bad = [
+{
+  const hard = [
     ["malformed JSON", req(null, "{not json")],
     ["empty body", req(null, "")],
     ["JSON null", req(null, "null")],
@@ -108,13 +108,29 @@ for (const [label, route] of [["subscription-status", statusRoute], ["create-por
     ["missing customerId", req({})],
     ["numeric customerId", req({ customerId: 5 })],
     ["object customerId", req({ customerId: { $ne: 1 } })],
+  ];
+  const badId = [
     ["wrong prefix", req({ customerId: "sub_abcdef123456" })],
     ["customerId with junk", req({ customerId: "cus_abc def/../x" })],
     ["huge customerId", req({ customerId: "cus_" + "a".repeat(5000) })],
+    ["too-short id", req({ customerId: "x" })],
   ];
-  for (const [name, r] of bad) {
-    const out = await call(route, r);
-    ok(`${label}: ${name} → 400`, out.status === 400 && out.body.error === "Invalid request", `${out.status} ${JSON.stringify(out.body)}`);
+  for (const [label, route] of [["subscription-status", statusRoute], ["create-portal-session", portalRoute]]) {
+    for (const [name, r] of hard) {
+      const out = await call(route, r);
+      ok(`${label}: ${name} → 400`, out.status === 400 && out.body.error === "Invalid request", `${out.status} ${JSON.stringify(out.body)}`);
+    }
+  }
+  for (const [name, r] of badId) {
+    const out = await call(portalRoute, r);
+    ok(`create-portal-session: ${name} → 400`, out.status === 400 && out.body.error === "Invalid request", `${out.status}`);
+    // A string that cannot be a Stripe customer id is answered with the explicit
+    // "no", so a forged id like "x" cannot stay unlocked; Stripe is never asked.
+    let asked = false;
+    stripeServer.setStripeForTests(fakeStripe({ list: async () => { asked = true; return { data: [] }; } }));
+    const st = await call(statusRoute, r);
+    ok(`subscription-status: ${name} → 200 explicit no_such_customer, Stripe not called`, st.status === 200 && st.body.verdict === "no_such_customer" && !asked, JSON.stringify(st));
+    stripeServer.setStripeForTests(fakeStripe({}));
   }
 }
 for (const [name, r] of [
@@ -173,40 +189,84 @@ const resp = (status, body) => ({ ok: status >= 200 && status < 300, status, jso
 const cachedStatus = () => JSON.parse(store.voco_subscription_status_v1).status;
 const refresh = (impl) => withFetch(impl, () => purchase.refreshSubscriptionStatus());
 
+const NO = { status: "inactive", cancelAt: null, verdict: "no_active_subscription" };
+const NOCUST = { status: "inactive", cancelAt: null, verdict: "no_such_customer" };
 seed();
-ok("client: 200 inactive (definitive no) → revokes", (await refresh(async () => resp(200, { status: "inactive", cancelAt: null }))) === false && !purchase.isSubscribedCached());
+ok("client: 200 verdict no_active_subscription → revokes", (await refresh(async () => resp(200, NO))) === false && !purchase.isSubscribedCached());
+seed();
+ok("client: 200 verdict no_such_customer → revokes", (await refresh(async () => resp(200, NOCUST))) === false && !purchase.isSubscribedCached());
 seed("inactive");
-ok("client: 200 active → grants", (await refresh(async () => resp(200, { status: "active", cancelAt: null }))) === true && purchase.isSubscribedCached());
+ok("client: 200 subscribed/active → grants", (await refresh(async () => resp(200, { status: "active", verdict: "subscribed", cancelAt: null }))) === true && purchase.isSubscribedCached());
 seed("inactive");
-ok("client: 200 trialing → grants", (await refresh(async () => resp(200, { status: "trialing", cancelAt: null }))) === true);
-seed();
-ok("client: 400 → revokes (definitive rejection)", (await refresh(async () => resp(400, { error: "Invalid request" }))) === false && cachedStatus() === "inactive");
-seed();
-ok("client: 404 → revokes", (await refresh(async () => resp(404, {}))) === false);
-for (const code of [500, 502, 503, 504, 408, 429]) {
+ok("client: 200 subscribed/trialing → grants", (await refresh(async () => resp(200, { status: "trialing", verdict: "subscribed", cancelAt: null }))) === true);
+// No marker, no revocation: every one of these keeps what the device had.
+for (const [name, impl] of [
+  ["200 inactive WITHOUT a verdict", async () => resp(200, { status: "inactive", cancelAt: null })],
+  ["200 with an empty object", async () => resp(200, {})],
+  ["200 with an unknown verdict", async () => resp(200, { status: "inactive", verdict: "whatever" })],
+  ["200 with a null body", async () => resp(200, null)],
+  ["400", async () => resp(400, { error: "Invalid request" })],
+  ["401", async () => resp(401, {})],
+  ["403", async () => resp(403, {})],
+  ["404 (route missing)", async () => resp(404, {})],
+  ["405", async () => resp(405, {})],
+  ["422", async () => resp(422, {})],
+  ["408", async () => resp(408, {})],
+  ["429", async () => resp(429, {})],
+  ["500", async () => resp(500, {})],
+  ["502", async () => resp(502, { error: "x" })],
+  ["503", async () => resp(503, { error: "x" })],
+  ["504", async () => resp(504, {})],
+  ["network error", async () => { throw new TypeError("Failed to fetch"); }],
+  ["unreadable 200 body", async () => ({ status: 200, ok: true, json: async () => { throw new SyntaxError("bad"); } })],
+]) {
   seed();
-  ok(`client: ${code} → fail open, cache untouched`, (await refresh(async () => resp(code, { error: "x" }))) === true && cachedStatus() === "active");
+  const r = await refresh(impl);
+  ok(`client: ${name} → keeps access, cache untouched`, r === true && cachedStatus() === "active");
+  seed("inactive");
+  const r2 = await refresh(impl);
+  ok(`client: ${name} → also never GRANTS access`, r2 === false && cachedStatus() === "inactive");
 }
-seed();
-ok("client: network error → fail open", (await refresh(async () => { throw new TypeError("Failed to fetch"); })) === true && cachedStatus() === "active");
 seed();
 {
   const t0 = Date.now();
   const r = await withFetch(
     (url, init) => new Promise((_, reject) => init.signal.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")))),
     async () => {
-      // shorten the wait: patch setTimeout only for this call
       const realST = globalThis.setTimeout;
       globalThis.setTimeout = (fn, ms, ...a) => realST(fn, Math.min(ms, 50), ...a);
       try { return await purchase.refreshSubscriptionStatus(); } finally { globalThis.setTimeout = realST; }
     }
   );
-  ok("client: request that never answers is aborted by the timeout and fails open", r === true && cachedStatus() === "active" && Date.now() - t0 < 2000);
+  ok("client: request that never answers is aborted by the timeout and keeps access", r === true && cachedStatus() === "active" && Date.now() - t0 < 2000);
 }
-seed();
-ok("client: unreadable 200 body → fail open", (await refresh(async () => ({ ok: true, status: 200, json: async () => { throw new SyntaxError("bad"); } }))) === true && cachedStatus() === "active");
 for (const k of Object.keys(store)) delete store[k];
 ok("client: no customer id → false, no request", (await refresh(async () => { throw new Error("should not be called"); })) === false);
+
+// ---------- 5b. every Stripe error type: what our route returns and what the client does ----------
+// (the table in the PR description is generated from these rows)
+const rows = [
+  ["Authentication (invalid / revoked key)", new E.StripeAuthenticationError({ type: "authentication_error", statusCode: 401, message: "Invalid API Key provided: sk_live_abc" }), 502, "keeps access"],
+  ["Permission (restricted key missing a permission)", new E.StripePermissionError({ type: "invalid_request_error", code: "secret_key_required", statusCode: 403, message: "The provided key does not have the required permissions" }), 502, "keeps access"],
+  ["Invalid request, NOT resource_missing (e.g. a restricted-key message)", new E.StripeInvalidRequestError({ type: "invalid_request_error", statusCode: 400, message: "This API call cannot be made with a restricted key" }), 502, "keeps access"],
+  ["Rate limit (429)", new E.StripeRateLimitError({ type: "invalid_request_error", code: "rate_limit", statusCode: 429, message: "slow down" }), 502, "keeps access"],
+  ["Connection (network)", new E.StripeConnectionError({ type: "api_connection_error", message: "ECONNRESET" }), 502, "keeps access"],
+  ["API error (Stripe 5xx)", new E.StripeAPIError({ type: "api_error", statusCode: 500, message: "boom" }), 502, "keeps access"],
+  ["Anything else (plain Error)", new Error("surprise"), 502, "keeps access"],
+  ["Invalid request, resource_missing (no such customer / wrong mode / deleted)", missing("customer"), 200, "revokes"],
+];
+for (const [name, err, expectHttp, expectClient] of rows) {
+  seed();
+  stripeServer.setStripeForTests(fakeStripe({ list: async () => { throw err; } }));
+  let http = null;
+  const kept = await refresh(async (url, init) => {
+    const out = await call(statusRoute, { json: async () => JSON.parse(init.body), nextUrl: { origin: "x" } });
+    http = out.status;
+    return resp(out.status, out.body);
+  });
+  const clientResult = kept ? "keeps access" : "revokes";
+  ok(`error table: ${name} → route ${http}, client ${clientResult}`, http === expectHttp && clientResult === expectClient);
+}
 
 // ---------- 6. end to end through both halves: a made-up customer id cannot stay unlocked ----------
 {

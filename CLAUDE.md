@@ -54,24 +54,25 @@ re-litigated or silently changed.
     the fresh answer disagrees (e.g. cancelled), the page re-renders
     locked and, on `/sets/[setId]/study` or `/quiz`, redirects to
     `/unlock` immediately — even mid-session.
-  - **Fail open on errors, fail closed on a real answer (tightened 2026-10-05).**
-    `/api/subscription-status` returns one of two kinds of "no". *Definitive* —
-    Stripe answered: no active subscription, canceled, or **no such customer**
-    (a made-up id, a deleted customer, or an id from the other Stripe mode; Stripe
-    reports all three as `resource_missing`) → `200 {status:"inactive"}`, and the
-    client locks. *No answer* — outage, timeout, rate limit, a bad or missing API
-    key, anything unrecognised → 502/503, and the client keeps the last known
-    status. Client side, `refreshSubscriptionStatus()` revokes on a 200 "inactive"
-    and on any 4xx other than 408/429, and fails open only on a network error, its
-    own 10 s timeout, 5xx, 408 or 429. Why: before, *every* Stripe error was a 502
-    and fail-open, so a forged customer id plus a forged cached "active" kept paid
-    pages open forever — the daily check could never say "no". A bad API key must
-    still fail open (our misconfiguration is not a cancellation), which is why only
-    `resource_missing` counts as definitive. Don't collapse either distinction.
+  - **Fail open unless the server explicitly says "no" (tightened 2026-10-05).**
+    `/api/subscription-status` puts a `verdict` on a 200: `subscribed`, or a
+    definitive "no" — `no_active_subscription` (Stripe answered: none active, or
+    canceled) or `no_such_customer` (Stripe's `resource_missing`: a made-up id, a
+    deleted customer, an id from the other Stripe mode; also any string not even
+    shaped like a customer id). **`refreshSubscriptionStatus()` revokes only on one of
+    those two verdicts and grants only on `subscribed`; every other outcome keeps the
+    last known status** — any 4xx or 5xx (400, 401, 403, a 404 for a missing route,
+    502/503), a 200 without a recognised verdict, an unreadable body, a network error,
+    its own 10 s timeout. Authentication and permission errors, rate limits, connection
+    errors and any other Stripe error return 502 and never revoke: they are our
+    misconfiguration or an outage, not a cancellation. Only `resource_missing` is
+    definitive. Why: before, *every* Stripe error was a 502 and fail-open, so a forged
+    customer id plus a forged cached "active" kept paid pages open forever — the daily
+    check could never say "no". Don't collapse either distinction.
     The routes are unauthenticated and accept any well-formed customer id (no accounts
-    by design), so they will confirm whether an id is subscribed to anyone who sends
-    it; ids are unguessable, but that is the limit of the protection. Bodies are
-    validated (`400 {"error":"Invalid request"}`) and Stripe error text is never echoed.
+    by design), so they will say whether an id is subscribed to anyone who sends it; ids
+    are unguessable, which is the limit of the protection. Bodies are validated
+    (`400 {"error":"Invalid request"}`) and Stripe error text is never echoed.
   - **Still per-device, not a real account.** No accounts/database, per
     the point above — `voco_customer_id_v1` and
     `voco_subscription_status_v1` don't sync across browsers or survive a
