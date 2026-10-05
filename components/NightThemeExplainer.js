@@ -1,32 +1,28 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { Info, X } from "lucide-react";
 import { SLEEP_SCIENCE } from "@/lib/sleepScience";
-import { hasSeenThisSession, markSeenThisSession } from "@/lib/nightThemeExplainer";
 
 // Small "why the night theme?" icon for the home header, plus the dismissible
 // explainer it opens. Uses the native <dialog> element, which supplies the
 // modal backdrop, focus trapping and Esc-to-close for free; the forms with
 // method="dialog" close it without any extra state.
 //
-// Also auto-opens once per fresh browser session (a new tab/window opening the
-// site) — not once ever, and not on every internal navigation within a session
-// that's already open. See lib/nightThemeExplainer.js for the sessionStorage
-// flag and CLAUDE.md for the reasoning (traded onboarding-once for repeated
-// visibility, deliberately). The manual tap-to-open affordance below is
-// unchanged and always available regardless of the session flag.
-export default function NightThemeExplainer() {
+// It only ever opens when the learner taps the icon. (It used to also pop open
+// by itself once per browser session; that was removed because an uninvited
+// dialog on arrival is exactly what makes a first-time visitor leave — see
+// CLAUDE.md.) The dialog stays dark in every phase: it's a modal over the page,
+// not a learning screen.
+//
+// `iconClassName`/`iconStyle` let a screen that isn't the dark shell (the
+// first-visit screen, which follows the real time of day) color the icon to
+// match its own background; the defaults are the dark shell's colors.
+export default function NightThemeExplainer({
+  iconClassName = "text-[#6E699B] hover:text-[#9B97C4] focus-visible:text-[#9B97C4]",
+  iconStyle,
+}) {
   const dialogRef = useRef(null);
-
-  useEffect(() => {
-    if (!hasSeenThisSession()) {
-      dialogRef.current?.showModal();
-      // Marked immediately (not on dismiss), so navigating away before
-      // closing it still counts as "seen" for the rest of this session.
-      markSeenThisSession();
-    }
-  }, []);
 
   return (
     <>
@@ -36,7 +32,8 @@ export default function NightThemeExplainer() {
         onClick={() => dialogRef.current?.showModal()}
         // Padding + equal negative margin: a 44px tap target around a 16px
         // icon without shifting the header layout.
-        className="p-3.5 -m-3.5 rounded-full text-[#6E699B] hover:text-[#9B97C4] focus-visible:text-[#9B97C4]"
+        className={`p-3.5 -m-3.5 rounded-full ${iconClassName}`}
+        style={iconStyle}
       >
         <Info size={16} />
       </button>

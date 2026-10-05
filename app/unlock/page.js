@@ -3,14 +3,15 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Moon, Lock, Check, X, Sparkles } from "lucide-react";
+import TrialLink from "@/components/TrialLink";
 import { courses } from "@/lib/wordbanks";
 import {
   isFreeCategory,
   isPassageLocked,
   isGrammarCategoryLocked,
-  PAYMENT_LINK_URL,
   PRICE_LABEL,
   TRIAL_LABEL,
+  TRIAL_TERMS,
   setCustomerId,
   isSubscribedCached,
   shouldRefreshStatus,
@@ -141,15 +142,15 @@ export default function UnlockPage() {
             <p className="text-sm text-[#9B97C4] mb-6">
               If you just started your trial, try refreshing this page. Otherwise, start below.
             </p>
-            <a
-              href={PAYMENT_LINK_URL}
+            <TrialLink
+              placement="unlock-error"
               className="block w-full rounded-xl px-4 py-3 font-medium text-center mb-3"
               style={{ backgroundColor: "#8B85FF", color: "#14152B" }}
             >
               Start {TRIAL_LABEL}
-            </a>
+            </TrialLink>
             <p className="text-center text-xs text-[#6E699B] mb-3">
-              {PRICE_LABEL} after your trial, for full access to every course. Cancel anytime.
+              {TRIAL_TERMS} One subscription gives you full access to every course.
             </p>
             <Link href="/" className="block text-center text-[#8B85FF] text-sm">
               Back home
@@ -219,15 +220,15 @@ export default function UnlockPage() {
               ))}
             </div>
 
-            <a
-              href={PAYMENT_LINK_URL}
+            <TrialLink
+              placement="unlock"
               className="block w-full rounded-xl px-4 py-3 font-medium text-center mb-3"
               style={{ backgroundColor: "#8B85FF", color: "#14152B" }}
             >
               Start {TRIAL_LABEL}
-            </a>
+            </TrialLink>
             <p className="text-center text-xs text-[#6E699B] mb-3">
-              {PRICE_LABEL} after your trial, for full access to every course. Cancel anytime.
+              {TRIAL_TERMS} One subscription gives you full access to every course.
             </p>
             <Link href="/" className="block text-center text-[#8B85FF] text-sm">
               Not yet — back home

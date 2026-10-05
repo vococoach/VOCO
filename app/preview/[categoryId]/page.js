@@ -5,7 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Check, X, ArrowLeft } from "lucide-react";
 import { getPreviewSample } from "@/lib/preview";
-import { PAYMENT_LINK_URL, PRICE_LABEL, TRIAL_LABEL, isSubscribedCached } from "@/lib/purchase";
+import TrialLink from "@/components/TrialLink";
+import { PRICE_LABEL, TRIAL_LABEL, TRIAL_TERMS, isSubscribedCached } from "@/lib/purchase";
 import { getActivityTheme, NIGHT } from "@/lib/timeTheme";
 
 // The word bank always lists the correct option first (correctIndex: 0);
@@ -99,15 +100,18 @@ export default function PreviewPage() {
             <p className="font-display text-xl mb-1" style={{ color: theme.text }}>{PRICE_LABEL} for full access</p>
             <p className="text-sm mb-4" style={{ color: theme.subtext }}>
               That was 1 of {totalQuestions} questions in {category.title}. One subscription unlocks every
-              course — {TRIAL_LABEL}, cancel anytime.
+              course.
             </p>
-            <a
-              href={PAYMENT_LINK_URL}
-              className="block w-full rounded-xl px-4 py-3 font-medium text-center mb-3"
+            <TrialLink
+              placement="preview"
+              className="block w-full rounded-xl px-4 py-3 font-medium text-center mb-2"
               style={{ backgroundColor: theme.accent, color: theme.onAccent }}
             >
               Start {TRIAL_LABEL}
-            </a>
+            </TrialLink>
+            <p className="text-xs mb-3" style={{ color: theme.subtext }}>
+              {TRIAL_TERMS}
+            </p>
             <Link href="/unlock" className="text-sm underline" style={{ color: theme.subtext }}>
               See what's included
             </Link>

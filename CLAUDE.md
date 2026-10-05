@@ -135,18 +135,18 @@ re-litigated or silently changed.
   This is intentional for reliability — an earlier
   version called an AI API live and it was flaky. Content is written once
   (by a human or AI-assisted, then reviewed), then baked in as static data.
-- **Vercel Web Analytics only, and it must stay that way.** `<Analytics />`
-  from `@vercel/analytics/next` in `app/layout.js` (added 2026-09-22) gives
-  aggregate, anonymous page-view counts — no cookies, no per-visitor
-  identifiers, nothing that connects a page view to a customer id or any
-  other data this app holds. That's a deliberate constraint matching the
-  no-accounts architecture above, not an oversight: don't add event
-  properties, user ids, or a second analytics tool that would start
-  identifying visitors without discussing it first. In dev it logs to the
-  console instead of sending anything ("Debug mode is enabled by default in
-  development"); it only reports to Vercel on a real deploy, and needs Web
-  Analytics turned on for the project in the Vercel dashboard to collect
-  there.
+- **Vercel Web Analytics only, plus three anonymous funnel events — and it must
+  stay that way.** `<Analytics />` from `@vercel/analytics/next` in
+  `app/layout.js` (added 2026-09-22) gives aggregate, anonymous page-view counts —
+  no cookies, no per-visitor identifiers, nothing that connects a page view to
+  a customer id or any other data this app holds. That's a deliberate constraint
+  matching the no-accounts architecture above, not an oversight: don't add user
+  ids or a second analytics tool that would start identifying visitors without
+  discussing it first. On 2026-10-05, with the owner's explicit go-ahead, three
+  custom events were added (see "Analytics events" below). In dev it logs to the
+  console instead of sending anything; it only reports to Vercel on a real
+  deploy, and needs Web Analytics turned on for the project in the Vercel
+  dashboard to collect there.
 - No quiz-unlock timer — study and quiz are both available anytime. Also
   deliberate, for ease of testing/demoing.
 - **Spaced repetition (Leitner system)**, added after MVP launch as the
@@ -234,59 +234,26 @@ re-litigated or silently changed.
   explaining the sleep/memory rationale; keep its claims hedged, since how
   much sleep helps varies by person. Its tap target is 44px on purpose (the
   visible icon is 16px).
-  **It also auto-opens once per fresh browser session** (added 2026-09-22,
-  `lib/nightThemeExplainer.js`, `voco_night_theme_seen_session_v1`,
-  `sessionStorage` — not `localStorage`): a new tab/window opening the site
-  shows it once, but navigating around (or reloading) within that same tab
-  doesn't show it again, because it's marked seen the moment it auto-opens,
-  not on dismiss. **Deliberate tradeoff, discussed with the owner:** before
-  this it only ever opened by tapping the icon, with no auto-show at all —
-  content this useful for framing the app's premise was easy to never
-  discover. A once-ever auto-show (mirroring onboarding) was considered and
-  rejected: it would only ever help the very first session, and the value of
-  "why the night theme?" doesn't expire after one viewing the way a guided
-  tour does. Per-session repetition was chosen over that, accepting the
-  minor repeat-visit friction as worth it for the explainer actually being
-  seen again. The manual tap-to-open icon is unchanged and always available
-  regardless of the session flag. On a brand-new visitor's very first
-  session, `finishOnboarding()` (`lib/useLearnerState.js`) also marks this
-  session as seen, since the onboarding they just finished already covers
-  the same rationale — without that, the explainer would auto-pop
-  immediately on top of the intro that just closed. Their *next* fresh
-  session (a later visit) shows it normally. Not cleared by "Reset progress
-  on this device" — `sessionStorage` isn't touched by `resetProgress()`
-  (`localStorage`-only) and clears itself when the tab closes regardless.
-  **Leave `components/ScienceNote.js` (the permanent, always-on footnote,
-  below) out of this — it's a separate feature and wasn't touched.**
-  **Bug, found and fixed 2026-09-23: `NightThemeExplainer` was mounting (and
-  auto-firing) during the brief window before onboarding status was even
-  known, which let it steal the reveal a genuine first-timer should see as
-  Onboarding's own first slide.** Root cause, precisely: `useOnboarding()`'s
-  `onboarding` state starts at `null` ("not yet checked"), and `app/page.js`'s
-  `if (onboarding) return <Onboarding .../>` is falsy for `null` — so on the
-  very first render, before `useOnboarding()`'s own effect has resolved
-  whether this is a brand-new visitor, the page fell through to its *main*
-  return (hidden via an `invisible` class, but still mounted) — which
-  included `<NightThemeExplainer />`, unconditionally. That component's own
-  effect fires the instant it mounts, regardless of the page's CSS
-  visibility, so a genuine first-timer's fresh session had it call
-  `showModal()` and write the "seen this session" flag *before* the
-  onboarding check even resolved — on some code paths this let the
-  explainer's own dialog (which also covers sleep/rhythm content, so it can
-  look enough like "an intro" to be mistaken for one) show in place of
-  Onboarding's actual first slide. **Fix:** `NightThemeExplainer` now only
-  renders once `onboarding === false` is definitively known — `{onboarding
-  === false && <NightThemeExplainer />}` — never during the still-checking
-  `null` state, matching how every other piece of this page's content is
-  already gated behind knowing the real state first. This fully closes the
-  race (confirmed live: a genuinely fresh session's `sessionStorage` now
-  stays untouched until `finishOnboarding()` marks it, not before), while
-  leaving the *intended* per-session auto-show for a returning,
-  already-onboarded visitor completely unchanged. **Lesson:** a component
-  with a mount-time side effect (opening a modal, writing storage) needs to
-  be gated on a definitively-known state, not merely "the state that isn't
-  literally `true` yet" — `null` (unknown) and `false` (confirmed no) are
-  not the same condition, even though `if (x)` treats them identically.
+  **It no longer opens by itself (removed 2026-10-05).** From 2026-09-22 it
+  auto-opened once per fresh browser session (a `sessionStorage` flag,
+  `voco_night_theme_seen_session_v1`), a deliberate tradeoff made with the owner
+  to keep the sleep rationale from going undiscovered. **That is reversed, and
+  so is the two-slide onboarding below**: the goal is the lowest realistic
+  bounce for first-time visitors, who arrive mostly on phones from TikTok/
+  YouTube links, and an uninvited dialog (or two intro slides) before they have
+  touched anything is the opposite of that. The explainer is now tap-only, via
+  the info icon (which stays in both headers, with the same 44px target); the
+  night/dawn look and the always-on science note carry the premise instead. The
+  old flag is no longer read or written; `clearLegacyFlags()` (`lib/visitor.js`)
+  tidies it from anyone's `sessionStorage` on the next home-screen load, and a
+  leftover `voco_onboarded_v1` is ignored and tidied the same way — an old flag
+  can't change which screen anyone sees. **Leave `components/ScienceNote.js`
+  (the permanent, always-on footnote, below) out of this — it's a separate
+  feature and wasn't touched.** (The 2026-09-23 bug where the explainer mounted
+  before onboarding status was known is gone with both features; the lesson
+  stands for any future component with a mount-time side effect: gate it on a
+  definitively-known state, not merely "not literally `true` yet" — `null` and
+  `false` are not the same condition.)
 - **All sleep-and-memory wording lives in one file — `lib/sleepScience.js` —
   and has hard accuracy rules.** The closing screen, the onboarding, the
   "why the night theme?" explainer and the home screen's always-on science
@@ -362,27 +329,81 @@ re-litigated or silently changed.
   and the quiz is still available immediately (the "no unlock timer"
   decision stands). It also appears after missed-words and due-for-review
   study sessions, since they share the study page.
-- **First-visit onboarding: two skippable screens, shown once**
-  (`components/Onboarding.js`, gated by the shared `useOnboarding()` hook in
-  `lib/useLearnerState.js`, used by both `app/page.js` and
-  `app/courses/[courseId]/page.js`). The one-time flag is
-  its own localStorage key, `voco_onboarded_v1` (`lib/onboarding.js`) —
-  deliberately **not** derived from progress data, and **not** cleared by
-  "Reset progress on this device", so resetting or an empty progress store
-  never re-triggers it. (Consequence: everyone who used the app before it
-  shipped sees it once too.) Those two pages are server-rendered with
-  `invisible` on `<main>` until the client has read the flag, so a
-  first-timer never glimpses the page first (verified by comparing browser
-  first-paint time with the DOM state: nothing but the intro is ever painted).
-  If localStorage is blocked it is skipped rather than shown on every visit.
-  **A course page can be a visitor's first page** (a shared/bookmarked link),
-  so it shows the intro too — and because finishing just re-renders the page in
-  place, they then land on the course they came for, not the home screen. An
-  unknown course id redirects to `/`, which shows the intro. **Only those two
-  pages gate**: a deep link into `/sets/...`, `/preview/...`, `/review`,
-  `/unlock`, `/terms` or `/privacy` does not show the intro (same as before
-  courses existed). If another page becomes a plausible first landing spot, use
-  the same hook rather than copying the logic.
+- **First-visit screen instead of onboarding (2026-10-05).** The two-slide
+  onboarding (`voco_onboarded_v1`, `useOnboarding()`, the check on the course
+  page too) was **removed**, along with the auto-opening explainer above —
+  see that bullet for the why: a first-time visitor on a phone should land on
+  something they can *use*, not something to dismiss. A first-time visitor is
+  one whose device has **no saved progress and no cached subscription**
+  (`isReturningVisitor()`, `lib/visitor.js`, over `SAVED_PROGRESS_KEYS` +
+  the customer id; derived, not a flag — so "Reset progress on this device"
+  really does start the device over, and an old onboarding flag changes
+  nothing). They see `components/FirstVisit.js` on the home screen: headline
+  "Study tonight. Quiz tomorrow.", the subline "SAT vocab, built around how
+  sleep helps memory settle." (checked against the `lib/sleepScience.js` rules
+  by `scripts/test-first-visit.mjs`), and one real free question; after
+  answering (right or wrong) there is instant feedback with the explanation, a
+  primary **Keep going** (a real next page: `/sets/agreement-support-1/quiz`,
+  the free level the question came from) and a quieter **Start free trial**
+  link with "7 days free, then $1.99/month. Cancel anytime." beside it (the
+  line is `TRIAL_TERMS` in `lib/purchase.js`, and every start-trial link
+  anywhere goes through `components/TrialLink.js`, which counts it and is
+  required by the test to sit next to that line). Below the first screen is the
+  list of the four courses, so the other three stay discoverable. A returning
+  device skips all of it and gets the normal home (review, tonight's study).
+  **The question** is `lib/firstVisit.js`: "Uphold" (Agreement & Support ·
+  Foundational) — short enough to fit with all four options on a 375×667
+  phone, easy to get right but with a real pull toward "Overturn", and its
+  explanation teaches the contextual-cue skill in one line. Its options show in
+  a fixed order (correct answer third) because the question is the same for
+  everyone and a post-mount shuffle would move options under a thumb; real
+  quizzes still shuffle every time. The first screen fits 375×667 with and
+  without an answer showing (measured: content ends at y=431 before answering,
+  599 after, of 667); options are a 2×2 grid of 48px targets.
+  **Speed and no-flash design.** The server renders the first-visit view and it
+  is usable the moment the HTML arrives — no `invisible` gate, nothing waiting
+  on localStorage. After hydration, `app/page.js` swaps to the returning view
+  only if `isReturningVisitor()` says so. Two things stop the swap and the
+  clock from flashing: an inline `<head>` script (`lib/preHydration.js`) runs
+  before first paint and sets `data-phase="morning"` (same hours as
+  `getPhase()`) and `data-returning="1"` on `<html>`; the first-visit screen
+  paints from CSS variables (`THEME_CSS` in `lib/timeTheme.js`, NIGHT on
+  `:root`, DAWN under `html[data-phase="morning"]`) instead of a
+  JavaScript-chosen theme, and `html[data-returning] .vc-first {display:none}`
+  hides it for a returning device. Measured in a real browser: a morning visit
+  is painted in dawn colors on the first frame; a returning device never has
+  the first-visit view visible; a returning device sees a brief empty dark
+  screen (the body color) until hydration puts the home on it — the one
+  remaining "gap", unavoidable without a server-side signal, and no first-visit
+  content shows in it. The only layout shift is 0.01 CLS, from the web font
+  arriving. `/courses/[courseId]` shows its course immediately for a first
+  visitor — it is a plausible landing page and has no gate any more.
+  **Palette:** it follows the real time of day (dawn in the morning, night
+  otherwise), like every learning screen. It adds one thing to the palettes:
+  `subtextAA` (DAWN's subtext is ~3.4–4.0:1 on the dawn background; the darker plum
+  is ~5.2:1), used by this screen only. Button text is `onAccent`, like everywhere —
+  see "Contrast on dawn orange" below.
+  **Fonts** now load through `next/font` (self-hosted, preloaded, size-matched
+  fallback) instead of a render-blocking `@import` of fonts.googleapis.com;
+  `lib/shareCard.js` reads the generated family names from the
+  `--font-fraunces`/`--font-inter` variables so the share image still uses the
+  loaded fonts. Fraunces keeps its optical-size axis.
+  **Measured** (Lighthouse, mobile profile, Chromium, local production build,
+  3 runs each, medians; with *applied* throttling — what a throttled phone
+  really does): first-visit largest contentful paint 2878 ms → 1472 ms; first
+  contentful paint 2878 ms → 1472 ms; total blocking time 0 → 97 ms — the TBT
+  "increase" is an artifact, not extra work: before, nothing painted until
+  after the JavaScript had run (so there was nothing to block), now content
+  paints at 1.47 s while hydration is still in flight. With Lighthouse's
+  default *simulated* throttling: FCP 1551 → 774 ms, LCP 2814 → 2574 ms (noisy,
+  2419–3196), TBT 79 → 69 ms. **Caveat:** in the sandbox these were run in,
+  Google Fonts requests from the browser fail, so the "before" includes a
+  render-blocking stylesheet that errors out after ~400 ms rather than a real
+  font download — the real-world gain from removing it is likely larger.
+  **Bounce:** Vercel counts a single-page session as a bounce and custom
+  events do not count toward it; the design target is real engagement on the
+  first screen (answer a question, "Keep going" into a second page), not
+  splitting content across pages to move the number.
 - **The night-to-morning streak is a second, separate counter** (header,
   sunrise icon, "N day night-to-morning streak"; the flame "N day streak"
   is unchanged and counts any quiz on any day). One *cycle* = a level
@@ -820,6 +841,25 @@ results screen rendered at night, `deep`-vs-`accent` swap included — was confi
 visually, not just by computed style, and reads cleanly. `/preview/[categoryId]` (the
 locked-category sample question, not explicitly named in the original ask but the same
 exact bug) was found during the audit and fixed the same way.
+
+## Contrast on dawn orange (fixed 2026-10-05) — dark text, never white
+
+**Rule: text on the dawn orange (`#FF9B5C`) is dark, never white.** White on that orange is
+only ~2.1:1, under the 4.5:1 minimum for button text. `DAWN.onAccent` in `lib/timeTheme.js`
+is now `#3D2B4F` (the dawn text color) — **6.09:1** on the orange — and every primary-action
+button already reads its text from `theme.onAccent`, so quiz, study (and its closing screen),
+review, reading passages, cross-text, grammar, the practice test (intro, module nav, submit,
+transition, results), the sample-question page, the first-visit screen and every results
+screen picked it up from that one value. **A new screen must use `theme.onAccent`; hardcoding
+a text color on `theme.accent` is the bug.** NIGHT is unchanged: `#14152B` on `#8B85FF` is
+**5.89:1** (midday and evening both use NIGHT; morning is the only dawn phase).
+Measured, not assumed: every accent-colored button on every screen above was swept in a real
+browser with the clock override at 08:00, 14:00 and 21:00 and its computed text vs. background
+ratio taken — minimum **6.09 (morning), 5.89 (midday), 5.89 (evening)**, none under 4.5.
+Known and *not* changed (outside "orange buttons"): the unanswered practice-test question
+numbers on dawn are `#8A6E7D` on `#FFF9F2`, **4.36:1** (just under), and orange used as *text*
+(links like "Back home", small notes) on the light dawn card is roughly 2:1; both want a darker
+dawn subtext / a darker orange for text, which would change the look of every dawn screen.
 
 ## SAT Vocab has five sections — Vocabulary, Passages, Grammar & Usage, Practice Test, Strategy (Practice Test added 2026-09-23; Grammar renamed "Grammar & Usage" 2026-09-24 — see "Transitions + Command of Evidence" below)
 
@@ -1514,6 +1554,29 @@ console errors at any point. Verified at true mobile width (375px) as well as de
 both new chart types, specifically because narrow-width chart legibility was the stated
 risk for that part.
 
+## Analytics events (added 2026-10-05, with the owner's go-ahead)
+
+Three custom Vercel Web Analytics events, all through `trackEvent()` in
+`lib/analytics.js` (the only place `track()` is called — `test-first-visit` enforces it):
+
+| Event | Fires when | Properties |
+|---|---|---|
+| `first_question_answered` | a first-time visitor answers the first-visit question (once per answer; right or wrong) | none |
+| `keep_going_clicked` | they tap **Keep going** after answering | none |
+| `trial_cta_clicked` | any start-trial link is tapped (all go through `components/TrialLink.js`) | `placement`: `first-visit`, `preview`, `unlock` or `unlock-error` — a fixed screen label, nothing about the person |
+
+No cookies, no user or customer ids, nothing derived from progress. `placement` is the
+one property, added so the three trial buttons can be compared; it is not personal data
+and is easy to drop (delete the argument in `TrialLink`). Privacy §4 names these events;
+if one is added, removed or given a property, Privacy has to change with it.
+**Plan caveat — not confirmed:** Vercel documents custom events as available on Pro and
+Enterprise plans (not Hobby), and Web Analytics must be enabled for the project. This could
+not be checked from the build environment (no Vercel access), so confirm in the Vercel
+dashboard before relying on the numbers; on a plan without custom events the calls are
+harmless no-ops. In dev, `track()` only logs to the console. Custom events do not count
+toward Vercel's bounce rate (a single-page-session measure), so they measure engagement but
+cannot move that number — only a real second page view can.
+
 ## Content rules — these matter a lot, please follow them exactly
 
 1. **Categories are organized per course's own logic — don't mix them.**
@@ -1729,15 +1792,17 @@ components/
                          headline, figure, note) — score tiers AND milestones
   MilestoneCards.js       One-time milestone cards under the score card
   ShareButton.js          Trigger + dialog: share/copy/download the image
-  Onboarding.js           First-visit onboarding (2 skippable screens)
+  FirstVisit.js           The first-visit home screen (headline, one real free
+                         question, Keep going / trial link) + the course list
+                         below it — see "First-visit screen instead of onboarding"
+  TrialLink.js            The one component every start-trial link uses (counts
+                         trial_cta_clicked); must sit beside TRIAL_TERMS
   StudyClose.js           Closing screen after "Done studying"
   ScienceNote.js          The permanent, quiet science footnote on the home
                          screen (one fact + its hedge; nothing interactive)
   NightThemeExplainer.js  Info icon by the logo + the dismissible "why the
-                         night theme?" dialog (native <dialog>); also
-                         auto-opens once per fresh session (lib/
-                         nightThemeExplainer.js) — see "The home screen
-                         is time-aware" above
+                         night theme?" dialog (native <dialog>); tap-only —
+                         it no longer opens by itself (removed 2026-10-05)
   QuizResults.js          End-of-quiz card shared by level quizzes,
                          missed-words sessions and review sessions —
                          one structure, recolored by score tier
@@ -1756,17 +1821,24 @@ lib/
                          the long-form SLEEP_SCIENCE sentences, the short
                          SCIENCE_FACTS (sleep + retrieval) and hedges, and
                          pickScienceFact() for the home note
-  onboarding.js           The one-time "seen onboarding" flag
-  nightThemeExplainer.js  The "seen the explainer this session?" flag
-                         (sessionStorage, not localStorage — resets every
-                         fresh tab, unlike onboarding.js above)
+  visitor.js              isReturningVisitor() (saved progress or cached
+                         subscription on this device => returning) and
+                         clearLegacyFlags() (tidies the removed onboarding /
+                         explainer flags)
+  preHydration.js         The inline <head> script: data-phase + data-returning
+                         on <html> before first paint
+  firstVisit.js           The first-visit question (Uphold) and its fixed
+                         on-screen option order
+  analytics.js            The three custom events + trackEvent() (the only
+                         place track() is called)
   timeOfDay.js            Local-time phases (morning/midday/evening),
                          "last night's words", and "tonight's study" —
                          priority 1 finish an in-progress category
                          (momentum), priority 2 rotate to the least
                          recently touched course, never re-suggest an
                          already-mastered level
-  timeTheme.js            NIGHT/DAWN palettes for every full-screen
+  timeTheme.js            NIGHT/DAWN palettes (+ THEME_CSS, the same palettes as
+                         CSS variables for the first-visit screen) for every full-screen
                          learning activity (study, quiz, passages,
                          grammar, practice test, review) + getActivityTheme
                          (now) — see "Screens follow real time, not
@@ -1831,6 +1903,13 @@ scripts/
                          checks; does not replace the manual close read
   validate-grammar.mjs    `npm run validate:grammar` — the same, for
                          lib/satGrammar.js (built 2026-09-22)
+  test-first-visit.mjs    `npm run test:first-visit` — the first-visit question,
+                         visitor detection, the pre-paint script's agreement
+                         with it, the copy lint, onboarding really gone,
+                         analytics wiring (added 2026-10-05)
+  loader-hooks.mjs / register-loader.mjs  Let plain Node import the app's own
+                         extensionless/"@/" modules for that script
+                         (`npm test` runs it with the two validators)
 ```
 
 ## Paid unlock — built and verified end-to-end on production, both in Stripe test mode and live
@@ -1935,9 +2014,10 @@ sitting unused. Content is written to match how the app actually works,
 not generic boilerplate: no accounts, progress lives only in
 `localStorage` on-device (explicitly *not* synced or backed up, and lost
 on a cleared browser or new device), billing handled entirely by Stripe
-(we hold a customer id + subscription status, never card details), no
-analytics/tracking of any kind (true as of this writing — if that ever
-changes, both pages need updating to match, not just the code). Contact
+(we hold a customer id + subscription status, never card details), and
+**cookieless Vercel Web Analytics plus the three anonymous events** (Privacy §1, §4, §5 — it
+said "no analytics" from 2026-09-22 until 2026-10-05, which was wrong, and was corrected on
+2026-10-05; if analytics changes again, Privacy needs updating to match, not just the code). Contact
 email on both: `itsowentodd@icloud.com`. If the subscription price,
 trial length, or free/paid category split ever changes, update the
 Terms' "Subscription & Billing" section to match — don't let it drift
