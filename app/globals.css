@@ -1,15 +1,24 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* The families come from next/font (app/layout.js), which defines these two
+   variables; the plain names after them are only a last-resort fallback. */
 body {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-inter), 'Inter', system-ui, sans-serif;
 }
 
 .font-display {
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-fraunces), 'Fraunces', Georgia, serif;
 }
+
+/* First-visit screen (components/FirstVisit.js). The server always renders it;
+   the inline script in lib/preHydration.js marks a device that already has
+   saved progress with data-returning before first paint, so a returning
+   visitor never sees it flash before the normal home replaces it. The body
+   matches the dark shell in that case, so nothing white shows meanwhile. */
+html[data-returning] .vc-first { display: none; }
+html[data-returning] body { background: #1A1C3A; }
 
 /* Perfect-score card (components/QuizResults.js): one calm entrance, once. */
 @keyframes voco-rise {

@@ -18,16 +18,17 @@ export default function PrivacyPage() {
           <span className="font-display text-lg text-[#EDEBFF]">Voco</span>
         </div>
         <h1 className="font-display text-2xl text-[#EDEBFF] mb-1">Privacy Policy</h1>
-        <p className="text-xs text-[#6E699B] mb-8">Last updated September 22, 2026</p>
+        <p className="text-xs text-[#6E699B] mb-8">Last updated October 5, 2026</p>
 
         <div className="space-y-6 text-sm text-[#9B97C4] leading-relaxed">
           <section>
             <h2 className="text-[#EDEBFF] font-medium mb-2">1. The Short Version</h2>
             <p>
-              Voco doesn't have accounts, doesn't run analytics or tracking scripts, and doesn't
-              have a database. Nearly everything about how you use the app stays on your own
-              device. The only data that leaves your device goes to Stripe, and only if you
-              subscribe.
+              Voco doesn't have accounts, doesn't use cookies, and doesn't have a database.
+              Nearly everything about how you use the app stays on your own device. The only
+              data that leaves your device goes to Stripe, if you subscribe, and to Vercel Web
+              Analytics, which counts page views and a few anonymous events (see "Cookies &
+              Tracking" below).
             </p>
           </section>
 
@@ -70,10 +71,17 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-[#EDEBFF] font-medium mb-2">4. Cookies & Tracking</h2>
+            <p className="mb-2">
+              Voco doesn't use cookies, tracking cookies, or third-party ad networks.
+            </p>
             <p>
-              Voco doesn't use tracking cookies, analytics scripts, or third-party ad networks. We
-              have no visibility into how you use the app beyond what's technically necessary to
-              serve the pages.
+              We do use Vercel Web Analytics to understand how many people visit and which parts
+              of the app are used. It counts page views, and it records a few anonymous events:
+              that a first sample question was answered, that the "Keep going" button was tapped,
+              and that a "start free trial" button was tapped (and which screen it was on). It
+              doesn't use cookies, it isn't connected to your progress or your subscription, and
+              we don't use it to identify you or follow you across visits. Beyond that, we have no
+              visibility into how you use the app.
             </p>
           </section>
 
@@ -84,9 +92,10 @@ export default function PrivacyPage() {
               subscriptions.
             </p>
             <p className="mb-2">
-              <span className="text-[#EDEBFF]">Our hosting provider</span> — serves the app's
-              pages; standard web server logs may briefly record IP addresses and request info as
-              part of normal hosting operation, not something we access or use.
+              <span className="text-[#EDEBFF]">Vercel</span> — hosts the app and serves its pages,
+              and provides the Web Analytics described above. Standard web server logs may
+              briefly record IP addresses and request info as part of normal hosting operation,
+              not something we access or use.
             </p>
             <p>We don't sell or share data with anyone else, because we don't have data to sell.</p>
           </section>

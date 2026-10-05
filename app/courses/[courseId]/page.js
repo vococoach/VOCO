@@ -11,13 +11,12 @@ import CrossTextList from "@/components/CrossTextList";
 import GrammarList from "@/components/GrammarList";
 import PracticeTestTab from "@/components/PracticeTestTab";
 import StrategyList from "@/components/StrategyList";
-import Onboarding from "@/components/Onboarding";
 import { getCourse, getCourseSections } from "@/lib/wordbanks";
 import { getAllProgress } from "@/lib/progress";
 import { getAllPassageRecords } from "@/lib/passageProgress";
 import { getAllGrammarRecords } from "@/lib/grammarProgress";
 import { getAllPracticeTestAttempts } from "@/lib/practiceTestProgress";
-import { useSubscription, useOnboarding, computeStruggleCounts } from "@/lib/useLearnerState";
+import { useSubscription, computeStruggleCounts } from "@/lib/useLearnerState";
 
 // One course's category list — what the home screen showed before Voco had
 // more than one course, scoped to this course's categories. The daily-habit
@@ -33,9 +32,7 @@ import { useSubscription, useOnboarding, computeStruggleCounts } from "@/lib/use
 // course with no extra sections shows no tabs.
 //
 // A course page can be a visitor's very first page (a shared or bookmarked
-// link), so it shows the first-visit onboarding too — and afterwards stays on
-// this URL, i.e. the course they came for, rather than sending them to the home
-// screen. See useOnboarding() in lib/useLearnerState.js.
+// link). It shows the course straight away — nothing sits in front of it.
 export default function CoursePage() {
   const params = useParams();
   const router = useRouter();
@@ -45,7 +42,6 @@ export default function CoursePage() {
   const requested = searchParams.get("section");
   const section = sections && sections.some((s) => s.id === requested) ? requested : "vocabulary";
   const { subscribed } = useSubscription();
-  const { onboarding, finishOnboarding } = useOnboarding();
   const [progress, setProgress] = useState({});
   const [struggleCounts, setStruggleCounts] = useState({});
   const [passageRecords, setPassageRecords] = useState({});
@@ -74,14 +70,8 @@ export default function CoursePage() {
     window.history.replaceState(null, "", id === "vocabulary" ? path : `${path}?section=${id}`);
   }
 
-  if (onboarding) {
-    return <Onboarding onFinish={finishOnboarding} />;
-  }
-
   return (
-    // Hidden (not removed) until we know whether this is a first visit, so a
-    // first-timer never glimpses the course before the onboarding.
-    <main className={`min-h-dvh bg-[#1A1C3A] px-4 py-8 ${onboarding === null ? "invisible" : ""}`}>
+    <main className="min-h-dvh bg-[#1A1C3A] px-4 py-8">
       <div className="max-w-md mx-auto">
         <Link href="/" className="flex items-center gap-1 text-xs text-[#9B97C4] mb-6">
           <ArrowLeft size={14} /> Back

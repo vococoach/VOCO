@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Moon, Flame, RotateCcw, Sparkles, Target, Info, Sunrise, ChevronRight } from "lucide-react";
 import NightThemeExplainer from "@/components/NightThemeExplainer";
-import Onboarding from "@/components/Onboarding";
+import FirstVisit from "@/components/FirstVisit";
 import ShareButton from "@/components/ShareButton";
 import CourseProgress from "@/components/CourseProgress";
 import ScienceNote from "@/components/ScienceNote";
@@ -14,7 +14,8 @@ import { pickScienceFact } from "@/lib/sleepScience";
 import { courses, categories, getCategoryCourse, missedWordsId, DUE_FOR_REVIEW_ID } from "@/lib/wordbanks";
 import { getAllProgress, getStreak, getNightToMorningStreak, resetProgress, getDueWordIds } from "@/lib/progress";
 import { isCategoryLocked, openBillingPortal } from "@/lib/purchase";
-import { useSubscription, useOnboarding, computeStruggleCounts } from "@/lib/useLearnerState";
+import { useSubscription, computeStruggleCounts } from "@/lib/useLearnerState";
+import { isReturningVisitor, clearLegacyFlags } from "@/lib/visitor";
 
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
@@ -33,15 +34,23 @@ function levelLabel(category, level) {
 // every course's words together, so nobody has to pick a course just to see
 // what's due. Below it, a card per course leads to that course's own category
 // list (app/courses/[courseId]/page.js).
+//
+// That is the RETURNING view. A first-time visitor (no saved progress on this
+// device) gets components/FirstVisit.js instead: it is what the server renders,
+// so it shows the moment the HTML arrives, and this component swaps to the
+// returning view after hydration only if localStorage says there is progress.
+// (The inline script in lib/preHydration.js hides the first-visit view before
+// first paint for a returning device, so they never see it flash.)
 export default function Home() {
   const [progress, setProgress] = useState({});
   const [streak, setStreak] = useState(0);
   // Consecutive mornings a full night-to-morning cycle was completed — a
   // different thing from `streak` (any quiz, any day). See lib/progress.js.
   const [nightToMorningStreak, setNightToMorningStreak] = useState(0);
-  // null = not known yet (localStorage is client-only), true = show the
-  // first-visit onboarding, false = normal home screen.
-  const { onboarding, finishOnboarding } = useOnboarding();
+  // false until localStorage says this device has saved progress. Starting at
+  // false is deliberate: it matches the server-rendered first-visit view, so
+  // there is no hydration mismatch and nothing waits on JavaScript to appear.
+  const [returning, setReturning] = useState(false);
   const [ready, setReady] = useState(false);
   const [dueCount, setDueCount] = useState(0);
   const [struggleCounts, setStruggleCounts] = useState({});
@@ -56,6 +65,7 @@ export default function Home() {
   useEffect(() => {
     function refresh() {
       if (document.visibilityState !== "visible") return;
+      setReturning(isReturningVisitor());
       setNow(new Date());
       setProgress(getAllProgress());
       setStreak(getStreak());
@@ -72,6 +82,8 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    clearLegacyFlags();
+    setReturning(isReturningVisitor());
     setNow(new Date());
     setProgress(getAllProgress());
     setStreak(getStreak());
@@ -88,6 +100,10 @@ export default function Home() {
     setStreak(0);
     setNightToMorningStreak(0);
     setStruggleCounts({});
+    setDueCount(0);
+    // A device with nothing left saved is a first visit again (unless it still
+    // has a cached subscription), so the home screen follows.
+    setReturning(isReturningVisitor());
   }
 
   async function handleManageSubscription() {
@@ -123,28 +139,18 @@ export default function Home() {
   else if (tonight && tonight.kind === "done") subtitle = "Good evening. Sleep will help what you studied settle in.";
   else if (lastNight) subtitle = "Good morning. A quiz now shows what stuck overnight.";
 
-  if (onboarding) {
-    return <Onboarding onFinish={finishOnboarding} />;
+  if (!returning) {
+    return <FirstVisit />;
   }
 
   return (
-    // Hidden (not removed) until we know whether this is a first visit, so a
-    // first-timer never glimpses the home screen before the onboarding.
-    <main className={`min-h-dvh bg-[#1A1C3A] px-4 py-8 ${onboarding === null ? "invisible" : ""}`}>
+    <main className="min-h-dvh bg-[#1A1C3A] px-4 py-8">
       <div className="max-w-md mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-2">
             <Moon size={22} color="#8B85FF" />
             <span className="font-display text-xl text-[#EDEBFF]">Voco</span>
-            {/* Only once onboarding is confirmed NOT needed — never during the
-                still-checking `null` state. NightThemeExplainer auto-fires a
-                showModal() + a "seen this session" write the instant it
-                mounts, regardless of this page's `invisible` wrapper (CSS
-                visibility doesn't stop an effect from running); mounting it
-                during the brief window before useOnboarding() has resolved
-                let it steal the reveal a genuine first-timer should see as
-                Onboarding's own slide 1. See CLAUDE.md. */}
-            {onboarding === false && <NightThemeExplainer />}
+            <NightThemeExplainer />
           </div>
           <div className="flex flex-col items-end gap-1">
             {/* Tap either streak to share it as an image (components/ShareButton.js). */}
