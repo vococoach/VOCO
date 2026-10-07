@@ -54,14 +54,25 @@ re-litigated or silently changed.
     the fresh answer disagrees (e.g. cancelled), the page re-renders
     locked and, on `/sets/[setId]/study` or `/quiz`, redirects to
     `/unlock` immediately — even mid-session.
-  - **Fail open on errors, fail closed on a real answer.** If Stripe
-    genuinely reports no active subscription, that's a confirmed
-    revocation — access locks. If the *check itself* fails (network
-    hiccup, Stripe outage, bad key), the API route returns a non-2xx
-    status and the client explicitly keeps the last known status instead
-    of caching a false "inactive" — a transient failure should never look
-    like a cancellation. Don't collapse this distinction when touching
-    `refreshSubscriptionStatus()` or `/api/subscription-status`.
+  - **Fail open unless the server explicitly says "no" (tightened 2026-10-05).**
+    `/api/subscription-status` puts a `verdict` on a 200: `subscribed`, or a
+    definitive "no" — `no_active_subscription` (Stripe answered: none active, or
+    canceled) or `no_such_customer` (Stripe's `resource_missing`: a made-up id, a
+    deleted customer, an id from the other Stripe mode; also any string not even
+    shaped like a customer id). **`refreshSubscriptionStatus()` revokes only on one of
+    those two verdicts and grants only on `subscribed`; every other outcome keeps the
+    last known status** — any 4xx or 5xx (400, 401, 403, a 404 for a missing route,
+    502/503), a 200 without a recognised verdict, an unreadable body, a network error,
+    its own 10 s timeout. Authentication and permission errors, rate limits, connection
+    errors and any other Stripe error return 502 and never revoke: they are our
+    misconfiguration or an outage, not a cancellation. Only `resource_missing` is
+    definitive. Why: before, *every* Stripe error was a 502 and fail-open, so a forged
+    customer id plus a forged cached "active" kept paid pages open forever — the daily
+    check could never say "no". Don't collapse either distinction.
+    The routes are unauthenticated and accept any well-formed customer id (no accounts
+    by design), so they will say whether an id is subscribed to anyone who sends it; ids
+    are unguessable, which is the limit of the protection. Bodies are validated
+    (`400 {"error":"Invalid request"}`) and Stripe error text is never echoed.
   - **Still per-device, not a real account.** No accounts/database, per
     the point above — `voco_customer_id_v1` and
     `voco_subscription_status_v1` don't sync across browsers or survive a
@@ -1635,6 +1646,9 @@ lib/
                          Leitner-system spaced repetition tracker
                          (REVIEW_SESSION_CAP lives here; PASSAGES_KEY,
                          GRAMMAR_KEY, PRACTICE_TESTS_KEY too)
+  stripeServer.js         Server-only helpers for the three Stripe routes: lazy
+                         client (so the build needs no key), body validation,
+                         definitive-vs-transient classification, checkSubscription()
   purchase.js              Subscription constants and the free-set definition
                          (free category + tiers per course; the free-passage
                          and free-grammar tables, both empty today) + localStorage helpers (voco_customer_id_v1,
@@ -1661,6 +1675,10 @@ scripts/
                          sentences (does not replace the close read)
   test-practice-test.mjs  `npm run test:practice` — 54 questions, exact 27/27
                          split, passages never split, repeat rules, scoring
+  test-stripe-routes.mjs  `npm run test:stripe` — the three Stripe routes and the
+                         client's fail-open/fail-closed reaction, against a MOCKED
+                         Stripe (never proves live Stripe behavior; the real check
+                         is a subscribe test on a deploy)
   browser/                Real-Chromium suites (verify1–3, contrast) against a
                          running build; need `npm i --no-save playwright-core` and
                          BASE_URL — see browser/_env.mjs. `npm run test:browser`.

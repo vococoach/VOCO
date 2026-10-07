@@ -9,6 +9,8 @@ import path from "node:path";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 export async function resolve(specifier, context, nextResolve) {
+  // next/* has no "exports" map, so Node needs the extension Next adds itself.
+  if (specifier === "next/server") return nextResolve("next/server.js", context);
   let target = null;
   if (specifier.startsWith("@/")) target = path.join(root, specifier.slice(2));
   else if ((specifier.startsWith("./") || specifier.startsWith("../")) && context.parentURL?.startsWith("file:"))
