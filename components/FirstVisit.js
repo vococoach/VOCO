@@ -1,5 +1,6 @@
 "use client";
 
+import { TRADEMARK_NOTICE } from "@/lib/legal";
 import { useState } from "react";
 import Link from "next/link";
 import { Moon, Check, X, ChevronRight } from "lucide-react";
@@ -149,6 +150,9 @@ export default function FirstVisit() {
             </Link>
           ))}
         </div>
+        <p className="mt-6 text-center text-[10px] leading-snug" style={{ color: "var(--vc-subtext)" }}>
+          {TRADEMARK_NOTICE}
+        </p>
       </section>
     </main>
   );

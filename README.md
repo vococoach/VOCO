@@ -35,9 +35,9 @@ To keep this MVP simple and reliable, based on what we decided:
     Disagreement & Refutation, Degree & Intensity, Change & Consequence,
     Certainty & Doubt, and Tone & Attitude. The course page has five tabs:
     **Vocabulary** (the categories, including the Expert level, whose
-    distractors are extremely close near-synonyms), **Passages** (10 original
-    reading passages with questions, all with the
-    subscription; tracked separately from vocabulary progress), **Grammar**
+    distractors are extremely close near-synonyms), **Passages** (16 original
+    reading passages and 4 cross-text pairs, all with the
+    subscription; tracked separately from vocabulary progress), **Grammar & Usage**
     (Standard English Conventions and Expression of Ideas questions across four
     categories, all with the subscription — also tracked separately), **Practice
     Test** (a timed, simulated 54-question Reading & Writing section drawn from
@@ -61,12 +61,14 @@ To keep this MVP simple and reliable, based on what we decided:
   single $1.99/month subscription (7-day free trial, via Stripe) unlocks every
   category in every course. Still no accounts — see `CLAUDE.md`.
 
-Because there's no backend, hosting this costs **$0** — it's a fully static
-Next.js app.
+There's no database, but it isn't purely static: three small server routes
+(`app/api/*`) talk to Stripe to start, verify and manage a subscription, so
+deploying needs a `STRIPE_SECRET_KEY` (see below). It is hosted on Vercel (check Vercel's current plan
+limits and pricing — Web Analytics custom events may need a paid plan).
 
 ## Running it locally
 
-You'll need [Node.js](https://nodejs.org) 18 or newer installed.
+You'll need [Node.js](https://nodejs.org) 18.17 or newer (production runs 22.x).
 
 ```bash
 npm install
@@ -74,6 +76,22 @@ npm run dev
 ```
 
 Then open `http://localhost:3000` in your browser.
+
+To exercise the subscription routes, put a Stripe **test** key in `.env.local`
+(`STRIPE_SECRET_KEY=sk_test_...`). Env files are git-ignored (`.env`, `.env.*`);
+never commit one. Note that the "Start free trial" link opens the live Payment
+Link, so don't complete a purchase while testing.
+
+## Tests
+
+```bash
+npm test               # content validators + logic tests (no browser, no network)
+npm run test:browser   # real-Chromium suites; needs a running build, see scripts/browser/_env.mjs
+```
+
+`npm test` runs `validate:passages`, `validate:grammar`, `validate:vocab`,
+`test:first-visit`, `test:access` and `test:practice`. The validators catch
+mechanical problems only; new content still needs a close read.
 
 ## Continuing the build with Claude Code
 
@@ -104,27 +122,24 @@ accounts will need to be 18+, so loop a parent in for that step.
 2. **Get it in front of a few real people** (friends, classmates) before
    adding anything else.
 3. **Only after that:** consider accounts (so progress syncs across
-   devices), custom AI-generated sets, monetization, or notifications.
+   devices), custom AI-generated sets, or notifications.
    Each of those adds real complexity — worth adding only once you know
    people actually use the core loop.
 
 ## File structure
 
+`CLAUDE.md` has the full, annotated map and the reasons behind it; this is the short version.
+
 ```
-app/
-  layout.js              Root layout + page metadata
-  page.js                Home screen — daily-habit cards (due, tonight's study,
-                         still learning, streaks) + a card per course
-  courses/[courseId]/    One course's category list
-  review/page.js         Spaced-repetition review (pulls due words from every course)
-  globals.css            Fonts + Tailwind
-  sets/[setId]/study/    The "study before bed" flow
-  sets/[setId]/quiz/     The "quiz yourself" flow
-lib/
-  wordbanks.js           Courses, the SAT Vocab content, and the helpers that
-                         work across every course
-  everydayVocabulary.js  The Everyday Vocabulary course's categories
-  professionalVocabulary.js  The Professional Vocabulary course's categories
-  progress.js            localStorage helpers: streaks, scores, and the
-                         Leitner-system spaced repetition tracker
+app/          Routes: home, courses/, sets/[setId]/study + quiz, review/, passages/,
+              cross-text/, grammar/, strategy/, practice-test/, preview/, unlock/,
+              terms/, privacy/, and api/ (the three Stripe routes)
+components/   Shared UI: first-visit screen, category/passage/grammar lists,
+              results and milestone cards, share dialog, loading state
+lib/          Content (wordbanks.js and the per-course files), progress and spaced
+              repetition (progress.js), the free-set / subscription rules
+              (purchase.js, access.js), time-of-day logic and themes, sleep-science
+              wording (sleepScience.js), analytics, and the Stripe route helpers
+scripts/      Validators and tests (npm test); browser/ holds the Chromium suites
+CHANGELOG.md  History that no longer describes how the app works today
 ```
