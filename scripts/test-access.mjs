@@ -33,6 +33,7 @@ const access = await import("../lib/access.js");
 const progress = await import("../lib/progress.js");
 const { getTonight, findLastNightsLevel } = await import("../lib/timeOfDay.js");
 const { getPreviewSample } = await import("../lib/preview.js");
+const { CONTACT_EMAIL, CONTACT_MAILTO } = await import("../lib/contact.js");
 const { courses, categories } = wb;
 const { isLevelLocked, isCategoryLocked, isFreeLevel, isPassageLocked, isGrammarCategoryLocked, FREE_CATEGORY_BY_COURSE } = purchase;
 
@@ -264,6 +265,17 @@ for (const f of ["app/passages/[passageId]/page.js", "app/cross-text/[pairId]/pa
 // ---------- the copy: computed, not hardcoded ----------
 const unlock = read("app/unlock/page.js");
 ok("/unlock computes its counts and names (no hardcoded numbers in the pitch)", /lockedWordCount/.test(unlock) && /freeTierLabels/.test(unlock) && !/\b\d+ (words|categories|questions|passages)\b/.test(unlock));
+// The one support line on /unlock lives in the failure state only, and is built from the shared constant (lib/contact.js).
+const unlockFailure = unlock.slice(unlock.indexOf('status === "error"'), unlock.indexOf('status === "already"'));
+ok(
+  "/unlock: one support line in the failure state, built from the shared contact constant, and nowhere else on the page",
+  /import \{[^}]*\bCONTACT_EMAIL\b[^}]*\} from "@\/lib\/contact"/.test(unlock) &&
+    unlockFailure.includes("Having trouble?") &&
+    /href=\{CONTACT_MAILTO\}/.test(unlockFailure) &&
+    /\{CONTACT_EMAIL\}/.test(unlockFailure) &&
+    !unlock.replace(unlockFailure, "").includes("Having trouble?") &&
+    !/href=\{CONTACT_MAILTO\}/.test(unlock.replace(unlockFailure, ""))
+);
 ok("the sample-question prompt uses the existing 'full access to every course' wording", /for full access to every course/.test(read("app/preview/[categoryId]/page.js")));
 
 // ---------- Terms and Privacy ----------
@@ -271,8 +283,10 @@ const termsHtmlPath = path.join(root, ".next/server/app/terms.html");
 const privacyHtmlPath = path.join(root, ".next/server/app/privacy.html");
 if (existsSync(termsHtmlPath) && existsSync(privacyHtmlPath)) {
   const strip = (h) => h.replace(/<[^>]+>/g, " ").replace(/&amp;/g, "&").replace(/&#x27;|&#39;/g, "'").replace(/&quot;/g, '"').replace(/\s+/g, " ");
-  const terms = strip(readFileSync(termsHtmlPath, "utf8"));
-  const privacy = strip(readFileSync(privacyHtmlPath, "utf8"));
+  const termsRaw = readFileSync(termsHtmlPath, "utf8");
+  const privacyRaw = readFileSync(privacyHtmlPath, "utf8");
+  const terms = strip(termsRaw);
+  const privacy = strip(privacyRaw);
   for (const id of FREE_CATS) {
     const cat = categories.find((c) => c.id === id);
     ok(`Terms names the free category ${cat.title}`, terms.includes(cat.title));
@@ -285,7 +299,14 @@ if (existsSync(termsHtmlPath) && existsSync(privacyHtmlPath)) {
   ok("Terms says canceling before the trial ends means no charge", /cancel before it ends you won't be charged/.test(terms));
   ok("Terms explains the in-app Manage subscription route", /Manage subscription/.test(terms));
   ok("Terms has age / parental-permission language", /18 or older, or have the permission of a parent or guardian/.test(terms));
-  ok("Terms and Privacy are dated October 5, 2026", terms.includes("Last updated October 5, 2026") && privacy.includes("Last updated October 5, 2026"));
+  ok("Terms and Privacy are dated October 16, 2026", terms.includes("Last updated October 16, 2026") && privacy.includes("Last updated October 16, 2026"));
+  // The contact address comes from lib/contact.js only (scripts/validate-contact.mjs guards the source);
+  // this checks what the built pages actually render: the address is shown, and every mailto link points at it.
+  // The link scheme prefix is taken from the constant, so this file never types a link of its own.
+  const LINK_PREFIX = CONTACT_MAILTO.slice(0, CONTACT_MAILTO.indexOf(":") + 1);
+  const mailtoTargets = (raw) => [...raw.matchAll(new RegExp(`href="${LINK_PREFIX}([^"?]+)`, "g"))].map((m) => m[1]);
+  ok("Terms shows the shared contact address and every mailto link on it points there", terms.includes(CONTACT_EMAIL) && mailtoTargets(termsRaw).length > 0 && mailtoTargets(termsRaw).every((a) => a === CONTACT_EMAIL), `${mailtoTargets(termsRaw).length} link(s)`);
+  ok("Privacy shows the shared contact address and every mailto link on it points there", privacy.includes(CONTACT_EMAIL) && mailtoTargets(privacyRaw).length > 0 && mailtoTargets(privacyRaw).every((a) => a === CONTACT_EMAIL), `${mailtoTargets(privacyRaw).length} link(s)`);
   ok("Privacy discloses Vercel Web Analytics and no cookies", /Vercel Web Analytics/.test(privacy) && /doesn't use cookies/.test(privacy));
   ok("Privacy no longer says there are no analytics", !/doesn't run analytics|doesn't use tracking cookies, analytics scripts/.test(privacy));
 } else {

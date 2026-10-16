@@ -518,3 +518,30 @@ The design and the current behavior are in `CLAUDE.md` ("First-visit screen inst
   events do not count toward it; the design target is real engagement on the
   first screen (answer a question, "Keep going" into a second page), not
   splitting content across pages to move the number.
+
+## 2026-10-16: One contact address, written once
+
+The Terms and Privacy pages used to carry the owner's personal address, typed straight
+into the page source in three places (Terms §5 and §11, Privacy §9), plus a sentence in
+`CLAUDE.md`. The contact address is now the shared project address, written once as
+`CONTACT_EMAIL` (with `CONTACT_MAILTO`) in `lib/contact.js`. Both pages import it, and no
+page, component, test or doc types an address or builds a mailto link by hand. Both pages
+are re-dated "Last updated October 16, 2026". `/unlock` had no contact address at all;
+its failure state ("Couldn't verify that subscription") now ends with one support line,
+"Having trouble? Email us at …", built from the same constant. That is the only new
+place the address is shown (the lapsed-subscriber case still lands on the normal
+sales pitch, which has none).
+
+**What keeps it from drifting back:** `scripts/validate-contact.mjs` (`npm run
+validate:contact`, the first step of `npm test`) scans every tracked file and every
+untracked file git does not ignore (never `node_modules`, `.next` or `package-lock.json`)
+and fails on: the previous mail provider's name anywhere; any email-shaped string other
+than the shared address (the allowlist is empty); the shared address typed anywhere
+except `lib/contact.js` and the guard's own expected value; a mailto link not built from
+the constant; or a constant whose value is not exactly the shared address. After a build,
+`scripts/test-access.mjs` also checks that the rendered Terms and Privacy pages show the
+address and that every mailto link on them points at it.
+
+**Not changed, and not changeable by a commit:** git history still contains the previous
+address, in old file contents and in the author metadata of older commits. Nothing was
+rewritten.

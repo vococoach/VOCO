@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Moon, Lock, Check, X, Sparkles } from "lucide-react";
 import TrialLink from "@/components/TrialLink";
 import { TRADEMARK_NOTICE } from "@/lib/legal";
+import { CONTACT_EMAIL, CONTACT_MAILTO } from "@/lib/contact";
 import { courses } from "@/lib/wordbanks";
 import {
   isFreeCategory,
@@ -168,6 +169,13 @@ export default function UnlockPage() {
             </TrialLink>
             <p className="text-center text-xs text-[#6E699B] mb-3">
               {TRIAL_TERMS} One subscription gives you full access to every course.
+            </p>
+            <p className="text-center text-sm text-[#9B97C4] mb-3">
+              Having trouble? Email us at{" "}
+              <a href={CONTACT_MAILTO} className="text-[#8B85FF] whitespace-nowrap">
+                {CONTACT_EMAIL}
+              </a>
+              .
             </p>
             <Link href="/" className="block text-center text-[#8B85FF] text-sm">
               Back home
