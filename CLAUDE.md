@@ -1584,6 +1584,10 @@ lib/
                          on-screen option order
   analytics.js            The three custom events + trackEvent() (the only
                          place track() is called)
+  contact.js              The one place the contact address is written
+                         (CONTACT_EMAIL, CONTACT_MAILTO); Terms, Privacy and
+                         /unlock's failure state import it; guarded by
+                         scripts/validate-contact.mjs
   access.js               Subscription-aware views of the due / still-learning
                          word lists (drop words from locked tiers before the
                          review cap); see "The actual gate"
@@ -1679,6 +1683,11 @@ scripts/
                          client's fail-open/fail-closed reaction, against a MOCKED
                          Stripe (never proves live Stripe behavior; the real check
                          is a subscribe test on a deploy)
+  validate-contact.mjs    `npm run validate:contact` (first step of `npm test`) — the
+                         contact address lives only in lib/contact.js: fails on any
+                         other email-shaped string, the address typed anywhere else, a
+                         link not built from the constant, a changed value, or the
+                         retired provider's name (added 2026-10-16)
   browser/                Real-Chromium suites (verify1–3, contrast) against a
                          running build; need `npm i --no-save playwright-core` and
                          BASE_URL — see browser/_env.mjs. `npm run test:browser`.
@@ -1747,9 +1756,17 @@ works, not generic boilerplate: no accounts, progress lives only in
 on a cleared browser or new device), billing handled entirely by Stripe
 (we hold a customer id + subscription status, never card details), and
 **cookieless Vercel Web Analytics plus the three anonymous events** (Privacy §1, §4, §5 — it
-said "no analytics" from 2026-09-22 until 2026-10-05, which was wrong, and was fixed). Contact
-email on both: `itsowentodd@icloud.com`. Both were revised on **2026-10-05** ("Last updated
-October 5, 2026"):
+said "no analytics" from 2026-09-22 until 2026-10-05, which was wrong, and was fixed).
+**Contact info lives in one constant** — `CONTACT_EMAIL` (and `CONTACT_MAILTO`) in
+`lib/contact.js` — and both pages import it, as does the one support line in `/unlock`'s
+failure state ("Having trouble? Email us at …"; the only other place it is shown); never type
+an address or a mailto link into a page, component, test or doc. `scripts/validate-contact.mjs` (`npm run validate:contact`, the
+first step of `npm test`) fails on any other email-shaped string, the address typed anywhere
+but that file, a mailto link not built from the constant, a changed value, or the previous
+provider's name. It was added 2026-10-16, when the address moved from the owner's personal one
+to the shared project one (git history still contains the old address; it was not rewritten).
+Both pages were revised on **2026-10-05** and re-dated **October 16, 2026** for the contact
+change ("Last updated October 16, 2026"); the bullets below describe the 2026-10-05 revision:
 - **Terms §4** lists what is free and what needs a subscription — **computed from the data and
   `lib/purchase.js`**, so it cannot drift (`test-access` checks the rendered text): the four free
   categories by course, "only the Foundational and Intermediate levels are free", the strategy

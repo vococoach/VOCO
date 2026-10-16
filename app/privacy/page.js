@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Moon, ArrowLeft } from "lucide-react";
+import { CONTACT_EMAIL, CONTACT_MAILTO } from "@/lib/contact";
 
 export const metadata = {
   title: "Privacy Policy — Voco",
@@ -18,7 +19,7 @@ export default function PrivacyPage() {
           <span className="font-display text-lg text-[#EDEBFF]">Voco</span>
         </div>
         <h1 className="font-display text-2xl text-[#EDEBFF] mb-1">Privacy Policy</h1>
-        <p className="text-xs text-[#6E699B] mb-8">Last updated October 5, 2026</p>
+        <p className="text-xs text-[#6E699B] mb-8">Last updated October 16, 2026</p>
 
         <div className="space-y-6 text-sm text-[#9B97C4] leading-relaxed">
           <section>
@@ -148,8 +149,8 @@ export default function PrivacyPage() {
             <h2 className="text-[#EDEBFF] font-medium mb-2">9. Contact</h2>
             <p>
               Questions about privacy? Email{" "}
-              <a href="mailto:itsowentodd@icloud.com" className="text-[#8B85FF]">
-                itsowentodd@icloud.com
+              <a href={CONTACT_MAILTO} className="text-[#8B85FF]">
+                {CONTACT_EMAIL}
               </a>
               .
             </p>

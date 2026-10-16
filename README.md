@@ -60,6 +60,12 @@ To keep this MVP simple and reliable, based on what we decided:
 - **One subscription, no ads.** In each course, one category's Foundational and Intermediate levels are free forever (its Advanced level, SAT's Expert level and everything else need the subscription); a
   single $1.99/month subscription (7-day free trial, via Stripe) unlocks every
   category in every course. Still no accounts — see `CLAUDE.md`.
+- **One contact address, written once.** Contact info lives in a single constant,
+  `CONTACT_EMAIL` in `lib/contact.js`; the Terms and Privacy pages and the failure
+  state on `/unlock` import it, and no page, component or doc types an address or a
+  mailto link of its own.
+  `npm run validate:contact` (part of `npm test`) fails if any other address, a
+  hardcoded link, or a changed value shows up.
 
 There's no database, but it isn't purely static: three small server routes
 (`app/api/*`) talk to Stripe to start, verify and manage a subscription, so
@@ -89,9 +95,10 @@ npm test               # content validators + logic tests (no browser, no networ
 npm run test:browser   # real-Chromium suites; needs a running build, see scripts/browser/_env.mjs
 ```
 
-`npm test` runs `validate:passages`, `validate:grammar`, `validate:vocab`,
-`test:first-visit`, `test:access` and `test:practice`. The validators catch
-mechanical problems only; new content still needs a close read.
+`npm test` runs `validate:contact`, `validate:passages`, `validate:grammar`,
+`validate:vocab`, `test:first-visit`, `test:access`, `test:practice` and
+`test:stripe`. The validators catch mechanical problems only; new content still
+needs a close read.
 
 ## Continuing the build with Claude Code
 
@@ -139,7 +146,8 @@ components/   Shared UI: first-visit screen, category/passage/grammar lists,
 lib/          Content (wordbanks.js and the per-course files), progress and spaced
               repetition (progress.js), the free-set / subscription rules
               (purchase.js, access.js), time-of-day logic and themes, sleep-science
-              wording (sleepScience.js), analytics, and the Stripe route helpers
+              wording (sleepScience.js), analytics, the contact address (contact.js,
+              the only place it is written), and the Stripe route helpers
 scripts/      Validators and tests (npm test); browser/ holds the Chromium suites
 CHANGELOG.md  History that no longer describes how the app works today
 ```

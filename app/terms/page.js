@@ -1,4 +1,5 @@
 import { TRADEMARK_NOTICE } from "@/lib/legal";
+import { CONTACT_EMAIL, CONTACT_MAILTO } from "@/lib/contact";
 import Link from "next/link";
 import { Moon, ArrowLeft } from "lucide-react";
 import { courses } from "@/lib/wordbanks";
@@ -48,7 +49,7 @@ export default function TermsPage() {
           <span className="font-display text-lg text-[#EDEBFF]">Voco</span>
         </div>
         <h1 className="font-display text-2xl text-[#EDEBFF] mb-1">Terms of Service</h1>
-        <p className="text-xs text-[#6E699B] mb-8">Last updated October 5, 2026</p>
+        <p className="text-xs text-[#6E699B] mb-8">Last updated October 16, 2026</p>
 
         <div className="space-y-6 text-sm text-[#9B97C4] leading-relaxed">
           <section>
@@ -121,8 +122,8 @@ export default function TermsPage() {
               on the Voco home screen. It opens Stripe's secure subscription page, where you can
               cancel and update your payment method. If you can't use that (for example, you're on
               a different device or browser), email us at{" "}
-              <a href="mailto:itsowentodd@icloud.com" className="text-[#8B85FF]">
-                itsowentodd@icloud.com
+              <a href={CONTACT_MAILTO} className="text-[#8B85FF]">
+                {CONTACT_EMAIL}
               </a>{" "}
               and we'll cancel it for you. Any email from Stripe about your subscription may also
               include a link to manage it.
@@ -184,8 +185,8 @@ export default function TermsPage() {
             <h2 className="text-[#EDEBFF] font-medium mb-2">11. Contact</h2>
             <p>
               Questions about these terms? Email{" "}
-              <a href="mailto:itsowentodd@icloud.com" className="text-[#8B85FF]">
-                itsowentodd@icloud.com
+              <a href={CONTACT_MAILTO} className="text-[#8B85FF]">
+                {CONTACT_EMAIL}
               </a>
               .
             </p>
