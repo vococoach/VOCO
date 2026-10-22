@@ -90,12 +90,13 @@ re-litigated or silently changed.
     locked card on the home screen sits under its own category heading, a
     bare price next to it reads as "$1.99 to unlock *this*." So wherever
     the price appears in the UI it's paired with its scope — "every
-    course" now that there are several: locked cards ("$1.99/month for full
-    access to every course"), the `/unlock` pitch and error state ("One
+    course" now that there are several: the course pages' one paywall card ("Full access to every
+    course", then "$1.99/month. 7-day free trial."; the locked rows carry no price, since
+    2026-10-22), the `/unlock` pitch and error state ("One
     subscription gives you full access to every course", "$1.99/month after
     your trial, for full access to every course"), the sample-question
-    prompt, the cancellation banner, and the subscribed footer ("You have
-    full access to every course."). If per-category, per-course or tiered
+    prompt, the cancellation banner, and the subscribed footer (since 2026-10-22 just "You have
+    full access.", which is not a price). If per-category, per-course or tiered
     pricing is ever added, that copy — and this bullet — need to change
     together. Legal text (`/terms` §4, `/privacy` §3) and the Stripe product
     description (updated 2026-09-20 to "Full access to every Voco course,
@@ -153,9 +154,9 @@ re-litigated or silently changed.
     `cancelAt` (and `cancelAtPeriodEnd`) alongside `status`, cached in
     `voco_subscription_status_v1` next to it, and read back via
     `getCancelAt()` (mirrors `isSubscribedCached()`'s cache-then-reconcile
-    pattern). The home screen shows a banner — "Your subscription ends on
-    [date] — you'll keep access until then" — whenever `subscribed &&
-    cancelAt`, and swaps in the same "Manage subscription" action in place
+    pattern). The home screen shows a card (since 2026-10-22 "Subscription ends [date]. Full access
+    until then."; it was "Your subscription ends on [date]" plus "you'll keep access until then")
+    whenever `subscribed && cancelAt`, and swaps in the same "Manage subscription" action in place
     of the plain footer link, so a learner who already cancelled isn't
     staring at a subscription link that looks like nothing happened.
     `subscribed` (the access-gating boolean) is intentionally unaffected
@@ -284,13 +285,13 @@ re-litigated or silently changed.
   touched anything is the opposite of that. The explainer is now tap-only, via
   its header control (the info icon on the home screen, the labelled "How it
   works" link on the first-visit screen; both are 44px targets); the
-  night/dawn look and the always-on science note carry the premise instead. The
+  night/dawn look carries the premise instead (the home screen's science note was removed
+  2026-10-22, see "Home screen and course pages"). The
   old flag is no longer read or written; `clearLegacyFlags()` (`lib/visitor.js`)
   tidies it from anyone's `sessionStorage` on the next home-screen load, and a
   leftover `voco_onboarded_v1` is ignored and tidied the same way — an old flag
-  can't change which screen anyone sees. **Leave `components/ScienceNote.js`
-  (the permanent, always-on footnote, below) out of this — it's a separate
-  feature and wasn't touched.** (The 2026-09-23 bug where the explainer mounted
+  can't change which screen anyone sees. **`components/ScienceNote.js` (the former
+  always-on footnote, below) was a separate feature and wasn't touched by any of this.** (The 2026-09-23 bug where the explainer mounted
   before onboarding status was known is gone with both features; the lesson
   stands for any future component with a mount-time side effect: gate it on a
   definitively-known state, not merely "not literally `true` yet" — `null` and
@@ -298,7 +299,7 @@ re-litigated or silently changed.
 - **All sleep-and-memory wording lives in one file — `lib/sleepScience.js` —
   and has hard accuracy rules.** The closing screen, the first-visit screen's short
   "How it works" dialog, the `/how-it-works` page, the "why the night theme?"
-  explainer and the home screen's always-on science note all import from it, so a claim is checked once and can't drift between
+  explainer (and, until 2026-10-22, the home screen's science note) all import from it, so a claim is checked once and can't drift between
   screens. The rules (they exist because this
   is the app's credibility): (1) say only the well-established general
   finding — sleep, including hippocampus–cortex replay, *helps* stabilize
@@ -315,8 +316,12 @@ re-litigated or silently changed.
   than rereading) is a separate, also well-established effect and is kept
   as its own sentence. The same rules apply to any sleep line written
   outside that file (the home subtitles, the morning/evening cards).
-- **A permanent, quiet science note on the home screen**
-  (`components/ScienceNote.js`, under the subtitle, home only). Always
+- **The home screen's science note (removed from the home screen 2026-10-22; the component and the
+  facts are kept).** The home screen no longer shows it (one obvious action and few words, see
+  "Home screen and course pages"), so `components/ScienceNote.js` is not rendered anywhere. The facts
+  still reach the learner on the study-complete screen, `/how-it-works` and the info dialog. What
+  follows is how the note worked, and the rules for its facts (`SCIENCE_FACTS`), which still apply.
+  It sat under the subtitle, home only. Always
   present on every visit — not a one-time tip, not a modal, nothing to tap or
   dismiss; the "why the night theme?" dialog stays the deeper, opt-in
   explanation. It is deliberately a *footnote, not a card*: `text-xs`, a faint
@@ -546,9 +551,10 @@ re-litigated or silently changed.
   placeholder shapes only; no greeting, count, streak, suggestion or course name,
   because every one of those depends on saved progress or the clock and could turn
   out wrong when the real home replaces it (`test-first-visit` enforces "Voco is
-  the only text"). Its background is the home's own dark shell `#1A1C3A`, **not**
-  the time-of-day palette: the real home is that colour at every hour (dawn only
-  appears as a card inside it), so a dawn shell would flip colours at the swap.
+  the only text"). Its background is the page palette (`--vc-page`, night or dawn, set before first paint),
+  the same as the real home's. (Until 2026-10-22 the home was dark at every hour and this said the
+  shell must be too; the home now follows the palette, so the shell does as well and neither
+  flips colour at the swap.)
   Same padding and widths as the real home so the swap doesn't jump; no info icon
   (inert, it would be a button that does nothing). The pulse animates opacity only
   (compositor-friendly, so it doesn't compete with hydration) and stops under
@@ -727,13 +733,12 @@ re-litigated or silently changed.
   via `getMissedWordsLevel(categoryId, struggleIds)`. Deliberately
   per-category rather than one global list pooled from everywhere — lets a
   learner drill the specific area they're weak in. Not listed in
-  `categories`, so each shows up as its own "N words you're still
-  learning" card at the bottom of that category's level list on its course
-  page (visible only when count > 0), not as a regular level card. The home
-  screen's top layer ALSO gathers these across every course into one
-  "words you're still learning" card — one Study/Quiz row per category that
-  has any, each naming its course — so the daily loop doesn't require picking
-  a course first. That card links to the same per-category ids; there is
+  `categories`, so each shows up as a compact "N still learning" row (Study and Quiz links)
+  under that category's level list on its course page (visible only when count > 0), not as a
+  regular level card. The home screen's top layer ALSO gathers these across every course: rows
+  inside the due card (a card of their own when nothing is due), one Study/Quiz row per category
+  that has any, showing the category and "N words still learning", so the daily loop doesn't
+  require picking a course first. Those rows link to the same per-category ids; there is
   deliberately still no single mixed-bag global set.
   Answering a question here updates the word's *real* box (each entry
   carries its true source id as `srsId`, used instead of recomputing
@@ -834,10 +839,10 @@ course) and Terms §4 (the free and paid lists). Privacy and Terms were revised 
 — last night's words (morning), tonight's study (evening), due for review, words
 you're still learning (one drill row per category, across courses), the streaks. These
 pull from every course's words together so nobody has to pick a course first just to
-see what's due. *Below:* a card per course with its own progress summary
-(`CourseProgress` / `getCourseProgress()`: "X of N categories mastered · Y of M levels
-completed", where a level is completed once it has ever been perfect — the same rule
-as the mastery milestone), leading to `/courses/[courseId]`, which shows that course's
+see what's due. *Below:* a compact card per course (its title, its one-line `tagline`, a thin bar and "X of N
+levels" from `CourseProgress` / `getCourseProgress()`, where a level counts once it has ever been
+perfect (the same rule as the mastery milestone); the categories-mastered count is still
+computed but no longer shown), leading to `/courses/[courseId]`, which shows that course's
 category list (the old home screen, scoped). "Back" from a level's study/quiz page
 returns to its course page; the due-for-review set spans courses, so it goes home.
 
@@ -1074,7 +1079,7 @@ loading state, Terms, Privacy, `/unlock` and `/how-it-works`. It is decorative
 (`aria-hidden`; the wordmark beside it carries the name), and its colors do not change with
 the phase. On the dawn peach the orange sun is only ~1.6:1 against the page. It is a logo, so no
 contrast rule applies, but if it ever reads too faintly the fix is a dark tile behind it (as in
-the app icon), not a recolor. The semantic moon icons (the science note, the closing screen, the
+the app icon), not a recolor. The semantic moon icons (the former science note, the closing screen, the
 "Tonight's study" card) are not the brand mark and were left alone.
 
 **Generated files** (everything the site serves for this lives in `public/`):
@@ -1103,6 +1108,102 @@ absolute URLs link previews need. The manifest sets no `display`, so "Add to Hom
 behaves like a bookmark rather than a stand-alone app; add `"display": "standalone"` on purpose
 if that is wanted.
 
+## Home screen and course pages (2026-10-22): calm, few words, one action
+
+**Design and copy only.** Same routes, access rules, Stripe and paywall logic, analytics events and
+localStorage keys. The home screen and the course pages were redesigned in the first screen's
+language: its tokens (`--vc-*` in `lib/timeTheme.js`), its mark (`VocoMark`) and its buttons
+(`.vc-btn` filled, `.vc-btn-quiet` outlined, `.vc-link` a text link, all 44 px tall; the block
+"Home screen and course pages" in `app/globals.css` has them and the type scale).
+
+**The owner's rules, and how they were met.**
+- *About half the words, no em dashes, sentence case, short plain sentences.* Visible words in a
+  real browser at 390 px: home 261 → 107, SAT course page (Vocabulary tab, not subscribed) 265 →
+  117. Zero em dashes on either (a test scans the source).
+- *Type.* Fraunces only on the wordmark, page titles and course titles (plus the info dialog's
+  title, which the first screen shares). Everything else is Inter, semibold for titles and
+  buttons. One scale: 12, 14, 16 and 24 px, plus 20 px for the Fraunces wordmark and course
+  titles. Pages use `text-xs`, `text-sm`, `text-base`, `text-xl` (Fraunces only) and `text-2xl`.
+- *Contrast.* Muted text is `--vc-subtext`: at least 4.5:1 on the night page and card and on both
+  dawn gradient stops and the dawn card (asserted, with every other new pair, in
+  `scripts/test-pages.mjs`). Dawn's `--vc-subtext` is the darker plum `#6B5262` the first screen
+  already used, not `DAWN.subtext` (`#8A6E7D`, 3.4:1).
+- *Targets.* Every button, link, pill and streak chip is at least 44 px tall (0 under 43.5 px in
+  the measured pages).
+- *Safe areas.* `.vc-page` pads `max(1rem, env(safe-area-inset-top/right/left))` and, at the
+  bottom, `max(2rem, inset + 1rem)`; the header is at least 44 px. **`env()` is 0 unless the
+  browser lays the page out into those areas (`viewport-fit=cover`, or a stand-alone home-screen
+  app, which the manifest does not ask for today), and the site does not set `viewport-fit=cover`.** It was left off on purpose: it would let every
+  other screen draw under the notch and the home bar, and each would need this padding. The
+  in-app browser has no Dynamic Island, so the top bar was **not** checked on a real phone. If the
+  logo still sits under the status bar in some context, the fix is `viewportFit: "cover"` in
+  `app/layout.js` plus the same padding on the other screens.
+
+**Home** (`app/page.js`). Header (mark, wordmark, info icon; each streak is an icon and a number,
+44 px, with the same accessible names and share action) → the due card → tonight's study or last
+night's words → "Courses". The due card is the one obvious action: "3 words due", one filled
+**Review**, a small **Study** link under it, and the still-learning rows folded in under a rule
+("Agreement & Support, 1 word still learning, Study, Quiz"). While words are due the time-of-day
+card goes quiet (outlined); with nothing due it takes the filled button; the "pick a course"
+choices (four equal choices) are never filled. When nothing is due, the still-learning rows are a
+card of their own. A course card is the Fraunces title, its `tagline` and a thin bar with "N of M
+levels". **Gone:** the intro sentence ("Good evening. Study a level before bed..."), the science
+note (`components/ScienceNote.js` is kept, unused, with `SCIENCE_FACTS`), "categories mastered ·
+levels completed", the course description, the course name on each still-learning row. Every
+card appears under exactly the conditions it did before and links to the same places.
+
+**Course page** (`app/courses/[courseId]/page.js`). Back, the title, one `tagline` (a new field
+on each course in `lib/wordbanks.js`: 8 words or fewer and at most 42 characters, so it stays on
+one line at 360 px; `description` is still the first screen's longer text), then
+`components/SectionPills.js`: one row that scrolls sideways, never wraps, with the active pill
+filled and scrolled to the middle so it is never clipped (checked at 360 px for all five
+sections). Labels: Vocabulary, Passages, Grammar & usage, Practice test, Strategy; the ids and the
+`?section=` links are unchanged. No section has a description line any more.
+- *An open item* (`components/ItemCard.js`): its name, a small "12 words", one quiet status
+  (Not started, Studied, Done, or Last quiz 9/12), **one** filled button and the other action as a
+  text link. Vocabulary: Study first (link: Quiz), then Take quiz (link: Restudy), then Retake
+  quiz (outlined once Done; link: Restudy). Passages, cross-text and grammar have one action.
+- *A locked item* (`components/LockedRow.js`): a lock, the name, how much is behind it, and "Try a
+  sample question" as a quiet link. **No price or trial text inside it.**
+- *The paywall card* (`components/Paywall.js`): "Full access to every course", "$1.99/month.
+  7-day free trial.", and "See what's included" (to `/unlock`). **Once per section**, just before
+  the first locked item, for a learner who is not subscribed (nothing for a subscriber). The price
+  still travels with its scope (the card's title), the rule in "One subscription = every paid
+  category in every course, and the copy must say so" above. It
+  is a plain link: it adds no `TrialLink` and no tracking. The start-trial buttons are still only
+  on `/unlock` and the sample page, with their `unlock`, `unlock-error` and `preview` placements.
+- *Lists* (`CategoryList`, `PassageList`, `CrossTextList`, `GrammarList`, `PracticeTestTab`,
+  `StrategyList`) keep every route and gate; they only draw the above. The Strategy cards keep
+  their short summary (not cut), since it is the only description of a guide.
+
+**New colors** in `lib/timeTheme.js`: `barTrack`, `barFill` and `flame` (`--vc-bar-track`,
+`--vc-bar-fill`, `--vc-flame`). Dawn uses a deeper orange (`#B65A1F`) for the progress fill and
+the icons, because the accent orange is only about 2:1 on cream; both palettes clear 3:1 on the
+page and on a card.
+
+**The loading shell now follows the palette** (`components/HomeLoading.js`). The note under
+"Returning devices see a loading state" says the shell is dark at every hour; that was true
+while the home was. Now the home is night or dawn, so the shell is too (same `--vc-page`), and
+the swap never changes color. Same header, padding and card shapes as the home.
+
+**Checked in a real browser (the in-app one, production build)**, at 390×844, 375×667 and
+360×740, in night and dawn: no horizontal overflow; zero targets under 44 px; fonts 12, 14, 16,
+24 px (Inter) and 20 px (Fraunces); the paywall card once per section and absent for a subscriber;
+no price inside a locked row; the pills never clipped; the due, last-night, tonight, choose-a-course,
+ending-subscription and loading states; `trial_cta_clicked` still sent with `preview` (after
+answering the sample question) and `unlock`, each beside the trial terms. Before and after
+screenshots were compared at the same widths and clock.
+**Not checked:** a real phone (Dynamic Island, a home-screen app, VoiceOver), and the Playwright
+suites, which need Playwright (updated for the new copy, `node --check` only; the contrast sweep
+gained the course page in both states).
+
+**Tests.** `scripts/test-pages.mjs` (`npm run test:pages`, in `npm test`): tagline lengths, no em
+dashes, the type scale and Fraunces use, 44 px, the safe-area CSS, the pill row, contrast math
+for every new pair, the paywall once per section and the price in one component, one filled
+button, and "nothing else changed" (same routes, same gates, no tracking, no storage, no
+re-implemented free tier). Each check was broken on purpose and caught (58 mutations, each
+restored byte for byte).
+
 ## SAT Vocab has five sections — Vocabulary, Passages, Grammar & Usage, Practice Test, Strategy (Practice Test added 2026-09-23; Grammar renamed "Grammar & Usage" 2026-09-24 — see "SAT content coverage" and `CHANGELOG.md` below)
 
 The SAT course was **deepened, not turned into a fourth course**, with harder vocabulary,
@@ -1117,6 +1218,9 @@ working unchanged; these are the decisions made with the owner (don't re-litigat
   `history.replaceState`, read with `useSearchParams`), so it can be linked and the Back
   links from a passage or guide return to the right tab. `CourseProgress` sits under the
   Vocabulary tab only. Before this, a course page had no sections — just a category list.
+  **Since 2026-10-22 the tabs are one row of pills that scrolls sideways
+  (`components/SectionPills.js`; labels Vocabulary, Passages, Grammar & usage, Practice test,
+  Strategy); the ids and the `?section=` links are unchanged.**
 - **Expert tier: a 4th level in each of the 6 SAT categories, an *extra* — mastery is
   unchanged.** `lib/satExpertTier.js` (ids `<category>-4`, label "Expert", 45 words as of
   2026-09-22: agreement 8, disagreement 8, degree 8, change 6, certainty 6, tone 9),
@@ -1634,12 +1738,14 @@ app/
                          (@vercel/analytics/next — anonymous page views only,
                          no cookies, no identifying data; added 2026-09-22)
   page.js                Home screen, two layers: the unscoped daily-habit
-                         cards (last night's words, tonight's study,
-                         due-for-review, "still learning" across courses,
-                         streaks), then a card per course
-  courses/[courseId]/     One course's category list (locked cards, levels,
-                         each category's own "still learning" card); for a
-                         course with passages/guides, tabs above it
+                         cards (the due card with the still-learning rows in
+                         it, last night's words, tonight's study, streaks),
+                         then a compact card per course (title, tagline,
+                         thin progress bar)
+  courses/[courseId]/     One course's page: title, tagline, the section pills
+                         (for a course with passages/guides), then its
+                         category list (levels, locked rows, one paywall card,
+                         each category's compact "still learning" row)
   passages/[passageId]/   One reading passage + its questions (SAT Vocab)
   cross-text/[pairId]/    Two related passages, stacked, + one or more
                          questions about how they relate (SAT Vocab, added
@@ -1688,10 +1794,18 @@ app/
                          returns its URL; the portal itself handles
                          cancellation and payment-method updates
 components/
-  CategoryList.js         A course's categories: levels, locked cards with the
-                         sample-question link, per-category "still learning"
-  CourseProgress.js       The per-course "X of N categories mastered · Y of M
-                         levels completed" line (home cards + course page)
+  CategoryList.js         A course's categories: levels (ItemCard), locked rows
+                         with the sample-question link, the one paywall card,
+                         per-category "still learning" row
+  ItemCard.js             An open level, passage or grammar level: name, size,
+                         one quiet status, ONE filled button + an optional link
+  LockedRow.js            A locked item: lock, name, size, "Try a sample
+                         question" link; never a price
+  Paywall.js              The one paywall card per course section (price and
+                         free trial said once; links to /unlock; no tracking)
+  SectionPills.js         The course page's sections as one scrolling row of pills
+  CourseProgress.js       A thin bar and "X of N levels" (also ProgressLine, used
+                         for passages): home cards + course page
   PassageList.js          The Passages tab: cards, free/locked state, results,
                          "N of M passages completed"
   CrossTextList.js        A second block inside the same Passages tab, below
@@ -1718,7 +1832,8 @@ components/
   ShareButton.js          Trigger + dialog: share/copy/download the image
   HomeLoading.js          The content-free loading state a returning device sees
                          from first paint until the home hydrates (CSS-shown by
-                         data-returning; never visible to a new visitor)
+                         data-returning; never visible to a new visitor); the
+                         home's palette and shell shapes
   FirstVisit.js           The first-visit home screen (chip, headline and promise,
                          one real free question on a raised card, course line,
                          Keep going and one line of fine print; no trial link or
@@ -1727,8 +1842,8 @@ components/
   TrialLink.js            The one component every start-trial link uses (counts
                          trial_cta_clicked); must sit beside TRIAL_TERMS
   StudyClose.js           Closing screen after "Done studying"
-  ScienceNote.js          The permanent, quiet science footnote on the home
-                         screen (one fact + its hedge; nothing interactive)
+  ScienceNote.js          The former science footnote on the home screen (one fact
+                         + its hedge). Not rendered anywhere since 2026-10-22; kept
   NightThemeExplainer.js  Info icon by the logo + the dismissible "why the
                          night theme?" dialog (native <dialog>); with `label` +
                          `compact` (first-visit) a labelled "How it works" link

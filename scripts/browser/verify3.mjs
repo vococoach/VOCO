@@ -8,11 +8,11 @@ const body = (page) => page.evaluate(() => document.body.innerText);
 
 // 1. the shell: content-free, header only
 {
-  const { ctx, page } = await mk({}, SEED); await page.goto(BASE, { waitUntil: "domcontentloaded" });
+  const { ctx, page } = await mk({ time: "2026-10-05T21:00:00-04:00" }, SEED); await page.goto(BASE, { waitUntil: "domcontentloaded" });
   const shell = await page.evaluate(() => { const s = document.querySelector(".vc-loading"); return { shown: getComputedStyle(s).display, text: s.innerText.trim(), bg: getComputedStyle(s).backgroundColor, role: s.getAttribute("role"), busy: s.getAttribute("aria-busy") }; });
   ok("returning device: the loading state is shown at DOMContentLoaded", shell.shown === "block");
   ok("it contains only the Voco wordmark — no numbers, greetings, names or suggestions", shell.text === "Voco", JSON.stringify(shell.text));
-  ok("it uses the home screen's own dark shell colour", shell.bg === "rgb(26, 28, 58)", shell.bg);
+  ok("in the evening it uses the home screen's own night page colour", shell.bg === "rgb(26, 28, 58)", shell.bg);
   ok("announced as a busy status to assistive tech", shell.role === "status" && shell.busy === "true");
   await ctx.close();
 }
@@ -23,12 +23,12 @@ const body = (page) => page.evaluate(() => document.body.innerText);
   ok("new visitor (no JS at all): loading state hidden, question visible", d === "none" && (await page.getByText("Which word fits the blank?").isVisible()));
   await ctx.close();
 }
-// 3. dawn: shell stays the dark shell and matches the real home (no colour flip at the swap)
+// 3. dawn: the shell is the dawn palette too and matches the real home (no colour flip at the swap)
 {
   const { ctx, page } = await mk({ time: "2026-10-05T08:00:00-04:00" }, SEED); await page.goto(BASE, { waitUntil: "domcontentloaded" });
-  const a = await page.evaluate(() => ({ shell: getComputedStyle(document.querySelector(".vc-loading")).backgroundColor, body: getComputedStyle(document.body).backgroundColor, phase: document.documentElement.getAttribute("data-phase") }));
-  await page.waitForSelector("text=due for review"); const home = await page.evaluate(() => getComputedStyle(document.querySelector("main")).backgroundColor);
-  ok("morning, returning: shell colour equals the real home's colour (no flip at the swap)", a.shell === home && a.phase === "morning", `${a.shell} vs ${home}`);
+  const a = await page.evaluate(() => { const bgOf = (el) => { const cs = getComputedStyle(el); return cs.backgroundImage + " " + cs.backgroundColor; }; return { shell: bgOf(document.querySelector(".vc-loading")), body: bgOf(document.body), phase: document.documentElement.getAttribute("data-phase") }; });
+  await page.waitForSelector("text=/words? due/"); const home = await page.evaluate(() => { const cs = getComputedStyle(document.querySelector("main")); return cs.backgroundImage + " " + cs.backgroundColor; });
+  ok("morning, returning: shell background equals the real home's, and it is the dawn gradient (no flip at the swap)", a.shell === home && /gradient/.test(a.shell) && a.phase === "morning", `${a.shell} vs ${home}`);
   await ctx.close();
 }
 // 4. reduced motion: no pulse
@@ -43,9 +43,9 @@ const body = (page) => page.evaluate(() => document.body.innerText);
 }
 // 5. swap leaves nothing behind
 {
-  const { ctx, page } = await mk({}, SEED); await page.goto(BASE, { waitUntil: "networkidle" }); await page.waitForSelector("text=due for review");
+  const { ctx, page } = await mk({}, SEED); await page.goto(BASE, { waitUntil: "networkidle" }); await page.waitForSelector("text=/words? due/");
   ok("after hydration the loading state and first-visit view are gone from the DOM", (await page.locator(".vc-loading, .vc-first").count()) === 0);
-  ok("the real home is showing", /1 word due for review/.test(await body(page)));
+  ok("the real home is showing", /1 word due/.test(await body(page)));
   // 6. Reset progress on this device -> first-visit again (stale data-returning attribute must not hide it)
   page.on("dialog", (d) => d.accept());
   await page.getByRole("button", { name: /Reset progress/ }).click(); await page.waitForTimeout(400);

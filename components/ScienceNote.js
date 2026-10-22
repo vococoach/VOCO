@@ -1,6 +1,14 @@
 import { Moon, Sunrise } from "lucide-react";
 
-// The small, permanent science note on the home screen: one short fact from
+// NOT RENDERED ANYWHERE RIGHT NOW. The home screen dropped its science note when it
+// became the calm, few-words layout of the first screen (see "Home screen and course
+// pages" in app/globals.css). The facts still reach the learner where they were already
+// used: the study-complete screen (components/StudyClose.js), /how-it-works, and the info
+// dialog by the logo. This component and lib/sleepScience.js's SCIENCE_FACTS (linted by
+// scripts/test-first-visit.mjs) are kept so a note can come back without rewriting them;
+// delete both together if that never happens.
+//
+// What it was: the small, permanent science note on the home screen: one short fact from
 // lib/sleepScience.js (pickScienceFact — sleep in the evening, retrieval
 // practice in the morning), always shown, with its hedge.
 //
