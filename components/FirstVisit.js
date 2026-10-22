@@ -6,10 +6,8 @@ import Link from "next/link";
 import { Check, X, ChevronRight } from "lucide-react";
 import NightThemeExplainer from "@/components/NightThemeExplainer";
 import VocoMark from "@/components/VocoMark";
-import TrialLink from "@/components/TrialLink";
 import { getFirstVisitQuestion, getCourseStrip } from "@/lib/firstVisit";
 import { courses } from "@/lib/wordbanks";
-import { TRIAL_TERMS } from "@/lib/purchase";
 import { HEADLINE_LINES, PROMISE } from "@/lib/site";
 import { trackEvent, EVENTS } from "@/lib/analytics";
 
@@ -21,11 +19,12 @@ const strip = getCourseStrip();
 // (both from lib/site.js, the same words the page title and share preview use), one
 // real free question they can answer right now on a raised card, a quiet line naming
 // the four courses and — once they have answered — a real next step into that free
-// level. It is server-rendered and fully usable the moment the HTML arrives; nothing
-// waits on localStorage, the clock or a client-side check (the home screen swaps to
-// the returning-user view only after hydration, and only if there is saved progress —
-// see app/page.js). The question comes before anything else on the page: no dialog,
-// no gate, nothing to dismiss.
+// level (Keep going, the only action, with one muted line of fine print under it; there
+// is no trial link and no price on this screen). It is server-rendered and fully usable
+// the moment the HTML arrives; nothing waits on localStorage, the clock or a client-side
+// check (the home screen swaps to the returning-user view only after hydration, and only
+// if there is saved progress — see app/page.js). The question comes before anything else
+// on the page: no dialog, no gate, nothing to dismiss.
 //
 // Colors come from CSS variables (THEME_CSS in lib/timeTheme.js), switched by
 // the <html data-phase> attribute the inline script in lib/preHydration.js sets
@@ -158,11 +157,10 @@ export default function FirstVisit() {
                   >
                     Keep going
                   </Link>
+                  {/* Fine print, not a control: Keep going is the only action on this screen. The
+                      trial and the price first appear on the preview and unlock screens. */}
                   <p className="text-center text-xs leading-snug mt-2.5" style={{ color: "var(--vc-subtext)" }}>
-                    <TrialLink placement="first-visit" className="underline font-medium" style={{ color: "var(--vc-text)" }}>
-                      Start free trial
-                    </TrialLink>{" "}
-                    · {TRIAL_TERMS} Full access to every course.
+                    Free to start. No sign-up.
                   </p>
                 </div>
               </div>

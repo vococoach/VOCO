@@ -85,8 +85,8 @@ Then open `http://localhost:3000` in your browser.
 
 To exercise the subscription routes, put a Stripe **test** key in `.env.local`
 (`STRIPE_SECRET_KEY=sk_test_...`). Env files are git-ignored (`.env`, `.env.*`);
-never commit one. Note that the "Start free trial" link opens the live Payment
-Link, so don't complete a purchase while testing.
+never commit one. Note that the "Start free trial" links (on the sample pages and
+`/unlock`) open the live Payment Link, so don't complete a purchase while testing.
 
 ## Tests
 

@@ -136,8 +136,9 @@ ok("the promise is the agreed one-line sentence", PROMISE === "SAT vocabulary yo
   ok("the page title and description are built from the same constants", /const TITLE = `Voco: \$\{HEADLINE\}`/.test(layout) && /const DESCRIPTION = PROMISE;/.test(layout) && /\$\{PROMISE\}/.test(layout) && !layout.includes("Study tonight."));
   // The new copy keeps to the house style: plain, no em or en dashes, no "X, not just Y".
   const strip = getCourseStrip();
-  const copy = { headline: HEADLINE, promise: PROMISE, chip: "Free sample · no sign-up", note: "One question. No account needed.", strip: strip.text };
+  const copy = { headline: HEADLINE, promise: PROMISE, chip: "Free sample · no sign-up", note: "One question. No account needed.", finePrint: "Free to start. No sign-up.", strip: strip.text };
   ok("the chip and the note are exactly the agreed words, and each appears once in the screen", src.includes(">Free sample · no sign-up<") && src.includes("One question. No account needed.") && (src.match(/Free sample · no sign-up/g) || []).length === 1 && (src.match(/One question\. No account needed\./g) || []).length === 1);
+  ok("the fine print under Keep going is exactly the agreed words, once", (src.match(/Free to start\. No sign-up\./g) || []).length === 1);
   const style = Object.entries(copy).filter(([, t]) => /[\u2013\u2014]|\bnot (just|only|merely)\b/i.test(t)).map(([k]) => k);
   ok("new first-screen copy has no em dashes, en dashes or 'not just' constructions", style.length === 0, style.join(", "));
   ok("the course strip names the courses from the course list, in order, as a plain line", strip.text === "Four courses: SAT · Everyday · Professional · GRE" && strip.names.length === courses.length, strip.text);
@@ -232,7 +233,7 @@ ok("no screen hardcodes a text color on theme.accent (must be theme.onAccent)", 
     need("correct border vs its own tinted fill", t.ok, over(t.okFill, t.card), 3);
     need("not-correct border vs its own tinted fill", t.no, over(t.noFill, t.card), 3);
     need("option text on the correct fill", t.text, over(t.okFill, t.card), 7);
-    for (const stop of pageStops(t)) need(`subline, course strip, "How it works" and footer links (${stop}) on the page`, t.subtextAA, stop, 4.5);
+    for (const stop of pageStops(t)) need(`promise, course line, "Free to start" line, "How it works" and footer links (${stop}) on the page`, t.subtextAA, stop, 4.5);
     need("the chip text vs the chip (it uses the card color)", t.text, t.card, 7);
     need("the line under the options and the explanation vs the card", t.subtextAA, t.card, 4.5);
     ok(`${name}: THEME_CSS carries every first-screen variable`, ["--vc-option-fill", "--vc-option-edge", "--vc-option-hover", "--vc-option-press", "--vc-focus", "--vc-ok", "--vc-ok-fill", "--vc-no", "--vc-no-fill", "--vc-card-shadow"].every((v) => THEME_CSS.includes(v)));
@@ -277,7 +278,13 @@ ok("no screen hardcodes a text color on theme.accent (must be theme.onAccent)", 
     return "";
   };
   const afterAnswer = gated("EVENTS.keepGoingClicked");
-  ok("Keep going, the trial link and the trial terms exist only after an answer", afterAnswer.includes("Keep going") && afterAnswer.includes("<TrialLink") && afterAnswer.includes("{TRIAL_TERMS}") && (first.match(/<TrialLink/g) || []).length === 1);
+  ok("Keep going and its one line of fine print exist only after an answer, the line after the button", afterAnswer.includes("Keep going") && afterAnswer.includes("Free to start. No sign-up.") && afterAnswer.indexOf("Keep going") < afterAnswer.indexOf("Free to start. No sign-up."));
+  const finePrintTag = (afterAnswer.match(/<p [^>]*>\s*Free to start\. No sign-up\.\s*<\/p>/) || [""])[0];
+  ok("the fine print is a small, muted, centered paragraph: same size and color family as the old trial line", /className="[^"]*\btext-center\b[^"]*\btext-xs\b[^"]*"/.test(finePrintTag) && finePrintTag.includes('color: "var(--vc-subtext)"'));
+  ok("Keep going is the only action in the answered block: one link, no button, no second link, no handler on the fine print", (afterAnswer.match(/<Link\b/g) || []).length === 1 && !/<(a|button|TrialLink)\b/.test(afterAnswer) && !/onClick|href|role=/.test(finePrintTag));
+  const code = first.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  ok("the first screen has no trial link, no price and no trial terms in its code (they first appear on the preview and unlock screens)", !/TrialLink|TRIAL_TERMS|PRICE_LABEL|TRIAL_LABEL|PAYMENT_LINK|Start free trial|free trial|\$\d|1\.99|7 days/i.test(code) && !/from "@\/lib\/purchase"/.test(code));
+  ok("Terms of Service and Privacy Policy links stay in the footer", /<Link href="\/terms"/.test(first) && /<Link href="\/privacy"/.test(first));
   ok("the explanation exists only after an answer", gated("{quiz.explanation}").includes("{quiz.explanation}"));
   ok("the explanation is announced politely when it arrives", /<div aria-live="polite">\s*\{answered && \(\s*<div className="vc-unfold">/.test(first));
   ok("a fold animates its row to nothing, fades, and drops out of view only when done", /\.vc-fold\s*\{[^}]*grid-template-rows:\s*1fr[^}]*transition:[^;]*grid-template-rows/.test(css) && /\.vc-fold\[data-folded="true"\]\s*\{[^}]*grid-template-rows:\s*0fr[^}]*opacity:\s*0[^}]*visibility:\s*hidden[^}]*visibility 0s 240ms/.test(css));
@@ -373,6 +380,17 @@ ok("no screen hardcodes a text color on theme.accent (must be theme.onAccent)", 
 // ---------- analytics ----------
 const analytics = readFileSync(path.join(root, "lib/analytics.js"), "utf8");
 ok("exactly the three funnel events", ["first_question_answered", "keep_going_clicked", "trial_cta_clicked"].every((e) => analytics.includes(e)));
+{
+  const read = (f) => readFileSync(path.join(root, f), "utf8");
+  const screen = read("components/FirstVisit.js");
+  ok('no "first-visit" trial placement is sent from the first screen any more', !/placement="first-visit"/.test(screen) && !sources.some((f) => /placement=["{]+\s*["']?first-visit/.test(readFileSync(f, "utf8"))));
+  const placements = { "app/preview/[categoryId]/page.js": ["preview"], "app/unlock/page.js": ["unlock", "unlock-error"] };
+  const missing = Object.entries(placements).flatMap(([f, ps]) => ps.filter((pl) => !new RegExp(`<TrialLink[^>]*placement="${pl}"`).test(read(f).replace(/\n\s*/g, " "))).map((pl) => `${f}:${pl}`));
+  ok("the other start-trial placements (preview, unlock, unlock-error) are untouched and still go through TrialLink", missing.length === 0, missing.join(", "));
+  const link = read("components/TrialLink.js");
+  ok("TrialLink still counts every tap as trial_cta_clicked with its placement", /trackEvent\(EVENTS\.trialCtaClicked, \{ placement \}\)/.test(link) && /trialCtaClicked:\s*"trial_cta_clicked"/.test(analytics));
+  ok("the trial terms and the price still show beside each remaining trial link (preview and unlock render TRIAL_TERMS)", /\{TRIAL_TERMS\}/.test(read("app/preview/[categoryId]/page.js")) && (read("app/unlock/page.js").match(/\{TRIAL_TERMS\}/g) || []).length === 2);
+}
 const trackers = sources.filter((f) => /\btrack\(/.test(readFileSync(f, "utf8"))).map((f) => path.relative(root, f));
 ok("track() is called from one place only", trackers.length === 1 && trackers[0] === path.join("lib", "analytics.js"), trackers.join(", "));
 const rawLinks = sources.filter((f) => /href=\{PAYMENT_LINK_URL\}/.test(readFileSync(f, "utf8"))).map((f) => path.relative(root, f));
