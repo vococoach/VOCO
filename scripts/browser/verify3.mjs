@@ -20,7 +20,7 @@ const body = (page) => page.evaluate(() => document.body.innerText);
 {
   const { ctx, page } = await mk({ javaScriptEnabled: false }); await page.goto(BASE, { waitUntil: "load" });
   const d = await page.evaluate(() => getComputedStyle(document.querySelector(".vc-loading")).display);
-  ok("new visitor (no JS at all): loading state hidden, question visible", d === "none" && (await page.getByText("Try one").isVisible()));
+  ok("new visitor (no JS at all): loading state hidden, question visible", d === "none" && (await page.getByText("Which word fits the blank?").isVisible()));
   await ctx.close();
 }
 // 3. dawn: shell stays the dark shell and matches the real home (no colour flip at the swap)
@@ -50,15 +50,15 @@ const body = (page) => page.evaluate(() => document.body.innerText);
   page.on("dialog", (d) => d.accept());
   await page.getByRole("button", { name: /Reset progress/ }).click(); await page.waitForTimeout(400);
   const after = await page.evaluate(() => ({ attr: document.documentElement.getAttribute("data-returning"), first: !!document.querySelector(".vc-first") && getComputedStyle(document.querySelector(".vc-first")).display, ld: getComputedStyle(document.querySelector(".vc-loading")).display }));
-  ok("Reset progress: returns to the first-visit screen (attribute cleared, question visible, loading hidden)", after.attr === null && after.first === "block" && after.ld === "none" && (await page.getByText("Try one").isVisible()), JSON.stringify(after));
+  ok("Reset progress: returns to the first-visit screen (attribute cleared, question visible, loading hidden)", after.attr === null && after.first === "block" && after.ld === "none" && (await page.getByText("Which word fits the blank?").isVisible()), JSON.stringify(after));
   await page.reload({ waitUntil: "networkidle" });
-  ok("…and a reload after Reset still shows the first-visit question", await page.getByText("Try one").isVisible());
+  ok("…and a reload after Reset still shows the first-visit question", await page.getByText("Which word fits the blank?").isVisible());
   await ctx.close();
 }
 // 7. stale attribute with no saved data self-corrects after hydration
 {
   const { ctx, page } = await mk({}, `document.documentElement.setAttribute("data-returning","1");`); await page.goto(BASE, { waitUntil: "networkidle" }); await page.waitForTimeout(500);
-  ok("stale data-returning with nothing saved: corrected after hydration, question visible", (await page.evaluate(() => document.documentElement.getAttribute("data-returning"))) === null && (await page.getByText("Try one").isVisible()));
+  ok("stale data-returning with nothing saved: corrected after hydration, question visible", (await page.evaluate(() => document.documentElement.getAttribute("data-returning"))) === null && (await page.getByText("Which word fits the blank?").isVisible()));
   await ctx.close();
 }
 // 8. first-visit flow still works end to end for a new device, no loading state at any time

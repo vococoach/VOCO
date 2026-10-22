@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Moon, Lock, Check, X, Sparkles } from "lucide-react";
+import { Lock, Check, X, Sparkles } from "lucide-react";
 import TrialLink from "@/components/TrialLink";
+import VocoMark from "@/components/VocoMark";
 import { TRADEMARK_NOTICE } from "@/lib/legal";
 import { CONTACT_EMAIL, CONTACT_MAILTO } from "@/lib/contact";
 import { courses } from "@/lib/wordbanks";
@@ -119,7 +120,7 @@ export default function UnlockPage() {
     <main className="min-h-dvh bg-[#1A1C3A] px-4 py-8 flex items-center justify-center">
       <div className="max-w-md w-full">
         <Link href="/" className="flex items-center gap-2 mb-8 justify-center">
-          <Moon size={22} color="#8B85FF" />
+          <VocoMark size={26} />
           <span className="font-display text-xl text-[#EDEBFF]">Voco</span>
         </Link>
 

@@ -545,3 +545,74 @@ address and that every mailto link on them points at it.
 **Not changed, and not changeable by a commit:** git history still contains the previous
 address, in old file contents and in the author metadata of older commits. Nothing was
 rewritten.
+
+## 2026-10-21: First-screen polish, stage 1 (brand basics, tap targets, option buttons)
+
+The design behind it is in `CLAUDE.md` ("First-screen polish, stage 1" under the first-visit
+screen, and "Brand mark, icons and share image"). What changed and why:
+
+- **Brand.** The stock moon icon beside "Voco" is replaced, in every header, by the Voco mark
+  (`components/VocoMark.js`, the shapes of `brand-assets/voco-mark-clean.svg`). The site had no
+  favicon, touch icon, manifest or share image (all four returned 404), and its title and
+  description were older wording than the screen. Added: `public/` with a 16/32/48 px
+  `favicon.ico`, `icon.svg`, a 180 px touch icon, 192 and 512 px manifest icons plus a maskable
+  one, a 1200 by 630 share image (JPEG, 97 KB) and `manifest.webmanifest`; the page metadata
+  (`app/layout.js`) carries the icon, manifest, Open Graph and Twitter card tags. Title: "Voco:
+  Study tonight. Quiz tomorrow."; description: "SAT vocabulary you study before bed and get
+  quizzed on the next day."
+- **First screen.** The 11 px all-caps "Try one — which word fits?" label became a 14 px
+  sentence-case "Which word fits the blank?". The answer options went from outlined text boxes (an
+  edge of 1.6:1 against the card, no pressed state, an instant swap into the result) to filled
+  buttons with a 3:1+ edge, a hover and pressed state, a focus ring and a short transition, with
+  reduced-motion handled. The footer links went from 25 px to 44 px tall; the bare ⓘ became a
+  labelled "How it works" link, whose dialog went from 219 words (hippocampus, streaks a new
+  visitor does not have) to two sentences and a link to a new `/how-it-works` page.
+- **Contrast found while checking both phases.** On the dawn cream card the pale correct and
+  not-correct colors the app uses elsewhere (`#7BC9A0`, `#E08A9E`) are 1.9:1 and 2.4:1, and the
+  orange accent as a focus ring is 2:1, all under the 3:1 a border or icon needs. The first-visit
+  options use deeper dawn tones of the same hues and a plum focus ring (night is unchanged); the
+  other dawn screens were not touched. Every ratio is now asserted in `test:first-visit`.
+- **Tests.** `test:first-visit` went from 104 to 161 checks (contrast in both phases, the option
+  states, assets and manifest, the maskable safe zone, the mark matching the SVG) and
+  `test:access` gained a check of the built `<head>`. The browser suites' selectors for the old
+  label and the info button were updated (they need Playwright and were not run for this change).
+- **Left as it was, on purpose.** The sleep sentences reused on `/how-it-works` still contain the
+  em dashes they were written with (they are existing wording in `lib/sleepScience.js`); the first
+  screen's subline is still the older wording until stage 2. (Both were changed in stage 2, below.)
+
+## 2026-10-21: First-screen polish, stage 2 (the new first screen)
+
+The design is in `CLAUDE.md` ("First-screen polish, stage 2" under the first-visit screen). What
+changed and why:
+
+- **Layout and words.** The first screen gained a chip ("Free sample · no sign-up"), a new promise
+  line under the headline ("SAT vocabulary you study before bed and get quizzed on the next day.",
+  replacing "SAT vocab, built around how sleep helps memory settle."), a raised question card with
+  a 19 px sentence and 56 px options (were 17 px and 48 px), "One question. No account needed."
+  under the options, and a quiet, non-tappable line naming the four courses, built from the course
+  list. The headline and promise moved into `lib/site.js`, so the screen, the page title, the
+  description and the share preview read the same constants. The `test:first-visit` check that the
+  subline said sleep "helps" went with the old subline.
+- **After an answer.** The chip, the note and the course line leave. They fold away over 240 ms
+  while the explanation and the Keep going block unfold, because the larger options and sentence
+  otherwise pushed the answered screen about 12 px past a 375 by 667 phone. Sampled mid-animation,
+  the stack never passes either finished layout or touches the footer; under reduced motion the
+  change is instant. The keyboard focus ring on Keep going was checked with real Tab presses.
+- **Taller phones.** Spacing, card padding, the headline size and two margins grow with the screen
+  height (the small viewport height, so mobile toolbars do not move them), up to a ceiling. Stage 1
+  left one empty band under the card on a 390 by 844 phone, roughly 370 px by its own numbers; the
+  largest empty gap there is now 92 px, and on a 430 by 932 phone 131 px, as margins above the chip
+  and above the footer. 375 by 667 fits with and without an answer (11 px to spare).
+- **Em dashes on `/how-it-works`.** Four sentences in `lib/sleepScience.js` swapped an em dash for
+  a comma, parentheses or a semicolon. Words and word order are unchanged (compared against the
+  previous text). The strings are shared, so the returning-home dialog and the closing screen
+  show the same punctuation.
+- **Tests.** `test:first-visit` went from 161 to 189 checks (order and structure, the fold CSS,
+  the copy rules, the course line, contrast for the chip and the text on the card) and
+  `test:access` from 114 to 119 (the served HTML of the built home page: question first, nothing
+  to dismiss, nothing from the answered state). Every new check was broken on purpose to see it
+  fail (23 mutations, each restored byte for byte). The `verify1` browser suite was updated for the
+  new copy and a 390 by 844 no-dead-band check (it needs Playwright and was not run; the same
+  page-side code was run in the in-app browser).
+- **Left out on purpose.** The mark does not change with the phase (the owner said to leave it on
+  dawn as it is), and the manifest still sets no `display`.

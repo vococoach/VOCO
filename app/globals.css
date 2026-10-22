@@ -50,3 +50,129 @@ html[data-returning] .vc-loading { display: block; }
 @media (prefers-reduced-motion: reduce) {
   .voco-rise, .voco-settle { animation: none; }
 }
+
+/* First-visit answer options (components/FirstVisit.js). A filled button whose edge
+   is at least 3:1 against the card in both phases (asserted in
+   scripts/test-first-visit.mjs), a visible pressed state, and a short transition into
+   the correct / not-correct state. Every color is a theme variable (lib/timeTheme.js),
+   so night and dawn need no separate rules. The state lives in data-state
+   (idle | correct | wrong) so the transition runs when it changes. */
+.vc-option {
+  background-color: var(--vc-option-fill);
+  border: 1px solid var(--vc-option-edge);
+  color: var(--vc-text);
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 160ms ease, border-color 160ms ease, transform 90ms ease;
+}
+@media (hover: hover) {
+  .vc-option[data-state="idle"]:not([aria-disabled="true"]):hover { background-color: var(--vc-option-hover); }
+}
+.vc-option[data-state="idle"]:not([aria-disabled="true"]):active {
+  background-color: var(--vc-option-press);
+  border-color: var(--vc-focus);
+  transform: scale(0.97);
+}
+.vc-option:focus-visible { outline: 2px solid var(--vc-focus); outline-offset: 2px; }
+.vc-option[data-state="correct"] { background-color: var(--vc-ok-fill); border-color: var(--vc-ok); }
+.vc-option[data-state="wrong"] { background-color: var(--vc-no-fill); border-color: var(--vc-no); }
+@keyframes vc-pop {
+  from { opacity: 0; transform: scale(0.6); }
+  to { opacity: 1; transform: scale(1); }
+}
+.vc-option-icon { animation: vc-pop 180ms ease-out both; }
+/* Reduced motion: no movement and no animation. The color change stays, so the
+   pressed and answered states are still visible. */
+@media (prefers-reduced-motion: reduce) {
+  .vc-option { transition: background-color 0.01ms, border-color 0.01ms; }
+  .vc-option[data-state="idle"]:not([aria-disabled="true"]):active { transform: none; }
+  .vc-option-icon { animation: none; }
+}
+
+/* First-visit screen layout (components/FirstVisit.js).
+
+   Spacing that grows a little on taller phones, so the screen fills the height instead of
+   leaving a band of empty space under the card. The numbers are the 667px-tall phone the
+   screen is sized for (a 375x667 phone, answered and unanswered, fits with no scrolling);
+   they grow with the viewport and stop at a ceiling. They use the SMALL viewport height
+   (svh), which does not change as a mobile browser's toolbars slide in and out, so
+   nothing shifts while the page scrolls. `--vc-air` is extra room above the chip, so on a
+   tall phone the stack sits a little below the header instead of hugging it. It depends
+   on the screen height alone, never on what is showing. `--vc-strip-gap` is the space
+   above the course strip; the strip leaves when the question is answered, so that space
+   is free to use while the question is open and costs the answered screen nothing. */
+.vc-first {
+  --vc-gap: 12px;
+  --vc-pad: 14px;
+  --vc-h1: 28px;
+  --vc-air: 0px;
+  --vc-strip-gap: 24px;
+}
+@supports (height: 1svh) {
+  .vc-first {
+    --vc-gap: clamp(12px, calc(12px + (100svh - 667px) * 0.13), 40px);
+    --vc-pad: clamp(14px, calc(14px + (100svh - 667px) * 0.06), 26px);
+    --vc-h1: clamp(28px, calc(28px + (100svh - 667px) * 0.035), 34px);
+    --vc-air: clamp(0px, calc((100svh - 680px) * 0.45), 130px);
+    --vc-strip-gap: clamp(24px, calc(24px + (100svh - 667px) * 0.226), 96px);
+  }
+}
+.vc-stage { padding-top: calc(var(--vc-air) + 12px); }
+.vc-h1 { font-size: var(--vc-h1); line-height: 1.1; }
+
+/* "Free sample · no sign-up": a small pill on the page. It uses the card's own colors, so
+   it needs no palette of its own and reads in both phases. */
+.vc-chip {
+  display: flex;
+  width: fit-content;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  border: 1px solid var(--vc-border);
+  background-color: var(--vc-card);
+  color: var(--vc-text);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+}
+
+/* The raised question card. */
+.vc-card {
+  margin-top: var(--vc-gap);
+  padding: var(--vc-pad);
+  border-radius: 1rem;
+  border: 1px solid var(--vc-border);
+  background-color: var(--vc-card);
+  box-shadow: var(--vc-card-shadow);
+}
+
+/* What leaves, and what arrives, when the question is answered. The chip, the line under
+   the options and the course strip fold down to nothing (rather than vanishing), while the
+   explanation and the Keep going block unfold, all over the same 240ms. The total height
+   therefore moves smoothly from one finished layout to the other and never overshoots
+   either, and what the visitor tapped does not jump. A folded block is also hidden from
+   everything else (visibility), so a screen reader no longer finds it. The inner element
+   carries the block's own spacing and is clipped while the row is shrinking. */
+.vc-fold {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 240ms ease, opacity 160ms ease;
+}
+.vc-fold > * { min-height: 0; overflow: hidden; }
+.vc-fold[data-folded="true"] {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  visibility: hidden;
+  transition: grid-template-rows 240ms ease, opacity 160ms ease, visibility 0s 240ms;
+}
+@keyframes vc-unfold {
+  from { grid-template-rows: 0fr; opacity: 0; }
+  to { grid-template-rows: 1fr; opacity: 1; }
+}
+.vc-unfold { display: grid; animation: vc-unfold 240ms ease both; }
+/* The 4px of padding (cancelled by the negative margin) leaves room inside the clip for the
+   focus ring of the link it holds. */
+.vc-unfold > * { min-height: 0; overflow: hidden; padding: 4px; margin: -4px; }
+@media (prefers-reduced-motion: reduce) {
+  .vc-fold, .vc-fold[data-folded="true"] { transition: none; }
+  .vc-unfold { animation: none; }
+}

@@ -1,42 +1,67 @@
 "use client";
 
 import { useRef } from "react";
+import Link from "next/link";
 import { Info, X } from "lucide-react";
 import { SLEEP_SCIENCE } from "@/lib/sleepScience";
 
-// Small "why the night theme?" icon for the home header, plus the dismissible
-// explainer it opens. Uses the native <dialog> element, which supplies the
-// modal backdrop, focus trapping and Esc-to-close for free; the forms with
-// method="dialog" close it without any extra state.
+// The header control that opens the explainer, plus the dismissible explainer
+// itself. Uses the native <dialog> element, which supplies the modal backdrop,
+// focus trapping and Esc-to-close for free; the forms with method="dialog" close it
+// without any extra state.
 //
-// It only ever opens when the learner taps the icon. (It used to also pop open
+// It only ever opens when the learner taps the control. (It used to also pop open
 // by itself once per browser session; that was removed because an uninvited
 // dialog on arrival is exactly what makes a first-time visitor leave — see
 // CLAUDE.md.) The dialog stays dark in every phase: it's a modal over the page,
 // not a learning screen.
 //
+// Two forms:
+//   - Default (the returning home screen's header): a small info icon that opens
+//     the full "Why the night theme?" explanation, including the streaks.
+//   - `label` + `compact` (the first-visit screen): a labelled "How it works" text
+//     control, and a dialog with two sentences and a link to /how-it-works, where
+//     the full explanation lives. A first-time visitor has no streaks yet, so
+//     nothing about streaks is in it.
+//
 // `iconClassName`/`iconStyle` let a screen that isn't the dark shell (the
-// first-visit screen, which follows the real time of day) color the icon to
+// first-visit screen, which follows the real time of day) color the control to
 // match its own background; the defaults are the dark shell's colors.
 export default function NightThemeExplainer({
   iconClassName = "text-[#6E699B] hover:text-[#9B97C4] focus-visible:text-[#9B97C4]",
   iconStyle,
+  label,
+  compact = false,
 }) {
   const dialogRef = useRef(null);
+  const open = () => dialogRef.current?.showModal();
 
   return (
     <>
-      <button
-        type="button"
-        aria-label="Why the night theme?"
-        onClick={() => dialogRef.current?.showModal()}
-        // Padding + equal negative margin: a 44px tap target around a 16px
-        // icon without shifting the header layout.
-        className={`p-3.5 -m-3.5 rounded-full ${iconClassName}`}
-        style={iconStyle}
-      >
-        <Info size={16} />
-      </button>
+      {label ? (
+        // A 44px-tall tap target. The negative margins keep it from making the
+        // header taller or shifting the layout; the extra padding is hit area only.
+        <button
+          type="button"
+          onClick={open}
+          className={`-my-2 -mr-3 inline-flex min-h-[44px] items-center rounded-full px-3 text-[13px] font-medium underline decoration-1 underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:[outline-color:var(--vc-focus)] ${iconClassName}`}
+          style={iconStyle}
+        >
+          {label}
+        </button>
+      ) : (
+        <button
+          type="button"
+          aria-label="Why the night theme?"
+          onClick={open}
+          // Padding + equal negative margin: a 44px tap target around a 16px
+          // icon without shifting the header layout.
+          className={`p-3.5 -m-3.5 rounded-full ${iconClassName}`}
+          style={iconStyle}
+        >
+          <Info size={16} />
+        </button>
+      )}
 
       <dialog
         ref={dialogRef}
@@ -52,7 +77,7 @@ export default function NightThemeExplainer({
         <form method="dialog" className="p-6">
           <div className="flex items-start justify-between gap-4 mb-3">
             <h2 id="night-theme-title" className="font-display text-xl">
-              Why the night theme?
+              {compact ? "How it works" : "Why the night theme?"}
             </h2>
             <button
               type="submit"
@@ -63,28 +88,37 @@ export default function NightThemeExplainer({
             </button>
           </div>
 
-          <div className="space-y-3 text-sm leading-relaxed text-[#C9C5EC]">
-            <p>
-              Voco is built around a simple rhythm: study before you sleep, then quiz yourself
-              after you wake.
-            </p>
-            <p>
-              {SLEEP_SCIENCE.consolidation} {SLEEP_SCIENCE.replay} {SLEEP_SCIENCE.studyBeforeBed}{" "}
-              {SLEEP_SCIENCE.retrieval}
-            </p>
-            <p>
-              The colors follow the actual time of day, wherever you are in the app: deep night
-              blues in the evening, warm dawn tones in the morning — not which screen you're on.
-              The home screen also shifts gently with your local time — evenings point you to
-              tonight's study, and mornings bring back last night's words.
-            </p>
-            <p>
-              Two different streaks: the flame counts days you completed any quiz; the sunrise is
-              your night-to-morning streak — consecutive mornings you quizzed the words you
-              studied the night before. Tap either one to share it as an image.
-            </p>
-            <p className="text-xs text-[#9B97C4]">{SLEEP_SCIENCE.hedge}</p>
-          </div>
+          {compact ? (
+            <div className="space-y-3 text-sm leading-relaxed text-[#C9C5EC]">
+              <p>{SLEEP_SCIENCE.rhythm}</p>
+              <p>{SLEEP_SCIENCE.short}</p>
+              <p>
+                <Link href="/how-it-works" className="text-[#8B85FF] underline underline-offset-4">
+                  Read how it works
+                </Link>
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3 text-sm leading-relaxed text-[#C9C5EC]">
+              <p>{SLEEP_SCIENCE.rhythm}</p>
+              <p>
+                {SLEEP_SCIENCE.consolidation} {SLEEP_SCIENCE.replay} {SLEEP_SCIENCE.studyBeforeBed}{" "}
+                {SLEEP_SCIENCE.retrieval}
+              </p>
+              <p>
+                The colors follow the actual time of day, wherever you are in the app: deep night
+                blues in the evening, warm dawn tones in the morning — not which screen you're on.
+                The home screen also shifts gently with your local time — evenings point you to
+                tonight's study, and mornings bring back last night's words.
+              </p>
+              <p>
+                Two different streaks: the flame counts days you completed any quiz; the sunrise is
+                your night-to-morning streak — consecutive mornings you quizzed the words you
+                studied the night before. Tap either one to share it as an image.
+              </p>
+              <p className="text-xs text-[#9B97C4]">{SLEEP_SCIENCE.hedge}</p>
+            </div>
+          )}
 
           <button
             type="submit"

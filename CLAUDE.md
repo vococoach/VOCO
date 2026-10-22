@@ -268,7 +268,12 @@ re-litigated or silently changed.
   click, X and "Got it" all dismiss it — one tap, no added friction)
   explaining the sleep/memory rationale; keep its claims hedged, since how
   much sleep helps varies by person. Its tap target is 44px on purpose (the
-  visible icon is 16px).
+  visible icon is 16px). **On the first-visit screen the control is instead a
+  labelled "How it works" link (2026-10-21), and its dialog is short: two
+  sentences from `lib/sleepScience.js` (`rhythm` and `short`) and a link to
+  `/how-it-works`, the real page that holds the full explanation. A first-time
+  visitor has no streaks, so the short version says nothing about them; the
+  returning home keeps the icon and the full dialog, streaks included.**
   **It no longer opens by itself (removed 2026-10-05).** From 2026-09-22 it
   auto-opened once per fresh browser session (a `sessionStorage` flag,
   `voco_night_theme_seen_session_v1`), a deliberate tradeoff made with the owner
@@ -277,7 +282,8 @@ re-litigated or silently changed.
   bounce for first-time visitors, who arrive mostly on phones from TikTok/
   YouTube links, and an uninvited dialog (or two intro slides) before they have
   touched anything is the opposite of that. The explainer is now tap-only, via
-  the info icon (which stays in both headers, with the same 44px target); the
+  its header control (the info icon on the home screen, the labelled "How it
+  works" link on the first-visit screen; both are 44px targets); the
   night/dawn look and the always-on science note carry the premise instead. The
   old flag is no longer read or written; `clearLegacyFlags()` (`lib/visitor.js`)
   tidies it from anyone's `sessionStorage` on the next home-screen load, and a
@@ -290,9 +296,9 @@ re-litigated or silently changed.
   definitively-known state, not merely "not literally `true` yet" — `null` and
   `false` are not the same condition.)
 - **All sleep-and-memory wording lives in one file — `lib/sleepScience.js` —
-  and has hard accuracy rules.** The closing screen, the first-visit screen, the
-  "why the night theme?" explainer and the home screen's always-on science
-  note all import from it, so a claim is checked once and can't drift between
+  and has hard accuracy rules.** The closing screen, the first-visit screen's short
+  "How it works" dialog, the `/how-it-works` page, the "why the night theme?"
+  explainer and the home screen's always-on science note all import from it, so a claim is checked once and can't drift between
   screens. The rules (they exist because this
   is the app's credibility): (1) say only the well-established general
   finding — sleep, including hippocampus–cortex replay, *helps* stabilize
@@ -375,10 +381,10 @@ re-litigated or silently changed.
   nothing. "Reset progress on this device" clears the progress keys but **not**
   the customer id or cached subscription, so an unsubscribed device becomes a
   first-time visitor again while a subscribed one stays "returning" — and stays
-  unlocked). They see `components/FirstVisit.js` on the home screen: headline
-  "Study tonight. Quiz tomorrow.", the subline "SAT vocab, built around how
-  sleep helps memory settle." (checked against the `lib/sleepScience.js` rules
-  by `scripts/test-first-visit.mjs`), and one real free question; after
+  unlocked). They see `components/FirstVisit.js` on the home screen: a chip,
+  the headline "Study tonight. Quiz tomorrow.", the promise "SAT vocabulary you
+  study before bed and get quizzed on the next day." (both in `lib/site.js`; see
+  "First-screen polish, stage 2" below), and one real free question; after
   answering (right or wrong) there is instant feedback with the explanation, a
   primary **Keep going** (a real next page: `/sets/agreement-support-1/quiz`,
   the free level the question came from) and a quieter **Start free trial**
@@ -388,15 +394,101 @@ re-litigated or silently changed.
   required by the test to sit next to that line). Below the first screen is the
   list of the four courses, so the other three stay discoverable. A returning
   device skips all of it and gets the normal home (review, tonight's study).
+  **First-screen polish, stage 1 (2026-10-21).** The header carries the Voco mark
+  (see "Brand mark, icons and share image") and a labelled "How it works" link
+  (a 44px target) instead of the bare ⓘ. The instruction is a sentence-case
+  14px line, "Which word fits the blank?" in the text color (13:1 night, 12:1
+  dawn), replacing an 11px all-caps "Try one — which word fits?". **The answer
+  options** are filled `.vc-option` buttons (`app/globals.css`, state in
+  `data-state` = `idle|correct|wrong`): a 1px edge at 3.7:1 (night) / 4.4:1 (dawn)
+  against the card, a hover (pointer devices only), a pressed state (brighter
+  fill, accent edge, 3% shrink), a keyboard focus ring, a 160ms transition into
+  correct / not-correct and a 180ms pop for the check or cross; under
+  `prefers-reduced-motion` the shrink and the pop go and only the color change
+  remains. **Two dawn values differ from the app's usual colors, both for contrast
+  on the cream card:** the focus ring and pressed edge are the dark plum `#3D2B4F`
+  (the orange accent is 2:1 there), and the outcome border and icon use deeper tones of
+  the same hues, `#2F8F5B` green and `#C2506B` rose (3.9:1 and 4.3:1), because the pale
+  `#7BC9A0` and `#E08A9E` the other dawn screens use are 1.9:1 and 2.4:1 on cream,
+  under the 3:1 a border or icon needs (night keeps the app's own pair; the other
+  screens were not touched). The footer links are 44px tall (12px text). Every ratio is
+  asserted in `scripts/test-first-visit.mjs`, in both phases.
   **The question** is `lib/firstVisit.js`: "Uphold" (Agreement & Support ·
   Foundational) — short enough to fit with all four options on a 375×667
   phone, easy to get right but with a real pull toward "Overturn", and its
   explanation teaches the contextual-cue skill in one line. Its options show in
   a fixed order (correct answer third) because the question is the same for
   everyone and a post-mount shuffle would move options under a thumb; real
-  quizzes still shuffle every time. The first screen fits 375×667 with and
-  without an answer showing (measured: content ends at y=431 before answering,
-  599 after, of 667); options are a 2×2 grid of 48px targets.
+  quizzes still shuffle every time. The options are a 2×2 grid of 56px targets (they
+  were 48px in stage 1).
+  **First-screen polish, stage 2 (2026-10-21).** The first screen is now, top to bottom:
+  the header (mark, wordmark, "How it works"); a chip, "Free sample · no sign-up"; the
+  headline and, under it, the promise; a raised question card holding the 14px instruction,
+  the sentence at 19px, the four 56px options and, under them, "One question. No account
+  needed."; a quiet line, "Four courses: SAT · Everyday · Professional · GRE"; and the 44px
+  footer links. **The words.** The headline (`HEADLINE_LINES`, shown on two lines) and the
+  promise (`PROMISE`) live in `lib/site.js`; the screen, the page title ("Voco: " + the
+  headline), the meta description, the share-preview description and its alt text all read
+  them from there, so they cannot drift apart. The promise is also the line printed on
+  `public/og.jpg`, which is a picture and has to be remade by hand if the sentence changes.
+  The older subline about sleep is gone from the first screen (the sleep wording is in the
+  "How it works" dialog and on `/how-it-works`, all from `lib/sleepScience.js`, so
+  `scripts/test-first-visit.mjs` no longer asserts that the subline says sleep "helps"; it
+  still lints the headline and the promise against the sleep-copy rules). The course line is
+  `getCourseStrip()` in `lib/firstVisit.js`: it takes the first word of each course title
+  from `courses`, so it follows the course list. It is plain text on purpose, not a link
+  (the tappable list of courses is the one below the first screen); the tests fail if it
+  ever becomes a link, button or handler. House style for all of the new copy, asserted by
+  the tests: no em or en dashes and no "not just" constructions. **The raised card.** Its
+  shadow is the one new theme variable, `--vc-card-shadow` (`cardShadow` in
+  `lib/timeTheme.js`): a plum-tinted shadow on dawn, a faint light top edge plus a dark
+  shadow at night (a dark shadow alone barely shows on the dark page). The chip is the
+  card's own fill, border and text color, so it needed no new palette; new contrast checks
+  in `test-first-visit.mjs` cover its text, the line under the options and the explanation
+  on the card, and the course line on the page, in both phases.
+  **What leaves when the question is answered (the owner's decision).** The chip, the line
+  under the options and the course line are hidden, because with 56px options and a 19px
+  sentence the answered screen overflowed 375×667 by about 12px. They fold to zero height
+  instead of vanishing (`.vc-fold` in `app/globals.css`, a 240ms grid-row transition, then
+  `visibility: hidden` plus `aria-hidden`, so a screen reader cannot find them), while the
+  explanation and the Keep going block unfold (`.vc-unfold`, the same 240ms). Because the
+  two run together, the total height moves smoothly from one finished layout to the other
+  and never passes either (sampled at 0 to 300ms at 375×667: the stack grows from y=550 to
+  y=608 against a footer at y=619 and the section stays exactly 667px), and nothing
+  overlaps the footer on the way. The tapped option glides up by 42px (the chip's height,
+  including 6px of spacing that exists only while the chip does) rather than jumping.
+  Under `prefers-reduced-motion` both are instant. Two details that look like noise but are
+  load-bearing: a fold's padding goes on an inner element (padding on the clipped element
+  itself stops it reaching zero height), and `.vc-unfold` keeps 4px of padding inside its
+  clip, cancelled by a negative margin, so the keyboard focus ring on Keep going is not cut
+  off (checked with real Tab presses). Keep going, the trial link and its terms, and the
+  explanation are not in the served HTML at all until an answer (asserted on the built page).
+  **Taller phones: no dead band.** The spacing grows with the SMALL viewport height
+  (`svh`, which does not change as mobile browser toolbars slide in and out, unlike `dvh`),
+  from the 667px values to a ceiling, in `.vc-first` in `app/globals.css`: `--vc-gap`
+  12→40px, `--vc-pad` (card padding) 14→26px, the headline 28→34px, `--vc-air` (extra room
+  above the chip) 0→130px and `--vc-strip-gap` (space above the course line) 24→96px, behind
+  `@supports (height: 1svh)` with the 667px values as the fallback. They depend on the
+  screen height alone, never on what is showing, so answering does not move the card on a
+  tall phone for any reason except the chip folding. `--vc-strip-gap` can be generous because
+  the line leaves on answering, so the answered screen pays nothing for it. The sentence
+  (19px) and the options (56px) do not grow. **Measured 2026-10-21** (largest empty gap
+  between two blocks, measuring to the footer's text; production build; before / after
+  answering): **375×667** 83 / 25px, content ends at y=550 before answering and y=608
+  after, with the footer's 44px targets starting at y=619 (11px to spare), and no scrolling
+  either way; **390×844** 92 / 86px; **430×932** 131 / 125px. On the taller phones the
+  leftover space is a margin above the chip and a margin above the footer rather than one
+  band (stage 1 left roughly 370px under the card at 844, by its own numbers: card bottom
+  y=433, footer text near y=800). 360×740 also fits in both states, and 320×568 scrolls
+  (the screen is sized for 375×667). **Left out on purpose:** the optional idea of the
+  mark's sun and moon shifting with the phase. The owner said to leave the mark on dawn as
+  it is, and the mark is never restyled; it is still the same two shapes in both phases.
+  **Em dashes on `/how-it-works`** were normalized, punctuation only: four sentences in
+  `lib/sleepScience.js` (`consolidation`, `replay`, `retrieval`, `hedge`) swapped an em dash
+  for a comma, parentheses or a semicolon, with the words unchanged and in the same order
+  (compared against the previous text). Those strings are shared, so the returning-home
+  dialog and the closing screen show the same punctuation; the full returning-home dialog
+  in `components/NightThemeExplainer.js` and `SCIENCE_FACTS` were not touched.
   **Speed and no-flash design.** The server renders the first-visit view and it
   is usable the moment the HTML arrives — no `invisible` gate, nothing waiting
   on localStorage. After hydration, `app/page.js` swaps to the returning view
@@ -932,6 +1024,49 @@ numbers on dawn are `#8A6E7D` on `#FFF9F2`, **4.36:1** (just under), and orange 
 (links like "Back home", small notes) on the light dawn card is roughly 2:1; both want a darker
 dawn subtext / a darker orange for text, which would change the look of every dawn screen.
 
+## Brand mark, icons and share image (added 2026-10-21)
+
+**The mark** is a lavender (`#8B85FF`) crescent cradling an orange (`#FF9B5C`) sun. Its
+source files are in `brand-assets/` at the project root: `voco-mark-clean.svg` (the only
+mark to use; never redraw or restyle it) and `voco-profile-picture.png` (800×800, the mark
+on the night gradient with a soft warm glow; the source for the app icons).
+`brand-assets/` is source material: no code imports, links or serves it, and none of it
+sits under `public/`. The mark is drawn inline by `components/VocoMark.js` (the same two
+shapes as the SVG; `scripts/test-first-visit.mjs` fails if they drift apart) in every header
+that used to carry the stock moon: the first-visit screen, the returning home and its
+loading state, Terms, Privacy, `/unlock` and `/how-it-works`. It is decorative
+(`aria-hidden`; the wordmark beside it carries the name), and its colors do not change with
+the phase. On the dawn peach the orange sun is only ~1.6:1 against the page. It is a logo, so no
+contrast rule applies, but if it ever reads too faintly the fix is a dark tile behind it (as in
+the app icon), not a recolor. The semantic moon icons (the science note, the closing screen, the
+"Tonight's study" card) are not the brand mark and were left alone.
+
+**Generated files** (everything the site serves for this lives in `public/`):
+`favicon.ico` (16, 32 and 48 px), `icon.svg` (a byte-identical copy of the clean mark),
+`apple-touch-icon.png` (180×180, fully opaque), `icons/icon-192.png`, `icons/icon-512.png`,
+`icons/icon-maskable-512.png`, `og.jpg` (1200×630) and `manifest.webmanifest`. They were made
+once, with nothing added to `package.json`: `sips` (built into macOS) resized the profile
+picture for the app icons and cropped its centre 80% for the favicon sizes, so the mark is
+larger at 16 px; a short dependency-free script packed the `.ico`; the share image was drawn
+in a browser canvas with the site's own Fraunces and Inter (the "Voco" wordmark is the
+header's 20 px lockup scaled up, so the letterforms match) and saved as a JPEG at quality 95,
+which is 97 KB against 605 KB as a PNG, and some messaging apps will not preview an image that
+large. The maskable icon is the profile picture as it is: the mark reaches 30.1% of the width
+from the centre, inside the 40% safe zone. To change an icon or the promise line, regenerate from
+`brand-assets/`. The tests check the sizes, that the touch icon is opaque, the safe zone, that
+every manifest icon exists at its declared size, and (after a build, in `test:access`) that the
+served `<head>` declares each URL and each one is a real file.
+
+**Page metadata** (`app/layout.js`): the title is "Voco: " + the headline ("Voco: Study
+tonight. Quiz tomorrow.") and the description is the promise ("SAT vocabulary you study before
+bed and get quizzed on the next day."), both imported from `lib/site.js`, the same constants the
+first screen shows, so a tab, a search result, a shared link and the page say the same thing
+(the promise is also the line on the share image). `metadataBase` is `SITE_URL` (also
+`lib/site.js`, `https://voco.courses`), which turns the icon and share-image paths into the
+absolute URLs link previews need. The manifest sets no `display`, so "Add to Home Screen"
+behaves like a bookmark rather than a stand-alone app; add `"display": "standalone"` on purpose
+if that is wanted.
+
 ## SAT Vocab has five sections — Vocabulary, Passages, Grammar & Usage, Practice Test, Strategy (Practice Test added 2026-09-23; Grammar renamed "Grammar & Usage" 2026-09-24 — see "SAT content coverage" and `CHANGELOG.md` below)
 
 The SAT course was **deepened, not turned into a fourth course**, with harder vocabulary,
@@ -1455,7 +1590,11 @@ there are none of those left.
 
 ```
 app/
-  layout.js              Root layout + metadata + Vercel Web Analytics
+  how-it-works/           The full explanation behind the first-visit "How it works"
+                         dialog: the rhythm, why sleep, why the colors change,
+                         streaks (sentences from lib/sleepScience.js)
+  layout.js              Root layout + page metadata (title, description, icons,
+                         manifest, Open Graph / Twitter card) + Vercel Web Analytics
                          (@vercel/analytics/next — anonymous page views only,
                          no cookies, no identifying data; added 2026-09-22)
   page.js                Home screen, two layers: the unscoped daily-habit
@@ -1478,8 +1617,10 @@ app/
   practice-test/           Timed, simulated 54-question Reading & Writing
                          section (SAT Vocab) — mixes vocab/passage/grammar
                          content already in the app; paid only
-  globals.css             Tailwind, the first-visit/loading CSS (.vc-first,
-                         .vc-loading) and the results card's one-time
+  globals.css             Tailwind, the first-visit/loading CSS (.vc-first and its
+                         height-scaled spacing tokens, .vc-loading, the .vc-option answer
+                         buttons, the .vc-card/.vc-chip, the .vc-fold/.vc-unfold
+                         answer transition) and the results card's one-time
                          entrance animation (fonts come from next/font in layout.js)
   review/                 Spaced-repetition review session (capped at 20)
   preview/[categoryId]/   One sample question from any locked item (category,
@@ -1542,8 +1683,9 @@ components/
   HomeLoading.js          The content-free loading state a returning device sees
                          from first paint until the home hydrates (CSS-shown by
                          data-returning; never visible to a new visitor)
-  FirstVisit.js           The first-visit home screen (headline, one real free
-                         question, Keep going / trial link) + the course list
+  FirstVisit.js           The first-visit home screen (chip, headline and promise,
+                         one real free question on a raised card, course line,
+                         Keep going / trial link) + the course list
                          below it — see "First-visit screen instead of onboarding"
   TrialLink.js            The one component every start-trial link uses (counts
                          trial_cta_clicked); must sit beside TRIAL_TERMS
@@ -1551,8 +1693,12 @@ components/
   ScienceNote.js          The permanent, quiet science footnote on the home
                          screen (one fact + its hedge; nothing interactive)
   NightThemeExplainer.js  Info icon by the logo + the dismissible "why the
-                         night theme?" dialog (native <dialog>); tap-only —
-                         it no longer opens by itself (removed 2026-10-05)
+                         night theme?" dialog (native <dialog>); with `label` +
+                         `compact` (first-visit) a labelled "How it works" link
+                         and a two-sentence dialog linking to /how-it-works;
+                         tap-only — it no longer opens by itself (removed 2026-10-05)
+  VocoMark.js             The Voco mark as inline SVG (the shapes of
+                         brand-assets/voco-mark-clean.svg); used in every header
   QuizResults.js          End-of-quiz card shared by level quizzes,
                          missed-words sessions and review sessions —
                          one structure, recolored by score tier
@@ -1570,9 +1716,10 @@ lib/
                          tier, grammar category, passage, cross-text pair)
   sleepScience.js         The ONLY place sleep/memory claims are written
                          (see the accuracy rules in "Project context"):
-                         the long-form SLEEP_SCIENCE sentences, the short
-                         SCIENCE_FACTS (sleep + retrieval) and hedges, and
-                         pickScienceFact() for the home note
+                         the long-form SLEEP_SCIENCE sentences (incl. the
+                         two-sentence `rhythm` and `short` the first-visit dialog
+                         uses), the short SCIENCE_FACTS (sleep + retrieval) and
+                         hedges, and pickScienceFact() for the home note
   visitor.js              isReturningVisitor() (saved progress or cached
                          subscription on this device => returning) and
                          clearLegacyFlags() (tidies the removed onboarding /
@@ -1580,8 +1727,9 @@ lib/
   preHydration.js         The inline <head> script: data-phase + data-returning
                          on <html> before first paint (the attribute is kept in
                          step afterwards by setReturningAttribute in visitor.js)
-  firstVisit.js           The first-visit question (Uphold) and its fixed
-                         on-screen option order
+  firstVisit.js           The first-visit question (Uphold), its fixed
+                         on-screen option order, and getCourseStrip() (the
+                         "Four courses: SAT · Everyday · ..." line, from `courses`)
   analytics.js            The three custom events + trackEvent() (the only
                          place track() is called)
   contact.js              The one place the contact address is written
@@ -1603,7 +1751,13 @@ lib/
                          grammar, practice test, review) + getActivityTheme
                          (now) — see "Screens follow real time, not
                          activity type"; the ONLY place these hex values
-                         should live
+                         should live (incl. the first-visit answer-option,
+                         focus and outcome colors, with their contrast reasons,
+                         and the raised card's shadow)
+  site.js                 SITE_URL (https://voco.courses): the `metadataBase` that
+                         makes icon and share-image paths absolute; and the first
+                         screen's HEADLINE_LINES / HEADLINE / PROMISE, which the
+                         page, the title, the description and the share preview read
   scoreTier.js            Tier thresholds (100 / 70 / below) + colors,
                          shared by QuizResults and the home screen
   wordbanks.js            The `courses` layer (courses > categories > levels >
@@ -1669,10 +1823,18 @@ scripts/
   test-first-visit.mjs    `npm run test:first-visit` — the first-visit question,
                          visitor detection, the pre-paint script's agreement
                          with it, the copy lint, onboarding really gone,
-                         analytics wiring (added 2026-10-05)
+                         analytics wiring (added 2026-10-05); since 2026-10-21 also
+                         first-screen contrast in both phases, the answer buttons'
+                         states, the icons/manifest/share image (sizes, opacity, the
+                         maskable safe zone) and the mark matching icon.svg; since
+                         stage 2 also the page's order and structure, the fold/unfold
+                         CSS, the copy rules (no em dashes) and the course line
   test-access.mjs         `npm run test:access` — the free set tier by tier,
                          seeded-progress filtering, suggestions, samples,
-                         route wiring, rendered Terms/Privacy (added 2026-10-05)
+                         route wiring, rendered Terms/Privacy (added 2026-10-05);
+                         after a build also the home page's <head> and the first
+                         screen's served HTML (order, nothing to dismiss, nothing
+                         from the answered state)
   validate-vocab.mjs      `npm run validate:vocab` — every word in every course: 4
                          distinct options, one blank, correctIndex, no a/an
                          giveaway, no positional wording, no duplicate words or
@@ -1695,6 +1857,11 @@ scripts/
   loader-hooks.mjs / register-loader.mjs  Let plain Node import the app's own
                          extensionless/"@/" modules (and next/server) for the
                          scripts above (`npm test` runs every non-browser script)
+public/                   Served as-is: favicon.ico, icon.svg, apple-touch-icon.png,
+                         icons/ (192, 512, maskable 512), og.jpg, manifest.webmanifest.
+                         Generated from brand-assets/ (see "Brand mark, icons and share image")
+brand-assets/             SOURCE material, not served: voco-mark-clean.svg and
+                         voco-profile-picture.png. Nothing imports or links it
 ```
 
 ## Paid unlock — live ids, what was verified, and the gotchas (test-mode history in CHANGELOG.md)

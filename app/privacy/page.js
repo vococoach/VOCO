@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Moon, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import VocoMark from "@/components/VocoMark";
 import { CONTACT_EMAIL, CONTACT_MAILTO } from "@/lib/contact";
 
 export const metadata = {
@@ -15,7 +16,7 @@ export default function PrivacyPage() {
         </Link>
 
         <div className="flex items-center gap-2 mb-2">
-          <Moon size={20} color="#8B85FF" />
+          <VocoMark size={24} />
           <span className="font-display text-lg text-[#EDEBFF]">Voco</span>
         </div>
         <h1 className="font-display text-2xl text-[#EDEBFF] mb-1">Privacy Policy</h1>

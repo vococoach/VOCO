@@ -1,7 +1,8 @@
 import { TRADEMARK_NOTICE } from "@/lib/legal";
 import { CONTACT_EMAIL, CONTACT_MAILTO } from "@/lib/contact";
 import Link from "next/link";
-import { Moon, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import VocoMark from "@/components/VocoMark";
 import { courses } from "@/lib/wordbanks";
 import { PRICE_LABEL, TRIAL_LABEL, isFreeCategory, isFreeLevel, isLevelLocked, isGrammarCategoryLocked } from "@/lib/purchase";
 
@@ -45,7 +46,7 @@ export default function TermsPage() {
         </Link>
 
         <div className="flex items-center gap-2 mb-2">
-          <Moon size={20} color="#8B85FF" />
+          <VocoMark size={24} />
           <span className="font-display text-lg text-[#EDEBFF]">Voco</span>
         </div>
         <h1 className="font-display text-2xl text-[#EDEBFF] mb-1">Terms of Service</h1>

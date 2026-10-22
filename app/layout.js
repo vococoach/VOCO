@@ -3,6 +3,7 @@ import { Fraunces, Inter } from "next/font/google";
 import "./globals.css";
 import { THEME_CSS } from "@/lib/timeTheme";
 import { PRE_HYDRATION_SCRIPT } from "@/lib/preHydration";
+import { SITE_URL, HEADLINE, PROMISE } from "@/lib/site";
 
 // Fonts are loaded through next/font: self-hosted from this origin, preloaded,
 // with a size-matched fallback so text doesn't jump when they arrive. (They used
@@ -23,10 +24,42 @@ const fraunces = Fraunces({
   variable: "--font-fraunces",
 });
 
+// The title and description are the first screen's own words (the headline, and the
+// one-line promise under it; both come from lib/site.js, the same place the screen
+// reads them from), so a tab, a search result and a shared link all say what the page
+// says. The icons, manifest and share image are the files in public/ (generated from
+// brand-assets/, which is source material and is not served). `metadataBase` turns
+// the relative paths below into the absolute URLs that link previews need.
+const TITLE = `Voco: ${HEADLINE}`;
+const DESCRIPTION = PROMISE;
+
 export const metadata = {
-  title: "Voco — Vocab Coach",
-  description:
-    "Learn vocabulary before you sleep. Quiz yourself to see what stuck.",
+  metadataBase: new URL(SITE_URL),
+  title: TITLE,
+  description: DESCRIPTION,
+  applicationName: "Voco",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  manifest: "/manifest.webmanifest",
+  openGraph: {
+    type: "website",
+    siteName: "Voco",
+    url: "/",
+    title: TITLE,
+    description: DESCRIPTION,
+    images: [{ url: "/og.jpg", width: 1200, height: 630, alt: `The Voco mark, a crescent moon and a sun, beside the line: ${PROMISE}` }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
+    images: ["/og.jpg"],
+  },
 };
 
 export const viewport = {

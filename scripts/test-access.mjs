@@ -34,6 +34,8 @@ const progress = await import("../lib/progress.js");
 const { getTonight, findLastNightsLevel } = await import("../lib/timeOfDay.js");
 const { getPreviewSample } = await import("../lib/preview.js");
 const { CONTACT_EMAIL, CONTACT_MAILTO } = await import("../lib/contact.js");
+const { SITE_URL } = await import("../lib/site.js");
+const { getCourseStrip, getFirstVisitQuestion } = await import("../lib/firstVisit.js");
 const { courses, categories } = wb;
 const { isLevelLocked, isCategoryLocked, isFreeLevel, isPassageLocked, isGrammarCategoryLocked, FREE_CATEGORY_BY_COURSE } = purchase;
 
@@ -311,6 +313,40 @@ if (existsSync(termsHtmlPath) && existsSync(privacyHtmlPath)) {
   ok("Privacy no longer says there are no analytics", !/doesn't run analytics|doesn't use tracking cookies, analytics scripts/.test(privacy));
 } else {
   console.log("SKIP Terms/Privacy rendered-text checks — run `npm run build` first to produce .next/server/app/terms.html");
+}
+
+// ---------- the home page's <head> as built: title, description, icons, manifest, share image ----------
+// What a tab, a search result and a pasted link show. Checked on the built HTML, so it is what is served.
+const indexHtmlPath = path.join(root, ".next/server/app/index.html");
+if (existsSync(indexHtmlPath)) {
+  const html = readFileSync(indexHtmlPath, "utf8");
+  const head = html.slice(0, html.indexOf("</head>"));
+  const meta = (key, attr = "name") => { const m = head.match(new RegExp(`<meta ${attr}="${key}" content="([^"]*)"`)); return m ? m[1] : null; };
+  const link = (rel) => [...head.matchAll(new RegExp(`<link rel="${rel}" href="([^"]+)"`, "g"))].map((m) => m[1]);
+  const PROMISE = "SAT vocabulary you study before bed and get quizzed on the next day.";
+  ok("home head: title is the headline, description is the one-line promise", (head.match(/<title>([^<]*)<\/title>/) || [])[1] === "Voco: Study tonight. Quiz tomorrow." && meta("description") === PROMISE);
+  ok("home head: favicon, SVG icon, apple touch icon and manifest are declared", link("icon").includes("/favicon.ico") && link("icon").includes("/icon.svg") && link("apple-touch-icon").includes("/apple-touch-icon.png") && link("manifest").includes("/manifest.webmanifest"));
+  ok("home head: Open Graph and Twitter card point at the share image on the production domain", meta("og:image", "property") === `${SITE_URL}/og.jpg` && meta("twitter:image") === `${SITE_URL}/og.jpg` && meta("twitter:card") === "summary_large_image" && meta("og:image:width", "property") === "1200" && meta("og:image:height", "property") === "630");
+  ok("home head: Open Graph title and description match the page", meta("og:title", "property") === "Voco: Study tonight. Quiz tomorrow." && meta("og:description", "property") === PROMISE && Boolean(meta("og:image:alt", "property")));
+  const declared = [...link("icon"), ...link("apple-touch-icon"), ...link("manifest")];
+  const missing = declared.filter((u) => !existsSync(path.join(root, "public", u)));
+  ok("every icon and manifest URL in the head is a real file in public/ (none would 404)", declared.length >= 4 && missing.length === 0, missing.join(", "));
+
+  // The first screen as served to a new visitor (the HTML before any JavaScript runs): the
+  // question comes before everything else, there is nothing to dismiss, and nothing that only
+  // exists after an answer is in the page.
+  const body = html.slice(html.indexOf("</head>"));
+  const strip = getCourseStrip().text;
+  const marks = ["Free sample · no sign-up", "<h1", PROMISE, "Which word fits the blank?", "______", ">Overturn<", ">Delay<", ">Uphold<", ">Forget<", "One question. No account needed.", strip, "Terms of Service", ">Courses<"];
+  const where = marks.map((m) => body.indexOf(m));
+  ok("home HTML: chip, headline, promise, then the question (instruction, sentence, four options), the note, the course strip, the footer and the courses list, in that order", where.every((i, n) => i >= 0 && (n === 0 || i > where[n - 1])), where.join(" < "));
+  ok("home HTML: nothing for a new visitor to dismiss (no open dialog, no onboarding)", !/<dialog[^>]*\sopen[\s=>]/.test(body) && !/onboard/i.test(body));
+  const q = getFirstVisitQuestion().quiz;
+  ok("home HTML: Keep going, the trial link, the trial terms and the explanation are not in the page until an answer", !body.includes("Keep going") && !body.includes("Start free trial") && !body.includes(purchase.TRIAL_TERMS) && !body.includes(q.explanation.split('"')[0]), "");
+  ok("home HTML: the chip, the note and the strip start open, and all four options start unanswered", (body.match(/data-folded="false"/g) || []).length === 3 && !/data-folded="true"/.test(body) && (body.match(/data-state="idle"/g) || []).length === 4 && !/data-state="(correct|wrong)"/.test(body));
+  ok("home HTML: the course strip is plain text (not inside a link or button)", !new RegExp(`<(a|button)[^>]*>[^<]*${strip.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`).test(body));
+} else {
+  console.log("SKIP home <head> checks — run `npm run build` first to produce .next/server/app/index.html");
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

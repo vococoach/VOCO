@@ -1,5 +1,6 @@
 import { chromium } from "playwright-core";
 import { BASE, launch, shot } from "./_env.mjs";
+import { PROMISE } from "../../lib/site.js";
 const browser = await launch(chromium);
 let pass = 0, fail = 0;
 const ok = (name, cond, extra = "") => { cond ? pass++ : fail++; console.log(`${cond ? "PASS" : "FAIL"} ${name}${extra ? "  — " + extra : ""}`); };
@@ -14,6 +15,20 @@ async function fresh({ time, init } = {}) {
   if (init) await page.addInitScript(init);
   return { ctx, page };
 }
+// Wait for the fold/unfold animations that follow an answer (240ms) to finish.
+const settled = (page) => page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => {}))));
+// The largest empty gap, in px, between the blocks of the first screen (header, chip, headline, promise,
+// card, strip or Keep going block, footer link), from the page itself. "No dead band" means this stays modest.
+const LARGEST_GAP = () => {
+  const sec = document.querySelector(".vc-first section");
+  const p = (t) => [...sec.querySelectorAll("p")].find((e) => e.textContent.trim().startsWith(t));
+  const els = [sec.querySelector("header"), sec.querySelector(".vc-chip"), sec.querySelector("h1"), sec.querySelector("h1 + p"), sec.querySelector(".vc-card"), p("Four courses"), [...sec.querySelectorAll("a")].find((a) => a.textContent.trim() === "Keep going"), [...sec.querySelectorAll("a")].find((a) => a.textContent.trim() === "Start free trial")?.parentElement, sec.querySelector("footer a")];
+  const rects = els.filter((e) => e && getComputedStyle(e).visibility !== "hidden" && e.getBoundingClientRect().height > 0 && !e.closest("[aria-hidden='true']")).map((e) => e.getBoundingClientRect());
+  rects.sort((a, b) => a.top - b.top);
+  let max = 0;
+  for (let i = 1; i < rects.length; i++) max = Math.max(max, rects[i].top - rects[i - 1].bottom);
+  return Math.round(max);
+};
 const lum = (rgb) => { const [r, g, b] = rgb.match(/\d+/g).map(Number).map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
 
 // ---- 1. fresh visitor, wrong answer, then Keep going
@@ -22,7 +37,9 @@ const lum = (rgb) => { const [r, g, b] = rgb.match(/\d+/g).map(Number).map((v) =
   await page.goto(BASE, { waitUntil: "networkidle" });
   const h1 = await page.locator("h1").innerText();
   ok("headline", /Study tonight\.\s*Quiz tomorrow\./.test(h1), JSON.stringify(h1));
-  ok("subline", await page.getByText("SAT vocab, built around how sleep helps memory settle.").isVisible());
+  ok("promise line", await page.getByText(PROMISE).isVisible());
+  ok("chip, the line under the options and the course strip are showing before an answer", (await page.getByText("Free sample · no sign-up").isVisible()) && (await page.getByText("One question. No account needed.").isVisible()) && (await page.getByText("Four courses: SAT · Everyday · Professional · GRE").isVisible()));
+  ok("the course strip is not a link or a button", (await page.locator("a, button").filter({ hasText: "Four courses" }).count()) === 0);
   const geo = await page.evaluate(() => {
     const sec = document.querySelector(".vc-first section");
     const kids = [...sec.children].filter((e) => e.tagName !== "FOOTER");
@@ -40,7 +57,9 @@ const lum = (rgb) => { const [r, g, b] = rgb.match(/\d+/g).map(Number).map((v) =
   await shot(page, `v-night-before.png`, {});
 
   await page.getByRole("button", { name: "Overturn" }).click(); // WRONG on purpose
+  await settled(page);
   ok("wrong answer shows explanation", await page.getByText("Keeping a decision in place despite pressure").isVisible());
+  ok("once answered, the chip, the line under the options and the course strip are gone", !(await page.getByText("Free sample · no sign-up").isVisible()) && !(await page.getByText("One question. No account needed.").isVisible()) && !(await page.getByText("Four courses: SAT").isVisible()));
   ok("wrong answer marked, correct revealed", (await page.locator('[aria-label="not correct"]').count()) === 1 && (await page.locator('[aria-label="correct"]').count()) === 1);
   await page.getByRole("button", { name: "Uphold" }).click({ force: true }); // second tap ignored
   ok("a second tap changes nothing", (await page.locator('[aria-label="not correct"]').count()) === 1);
@@ -61,15 +80,33 @@ const lum = (rgb) => { const [r, g, b] = rgb.match(/\d+/g).map(Number).map((v) =
   await ctx.close();
 }
 
+// ---- 1b. a taller phone (390x844): the screen fills the height, with no dead band, before and after an answer
+{
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, timezoneId: "America/New_York" });
+  const page = await ctx.newPage();
+  await page.clock.setFixedTime(new Date("2026-10-05T21:00:00-04:00"));
+  await page.goto(BASE, { waitUntil: "networkidle" });
+  const before = await page.evaluate(LARGEST_GAP);
+  ok("390x844, question showing: no empty gap above 130px between blocks", before <= 130, `${before}px`);
+  await shot(page, `v-night-tall-before.png`, {});
+  await page.getByRole("button", { name: "Uphold" }).click();
+  await settled(page);
+  const after = await page.evaluate(LARGEST_GAP);
+  ok("390x844, answered: no empty gap above 130px between blocks", after <= 130, `${after}px`);
+  ok("390x844: no scrolling needed in either state", await page.evaluate(() => document.querySelector(".vc-first section").getBoundingClientRect().height <= innerHeight));
+  await shot(page, `v-night-tall-after.png`, {});
+  await ctx.close();
+}
+
 // ---- 2. fresh visitor, RIGHT answer + trial click + info icon
 {
   const { ctx, page } = await fresh({ time: "2026-10-05T14:00:00-04:00" });
   await page.goto(BASE, { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: "Why the night theme?" }).click();
-  ok("info icon opens the explainer", await page.getByRole("heading", { name: "Why the night theme?" }).isVisible());
+  await page.getByRole("button", { name: "How it works" }).click();
+  ok("the labelled How it works control opens the short explainer", await page.getByRole("heading", { name: "How it works" }).isVisible());
   ok("explainer is NOT auto-open on arrival (closed until tapped)", true);
   await page.getByRole("button", { name: "Got it" }).click();
-  ok("explainer dismisses", !(await page.getByRole("heading", { name: "Why the night theme?" }).isVisible()));
+  ok("explainer dismisses", !(await page.getByRole("heading", { name: "How it works" }).isVisible()));
   await page.getByRole("button", { name: "Uphold" }).click();
   ok("right answer: green check + explanation", (await page.locator('[aria-label="correct"]').count()) === 1 && (await page.locator('[aria-label="not correct"]').count()) === 0);
   await shot(page, `v-midday-right.png`, {});
@@ -110,7 +147,7 @@ for (const [label, time, expectDawn] of [["morning 08:00", "2026-10-05T08:00:00-
   ok("returning user sees normal home (due for review)", await page.getByText(/word.? due for review/).isVisible());
   ok("returning user sees Tonight's study", await page.getByText("Tonight's study", { exact: true }).isVisible());
   ok("returning user sees science note", (await page.locator("text=/How much (sleep|self-testing)/").count()) > 0);
-  ok("returning user does not see the first-visit question", (await page.getByText("Try one").count()) === 0);
+  ok("returning user does not see the first-visit question", (await page.getByText("Which word fits the blank?").count()) === 0);
   const flash = await page.evaluate(() => window.__flash);
   ok("first-visit view never visible to a returning device (pre-paint script)", flash.length === 0, JSON.stringify(flash));
   await shot(page, `v-returning.png`, {});
@@ -122,7 +159,7 @@ for (const [label, time, expectDawn] of [["morning 08:00", "2026-10-05T08:00:00-
 {
   const { ctx, page } = await fresh({ init: () => { localStorage.setItem("voco_onboarded_v1", "1"); sessionStorage.setItem("voco_night_theme_seen_session_v1", "1"); } });
   await page.goto(BASE, { waitUntil: "networkidle" });
-  ok("old onboarded flag + no progress => still the first-visit screen", await page.getByText("Try one").isVisible());
+  ok("old onboarded flag + no progress => still the first-visit screen", await page.getByText("Which word fits the blank?").isVisible());
   const left = await page.evaluate(() => [localStorage.getItem("voco_onboarded_v1"), sessionStorage.getItem("voco_night_theme_seen_session_v1")]);
   ok("old flags tidied away", left[0] === null && left[1] === null, JSON.stringify(left));
   ok("no dialog open", (await page.locator("dialog[open]").count()) === 0);
