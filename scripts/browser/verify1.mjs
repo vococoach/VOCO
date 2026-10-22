@@ -65,11 +65,11 @@ const lum = (rgb) => { const [r, g, b] = rgb.match(/\d+/g).map(Number).map((v) =
 {
   const { ctx, page } = await fresh({ time: "2026-10-05T14:00:00-04:00" });
   await page.goto(BASE, { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: "Why the night theme?" }).click();
-  ok("info icon opens the explainer", await page.getByRole("heading", { name: "Why the night theme?" }).isVisible());
+  await page.getByRole("button", { name: "How it works" }).click();
+  ok("the labelled How it works control opens the short explainer", await page.getByRole("heading", { name: "How it works" }).isVisible());
   ok("explainer is NOT auto-open on arrival (closed until tapped)", true);
   await page.getByRole("button", { name: "Got it" }).click();
-  ok("explainer dismisses", !(await page.getByRole("heading", { name: "Why the night theme?" }).isVisible()));
+  ok("explainer dismisses", !(await page.getByRole("heading", { name: "How it works" }).isVisible()));
   await page.getByRole("button", { name: "Uphold" }).click();
   ok("right answer: green check + explanation", (await page.locator('[aria-label="correct"]').count()) === 1 && (await page.locator('[aria-label="not correct"]').count()) === 0);
   await shot(page, `v-midday-right.png`, {});
@@ -110,7 +110,7 @@ for (const [label, time, expectDawn] of [["morning 08:00", "2026-10-05T08:00:00-
   ok("returning user sees normal home (due for review)", await page.getByText(/word.? due for review/).isVisible());
   ok("returning user sees Tonight's study", await page.getByText("Tonight's study", { exact: true }).isVisible());
   ok("returning user sees science note", (await page.locator("text=/How much (sleep|self-testing)/").count()) > 0);
-  ok("returning user does not see the first-visit question", (await page.getByText("Try one").count()) === 0);
+  ok("returning user does not see the first-visit question", (await page.getByText("Which word fits the blank?").count()) === 0);
   const flash = await page.evaluate(() => window.__flash);
   ok("first-visit view never visible to a returning device (pre-paint script)", flash.length === 0, JSON.stringify(flash));
   await shot(page, `v-returning.png`, {});
@@ -122,7 +122,7 @@ for (const [label, time, expectDawn] of [["morning 08:00", "2026-10-05T08:00:00-
 {
   const { ctx, page } = await fresh({ init: () => { localStorage.setItem("voco_onboarded_v1", "1"); sessionStorage.setItem("voco_night_theme_seen_session_v1", "1"); } });
   await page.goto(BASE, { waitUntil: "networkidle" });
-  ok("old onboarded flag + no progress => still the first-visit screen", await page.getByText("Try one").isVisible());
+  ok("old onboarded flag + no progress => still the first-visit screen", await page.getByText("Which word fits the blank?").isVisible());
   const left = await page.evaluate(() => [localStorage.getItem("voco_onboarded_v1"), sessionStorage.getItem("voco_night_theme_seen_session_v1")]);
   ok("old flags tidied away", left[0] === null && left[1] === null, JSON.stringify(left));
   ok("no dialog open", (await page.locator("dialog[open]").count()) === 0);

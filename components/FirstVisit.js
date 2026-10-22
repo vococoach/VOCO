@@ -3,8 +3,9 @@
 import { TRADEMARK_NOTICE } from "@/lib/legal";
 import { useState } from "react";
 import Link from "next/link";
-import { Moon, Check, X, ChevronRight } from "lucide-react";
+import { Check, X, ChevronRight } from "lucide-react";
 import NightThemeExplainer from "@/components/NightThemeExplainer";
+import VocoMark from "@/components/VocoMark";
 import TrialLink from "@/components/TrialLink";
 import { getFirstVisitQuestion } from "@/lib/firstVisit";
 import { courses } from "@/lib/wordbanks";
@@ -47,10 +48,10 @@ export default function FirstVisit() {
       <section className="mx-auto max-w-md min-h-dvh flex flex-col px-4 pt-4 pb-3">
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Moon size={22} style={{ color: "var(--vc-accent)" }} />
+            <VocoMark size={26} />
             <span className="font-display text-xl">Voco</span>
           </div>
-          <NightThemeExplainer iconClassName="hover:opacity-100 opacity-70" iconStyle={{ color: "var(--vc-subtext)" }} />
+          <NightThemeExplainer label="How it works" compact iconClassName="hover:opacity-80" iconStyle={{ color: "var(--vc-subtext)" }} />
         </header>
 
         <h1 className="font-display text-[28px] leading-[1.1] mt-5">
@@ -63,8 +64,8 @@ export default function FirstVisit() {
         </p>
 
         <div className="mt-4 rounded-2xl p-4 border" style={{ background: "var(--vc-card)", borderColor: "var(--vc-border)" }}>
-          <p className="text-[11px] uppercase tracking-wide" style={{ color: "var(--vc-subtext)" }}>
-            Try one — which word fits?
+          <p className="text-[14px] font-medium leading-snug" style={{ color: "var(--vc-text)" }}>
+            Which word fits the blank?
           </p>
           <p className="font-display text-[17px] leading-snug mt-1.5">{quiz.sentence}</p>
 
@@ -72,21 +73,23 @@ export default function FirstVisit() {
             {order.map((idx) => {
               const isCorrect = idx === quiz.correctIndex;
               const isSelected = idx === selected;
-              let state = "";
-              if (answered && isCorrect) state = "border-[#7BC9A0] bg-[#7BC9A01A]";
-              else if (answered && isSelected) state = "border-[#E08A9E] bg-[#E08A9E1A]";
+              // idle | correct | wrong. The look, the pressed state and the short
+              // transition between them live in `.vc-option` (app/globals.css).
+              let state = "idle";
+              if (answered && isCorrect) state = "correct";
+              else if (answered && isSelected) state = "wrong";
               return (
                 <button
                   key={idx}
                   type="button"
                   onClick={() => answer(idx)}
                   aria-disabled={answered}
-                  className={`min-h-[48px] rounded-xl border px-3 text-[15px] font-medium flex items-center justify-between gap-1 ${state}`}
-                  style={answered && (isCorrect || isSelected) ? undefined : { borderColor: "var(--vc-border)" }}
+                  data-state={state}
+                  className="vc-option min-h-[48px] rounded-xl px-3 text-[15px] font-medium flex items-center justify-between gap-1"
                 >
                   {quiz.options[idx]}
-                  {answered && isCorrect && <Check size={16} color="#7BC9A0" aria-label="correct" />}
-                  {answered && isSelected && !isCorrect && <X size={16} color="#E08A9E" aria-label="not correct" />}
+                  {state === "correct" && <Check size={16} className="vc-option-icon" style={{ color: "var(--vc-ok)" }} aria-label="correct" />}
+                  {state === "wrong" && <X size={16} className="vc-option-icon" style={{ color: "var(--vc-no)" }} aria-label="not correct" />}
                 </button>
               );
             })}
@@ -120,11 +123,12 @@ export default function FirstVisit() {
           </div>
         )}
 
-        <footer className="mt-auto pt-3 flex items-center justify-center gap-4 text-[11px]" style={{ color: "var(--vc-subtext)" }}>
-          <Link href="/terms" className="py-1">
+        <footer className="mt-auto flex items-center justify-center gap-1 text-xs" style={{ color: "var(--vc-subtext)" }}>
+          {/* 44px-tall tap targets (the text is 12px) */}
+          <Link href="/terms" className="inline-flex min-h-[44px] items-center px-3">
             Terms of Service
           </Link>
-          <Link href="/privacy" className="py-1">
+          <Link href="/privacy" className="inline-flex min-h-[44px] items-center px-3">
             Privacy Policy
           </Link>
         </footer>

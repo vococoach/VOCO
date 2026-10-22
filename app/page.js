@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Moon, Flame, RotateCcw, Sparkles, Target, Info, Sunrise, ChevronRight } from "lucide-react";
 import NightThemeExplainer from "@/components/NightThemeExplainer";
+import VocoMark from "@/components/VocoMark";
 import FirstVisit from "@/components/FirstVisit";
 import HomeLoading from "@/components/HomeLoading";
 import ShareButton from "@/components/ShareButton";
@@ -172,7 +173,7 @@ export default function Home() {
       <div className="max-w-md mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-2">
-            <Moon size={22} color="#8B85FF" />
+            <VocoMark size={26} />
             <span className="font-display text-xl text-[#EDEBFF]">Voco</span>
             <NightThemeExplainer />
           </div>

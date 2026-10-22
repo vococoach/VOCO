@@ -1,4 +1,4 @@
-import { Moon } from "lucide-react";
+import VocoMark from "@/components/VocoMark";
 
 // What a RETURNING device sees from first paint until the home screen hydrates
 // (a few seconds on a slow phone — without this it was a blank dark screen).
@@ -34,7 +34,7 @@ export default function HomeLoading() {
       <div className="max-w-md mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-2">
-            <Moon size={22} color="#8B85FF" />
+            <VocoMark size={26} />
             <span className="font-display text-xl text-[#EDEBFF]">Voco</span>
           </div>
         </div>

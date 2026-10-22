@@ -545,3 +545,37 @@ address and that every mailto link on them points at it.
 **Not changed, and not changeable by a commit:** git history still contains the previous
 address, in old file contents and in the author metadata of older commits. Nothing was
 rewritten.
+
+## 2026-10-21: First-screen polish, stage 1 (brand basics, tap targets, option buttons)
+
+The design behind it is in `CLAUDE.md` ("First-screen polish, stage 1" under the first-visit
+screen, and "Brand mark, icons and share image"). What changed and why:
+
+- **Brand.** The stock moon icon beside "Voco" is replaced, in every header, by the Voco mark
+  (`components/VocoMark.js`, the shapes of `brand-assets/voco-mark-clean.svg`). The site had no
+  favicon, touch icon, manifest or share image (all four returned 404), and its title and
+  description were older wording than the screen. Added: `public/` with a 16/32/48 px
+  `favicon.ico`, `icon.svg`, a 180 px touch icon, 192 and 512 px manifest icons plus a maskable
+  one, a 1200 by 630 share image (JPEG, 97 KB) and `manifest.webmanifest`; the page metadata
+  (`app/layout.js`) carries the icon, manifest, Open Graph and Twitter card tags. Title: "Voco:
+  Study tonight. Quiz tomorrow."; description: "SAT vocabulary you study before bed and get
+  quizzed on the next day."
+- **First screen.** The 11 px all-caps "Try one — which word fits?" label became a 14 px
+  sentence-case "Which word fits the blank?". The answer options went from outlined text boxes (an
+  edge of 1.6:1 against the card, no pressed state, an instant swap into the result) to filled
+  buttons with a 3:1+ edge, a hover and pressed state, a focus ring and a short transition, with
+  reduced-motion handled. The footer links went from 25 px to 44 px tall; the bare ⓘ became a
+  labelled "How it works" link, whose dialog went from 219 words (hippocampus, streaks a new
+  visitor does not have) to two sentences and a link to a new `/how-it-works` page.
+- **Contrast found while checking both phases.** On the dawn cream card the pale correct and
+  not-correct colors the app uses elsewhere (`#7BC9A0`, `#E08A9E`) are 1.9:1 and 2.4:1, and the
+  orange accent as a focus ring is 2:1, all under the 3:1 a border or icon needs. The first-visit
+  options use deeper dawn tones of the same hues and a plum focus ring (night is unchanged); the
+  other dawn screens were not touched. Every ratio is now asserted in `test:first-visit`.
+- **Tests.** `test:first-visit` went from 104 to 161 checks (contrast in both phases, the option
+  states, assets and manifest, the maskable safe zone, the mark matching the SVG) and
+  `test:access` gained a check of the built `<head>`. The browser suites' selectors for the old
+  label and the info button were updated (they need Playwright and were not run for this change).
+- **Left as it was, on purpose.** The sleep sentences reused on `/how-it-works` still contain the
+  em dashes they were written with (they are existing wording in `lib/sleepScience.js`); the first
+  screen's subline is still the older wording until stage 2.
