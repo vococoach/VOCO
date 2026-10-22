@@ -141,14 +141,16 @@ accounts will need to be 18+, so loop a parent in for that step.
 app/          Routes: home, courses/, sets/[setId]/study + quiz, review/, passages/,
               cross-text/, grammar/, strategy/, practice-test/, preview/, unlock/,
               terms/, privacy/, how-it-works/, and api/ (the three Stripe routes)
-components/   Shared UI: first-visit screen, the Voco mark (VocoMark.js, used in
-              every header), category/passage/grammar lists, results and milestone
-              cards, share dialog, loading state
+components/   Shared UI: first-visit screen (chip, headline, one real question,
+              course line), the Voco mark (VocoMark.js, used in every header),
+              category/passage/grammar lists, results and milestone cards, share
+              dialog, loading state
 lib/          Content (wordbanks.js and the per-course files), progress and spaced
               repetition (progress.js), the free-set / subscription rules
               (purchase.js, access.js), time-of-day logic and themes, sleep-science
               wording (sleepScience.js), analytics, the contact address (contact.js,
-              the only place it is written), and the Stripe route helpers
+              the only place it is written), the site address and the first screen's
+              headline and promise (site.js), and the Stripe route helpers
 scripts/      Validators and tests (npm test); browser/ holds the Chromium suites
 public/       Served as-is: favicon, icons, the web app manifest and the share image
 brand-assets/ Source for those files (the Voco mark and the 800x800 profile picture).

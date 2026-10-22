@@ -1,5 +1,6 @@
 import { chromium } from "playwright-core";
 import { BASE, launch, shot } from "./_env.mjs";
+import { PROMISE } from "../../lib/site.js";
 const browser = await launch(chromium);
 let pass = 0, fail = 0;
 const ok = (name, cond, extra = "") => { cond ? pass++ : fail++; console.log(`${cond ? "PASS" : "FAIL"} ${name}${extra ? "  — " + extra : ""}`); };
@@ -14,6 +15,20 @@ async function fresh({ time, init } = {}) {
   if (init) await page.addInitScript(init);
   return { ctx, page };
 }
+// Wait for the fold/unfold animations that follow an answer (240ms) to finish.
+const settled = (page) => page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => {}))));
+// The largest empty gap, in px, between the blocks of the first screen (header, chip, headline, promise,
+// card, strip or Keep going block, footer link), from the page itself. "No dead band" means this stays modest.
+const LARGEST_GAP = () => {
+  const sec = document.querySelector(".vc-first section");
+  const p = (t) => [...sec.querySelectorAll("p")].find((e) => e.textContent.trim().startsWith(t));
+  const els = [sec.querySelector("header"), sec.querySelector(".vc-chip"), sec.querySelector("h1"), sec.querySelector("h1 + p"), sec.querySelector(".vc-card"), p("Four courses"), [...sec.querySelectorAll("a")].find((a) => a.textContent.trim() === "Keep going"), [...sec.querySelectorAll("a")].find((a) => a.textContent.trim() === "Start free trial")?.parentElement, sec.querySelector("footer a")];
+  const rects = els.filter((e) => e && getComputedStyle(e).visibility !== "hidden" && e.getBoundingClientRect().height > 0 && !e.closest("[aria-hidden='true']")).map((e) => e.getBoundingClientRect());
+  rects.sort((a, b) => a.top - b.top);
+  let max = 0;
+  for (let i = 1; i < rects.length; i++) max = Math.max(max, rects[i].top - rects[i - 1].bottom);
+  return Math.round(max);
+};
 const lum = (rgb) => { const [r, g, b] = rgb.match(/\d+/g).map(Number).map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
 
 // ---- 1. fresh visitor, wrong answer, then Keep going
@@ -22,7 +37,9 @@ const lum = (rgb) => { const [r, g, b] = rgb.match(/\d+/g).map(Number).map((v) =
   await page.goto(BASE, { waitUntil: "networkidle" });
   const h1 = await page.locator("h1").innerText();
   ok("headline", /Study tonight\.\s*Quiz tomorrow\./.test(h1), JSON.stringify(h1));
-  ok("subline", await page.getByText("SAT vocab, built around how sleep helps memory settle.").isVisible());
+  ok("promise line", await page.getByText(PROMISE).isVisible());
+  ok("chip, the line under the options and the course strip are showing before an answer", (await page.getByText("Free sample · no sign-up").isVisible()) && (await page.getByText("One question. No account needed.").isVisible()) && (await page.getByText("Four courses: SAT · Everyday · Professional · GRE").isVisible()));
+  ok("the course strip is not a link or a button", (await page.locator("a, button").filter({ hasText: "Four courses" }).count()) === 0);
   const geo = await page.evaluate(() => {
     const sec = document.querySelector(".vc-first section");
     const kids = [...sec.children].filter((e) => e.tagName !== "FOOTER");
@@ -40,7 +57,9 @@ const lum = (rgb) => { const [r, g, b] = rgb.match(/\d+/g).map(Number).map((v) =
   await shot(page, `v-night-before.png`, {});
 
   await page.getByRole("button", { name: "Overturn" }).click(); // WRONG on purpose
+  await settled(page);
   ok("wrong answer shows explanation", await page.getByText("Keeping a decision in place despite pressure").isVisible());
+  ok("once answered, the chip, the line under the options and the course strip are gone", !(await page.getByText("Free sample · no sign-up").isVisible()) && !(await page.getByText("One question. No account needed.").isVisible()) && !(await page.getByText("Four courses: SAT").isVisible()));
   ok("wrong answer marked, correct revealed", (await page.locator('[aria-label="not correct"]').count()) === 1 && (await page.locator('[aria-label="correct"]').count()) === 1);
   await page.getByRole("button", { name: "Uphold" }).click({ force: true }); // second tap ignored
   ok("a second tap changes nothing", (await page.locator('[aria-label="not correct"]').count()) === 1);
@@ -58,6 +77,24 @@ const lum = (rgb) => { const [r, g, b] = rgb.match(/\d+/g).map(Number).map((v) =
   const qbg = await page.evaluate(() => getComputedStyle(document.querySelector("main")).backgroundColor);
   ok("quiz at 9pm is night palette", lum(qbg) < 0.05, qbg);
   ok("no console errors (wrong path)", page.errors.length === 0, page.errors.join(" | "));
+  await ctx.close();
+}
+
+// ---- 1b. a taller phone (390x844): the screen fills the height, with no dead band, before and after an answer
+{
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, timezoneId: "America/New_York" });
+  const page = await ctx.newPage();
+  await page.clock.setFixedTime(new Date("2026-10-05T21:00:00-04:00"));
+  await page.goto(BASE, { waitUntil: "networkidle" });
+  const before = await page.evaluate(LARGEST_GAP);
+  ok("390x844, question showing: no empty gap above 130px between blocks", before <= 130, `${before}px`);
+  await shot(page, `v-night-tall-before.png`, {});
+  await page.getByRole("button", { name: "Uphold" }).click();
+  await settled(page);
+  const after = await page.evaluate(LARGEST_GAP);
+  ok("390x844, answered: no empty gap above 130px between blocks", after <= 130, `${after}px`);
+  ok("390x844: no scrolling needed in either state", await page.evaluate(() => document.querySelector(".vc-first section").getBoundingClientRect().height <= innerHeight));
+  await shot(page, `v-night-tall-after.png`, {});
   await ctx.close();
 }
 

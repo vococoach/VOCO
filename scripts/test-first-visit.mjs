@@ -16,13 +16,14 @@ const ok = (name, cond, extra = "") => {
   console.log(`${cond ? "PASS" : "FAIL"} ${name}${extra ? "  — " + extra : ""}`);
 };
 
-const { getFirstVisitQuestion, FIRST_VISIT_LEVEL_ID, FIRST_VISIT_OPTION_ORDER } = await import("../lib/firstVisit.js");
+const { getFirstVisitQuestion, getCourseStrip, FIRST_VISIT_LEVEL_ID, FIRST_VISIT_OPTION_ORDER } = await import("../lib/firstVisit.js");
+const { HEADLINE, HEADLINE_LINES, PROMISE } = await import("../lib/site.js");
 const { isReturningVisitor, clearLegacyFlags, setReturningAttribute, RETURNING_KEYS } = await import("../lib/visitor.js");
 const { PRE_HYDRATION_SCRIPT } = await import("../lib/preHydration.js");
 const { SLEEP_SCIENCE, SCIENCE_FACTS } = await import("../lib/sleepScience.js");
 const { THEME_CSS, NIGHT, DAWN } = await import("../lib/timeTheme.js");
 const { TRIAL_TERMS, isLevelLocked, FREE_CATEGORY_IDS } = await import("../lib/purchase.js");
-const { findLevel } = await import("../lib/wordbanks.js");
+const { findLevel, courses } = await import("../lib/wordbanks.js");
 
 // ---------- the question ----------
 {
@@ -108,8 +109,8 @@ ok("pre-paint script and React rule use the same keys", RETURNING_KEYS.every((k)
 ok("theme CSS carries both palettes", THEME_CSS.includes(NIGHT.pageCss) && THEME_CSS.includes('html[data-phase="morning"]') && THEME_CSS.includes(DAWN.pageCss));
 
 // ---------- the copy ----------
-const HEADLINE = "Study tonight. Quiz tomorrow.";
-const SUBLINE = "SAT vocab, built around how sleep helps memory settle.";
+// The headline and the one-line promise live in lib/site.js; the page, the page title,
+// the description and the share preview all read them from there.
 // Same rules as lib/sleepScience.js's header, as a lint over any sleep line.
 const BANNED = [
   [/\d/, "no digits, years or counts"],
@@ -125,12 +126,24 @@ function lint(label, text) {
   ok(`copy lint: ${label}`, hits.length === 0, hits.join("; "));
 }
 lint("headline", HEADLINE);
-lint("subline", SUBLINE);
-ok('subline says sleep "helps" (the house verb), not a stronger one', /\bhelps\b/.test(SUBLINE));
-ok("the page uses exactly this headline and subline", (() => {
+lint("promise", PROMISE);
+ok("headline is two lines that read 'Study tonight. Quiz tomorrow.'", HEADLINE_LINES.length === 2 && HEADLINE === "Study tonight. Quiz tomorrow.", HEADLINE);
+ok("the promise is the agreed one-line sentence", PROMISE === "SAT vocabulary you study before bed and get quizzed on the next day.", PROMISE);
+{
   const src = readFileSync(path.join(root, "components/FirstVisit.js"), "utf8");
-  return src.includes("Study tonight.") && src.includes("Quiz tomorrow.") && src.includes(SUBLINE);
-})());
+  ok("the screen reads the headline and promise from lib/site.js (no second copy of the words)", /from "@\/lib\/site"/.test(src) && /HEADLINE_LINES\.map/.test(src) && /\{PROMISE\}/.test(src) && !src.includes("Study tonight.") && !src.includes("Quiz tomorrow.") && !src.includes("quizzed on the next day"));
+  const layout = readFileSync(path.join(root, "app/layout.js"), "utf8");
+  ok("the page title and description are built from the same constants", /const TITLE = `Voco: \$\{HEADLINE\}`/.test(layout) && /const DESCRIPTION = PROMISE;/.test(layout) && /\$\{PROMISE\}/.test(layout) && !layout.includes("Study tonight."));
+  // The new copy keeps to the house style: plain, no em or en dashes, no "X, not just Y".
+  const strip = getCourseStrip();
+  const copy = { headline: HEADLINE, promise: PROMISE, chip: "Free sample · no sign-up", note: "One question. No account needed.", strip: strip.text };
+  ok("the chip and the note are exactly the agreed words, and each appears once in the screen", src.includes(">Free sample · no sign-up<") && src.includes("One question. No account needed.") && (src.match(/Free sample · no sign-up/g) || []).length === 1 && (src.match(/One question\. No account needed\./g) || []).length === 1);
+  const style = Object.entries(copy).filter(([, t]) => /[\u2013\u2014]|\bnot (just|only|merely)\b/i.test(t)).map(([k]) => k);
+  ok("new first-screen copy has no em dashes, en dashes or 'not just' constructions", style.length === 0, style.join(", "));
+  ok("the course strip names the courses from the course list, in order, as a plain line", strip.text === "Four courses: SAT · Everyday · Professional · GRE" && strip.names.length === courses.length, strip.text);
+  const stripBlock = src.slice(src.lastIndexOf("<Fold", src.indexOf("{strip.text}")), src.indexOf("</Fold>", src.indexOf("{strip.text}")));
+  ok("the course strip is text only: no link, button, handler or role", stripBlock.includes("{strip.text}") && !/<(Link|a|button)\b|onClick|role=|href=|tabIndex/.test(stripBlock));
+}
 Object.entries(SLEEP_SCIENCE).forEach(([k, v]) => lint(`SLEEP_SCIENCE.${k}`, v));
 Object.entries(SCIENCE_FACTS).forEach(([cat, facts]) => facts.forEach((f, i) => lint(`SCIENCE_FACTS.${cat}[${i}]`, f)));
 ok("trial terms line is exact", TRIAL_TERMS === "7 days free, then $1.99/month. Cancel anytime.", TRIAL_TERMS);
@@ -219,8 +232,11 @@ ok("no screen hardcodes a text color on theme.accent (must be theme.onAccent)", 
     need("correct border vs its own tinted fill", t.ok, over(t.okFill, t.card), 3);
     need("not-correct border vs its own tinted fill", t.no, over(t.noFill, t.card), 3);
     need("option text on the correct fill", t.text, over(t.okFill, t.card), 7);
-    for (const stop of pageStops(t)) need(`subline, "How it works" and footer links (${stop}) on the page`, t.subtextAA, stop, 4.5);
-    ok(`${name}: THEME_CSS carries every first-screen variable`, ["--vc-option-fill", "--vc-option-edge", "--vc-option-hover", "--vc-option-press", "--vc-focus", "--vc-ok", "--vc-ok-fill", "--vc-no", "--vc-no-fill"].every((v) => THEME_CSS.includes(v)));
+    for (const stop of pageStops(t)) need(`subline, course strip, "How it works" and footer links (${stop}) on the page`, t.subtextAA, stop, 4.5);
+    need("the chip text vs the chip (it uses the card color)", t.text, t.card, 7);
+    need("the line under the options and the explanation vs the card", t.subtextAA, t.card, 4.5);
+    ok(`${name}: THEME_CSS carries every first-screen variable`, ["--vc-option-fill", "--vc-option-edge", "--vc-option-hover", "--vc-option-press", "--vc-focus", "--vc-ok", "--vc-ok-fill", "--vc-no", "--vc-no-fill", "--vc-card-shadow"].every((v) => THEME_CSS.includes(v)));
+    ok(`${name}: the raised card has a shadow of its own`, typeof t.cardShadow === "string" && /rgba\(/.test(t.cardShadow) && THEME_CSS.includes(t.cardShadow));
   }
 }
 
@@ -228,13 +244,50 @@ ok("no screen hardcodes a text color on theme.accent (must be theme.onAccent)", 
 {
   const first = readFileSync(path.join(root, "components/FirstVisit.js"), "utf8");
   const css = readFileSync(path.join(root, "app/globals.css"), "utf8");
-  ok("options are .vc-option buttons driven by data-state, at least 48px tall", /className="vc-option min-h-\[48px\]/.test(first) && /data-state=\{state\}/.test(first));
+  ok("options are .vc-option buttons driven by data-state, 56px tall", /className="vc-option min-h-\[56px\]/.test(first) && /data-state=\{state\}/.test(first));
+  ok("the question sentence is 19px", /font-display text-\[19px\][^>]*>\{quiz\.sentence\}/.test(first));
   ok("options have a hover, a pressed state and a keyboard focus ring", /\.vc-option\[data-state="idle"\][^{]*:hover\s*\{/.test(css) && /\.vc-option\[data-state="idle"\][^{]*:active\s*\{[^}]*transform:\s*scale\(/.test(css) && /\.vc-option:focus-visible\s*\{[^}]*outline/.test(css));
   ok("options transition into the correct / not-correct state", /\.vc-option\s*\{[^}]*transition:[^;]*background-color[^;]*border-color/.test(css) && /\.vc-option\[data-state="correct"\]/.test(css) && /\.vc-option\[data-state="wrong"\]/.test(css));
   ok("reduced motion: no scale, no pop animation (colors still change)", /@media \(prefers-reduced-motion: reduce\)\s*\{[^@]*\.vc-option\[data-state="idle"\][^{]*:active\s*\{\s*transform:\s*none/.test(css) && /@media \(prefers-reduced-motion: reduce\)\s*\{[^@]*\.vc-option-icon\s*\{\s*animation:\s*none/.test(css));
   ok("the old tiny all-caps eyebrow is gone; the instruction is sentence case at 14px", !/Try one/i.test(first) && /text-\[14px\][^>]*>\s*Which word fits the blank\?/.test(first));
   ok("the header control is a labelled 'How it works' button with a 44px target", /<NightThemeExplainer label="How it works" compact/.test(first) && /min-h-\[44px\]/.test(explainer));
   ok("footer links are 44px tall", (first.match(/min-h-\[44px\]/g) || []).length >= 2);
+}
+
+// ---------- the first screen's layout: order, what leaves when answered, the raised card ----------
+{
+  const first = readFileSync(path.join(root, "components/FirstVisit.js"), "utf8");
+  const css = readFileSync(path.join(root, "app/globals.css"), "utf8");
+  const at = (needle) => first.indexOf(needle);
+  const order = ["<header", "Free sample · no sign-up", "<h1", "{PROMISE}", "Which word fits the blank?", "{quiz.sentence}", "order.map", "One question. No account needed.", "{strip.text}", "<footer", ">Courses<"].map(at);
+  ok("order on the page: header, chip, headline, promise, then the question card (instruction, sentence, options, note), strip, footer, courses", order.every((i, n) => i >= 0 && (n === 0 || i > order[n - 1])), order.join(" < "));
+  ok("the question is the first thing in the page after the headline: nothing between them but the promise", !/<(dialog|Onboarding)|showModal|useEffect/.test(first));
+  ok("exactly three blocks leave once the question is answered: the chip, the note and the strip", (first.match(/<Fold folded=\{answered\}/g) || []).length === 3);
+  ok("a leaving block is hidden from assistive tech once folded", /data-folded=\{folded\} aria-hidden=\{folded \|\| undefined\}/.test(first));
+  ok("the explanation and the Keep going block arrive with the same unfold", (first.match(/className="vc-unfold"/g) || []).length === 2);
+  // The `{answered && ( ... )}` block that holds a piece of text, found by balancing its parentheses.
+  const gated = (needle) => {
+    const open = first.lastIndexOf("{answered && (", first.indexOf(needle));
+    if (open < 0) return "";
+    let depth = 0;
+    for (let i = open + "{answered && ".length; i < first.length; i++) {
+      if (first[i] === "(") depth++;
+      else if (first[i] === ")" && --depth === 0) return first.slice(open, i + 1);
+    }
+    return "";
+  };
+  const afterAnswer = gated("EVENTS.keepGoingClicked");
+  ok("Keep going, the trial link and the trial terms exist only after an answer", afterAnswer.includes("Keep going") && afterAnswer.includes("<TrialLink") && afterAnswer.includes("{TRIAL_TERMS}") && (first.match(/<TrialLink/g) || []).length === 1);
+  ok("the explanation exists only after an answer", gated("{quiz.explanation}").includes("{quiz.explanation}"));
+  ok("the explanation is announced politely when it arrives", /<div aria-live="polite">\s*\{answered && \(\s*<div className="vc-unfold">/.test(first));
+  ok("a fold animates its row to nothing, fades, and drops out of view only when done", /\.vc-fold\s*\{[^}]*grid-template-rows:\s*1fr[^}]*transition:[^;]*grid-template-rows/.test(css) && /\.vc-fold\[data-folded="true"\]\s*\{[^}]*grid-template-rows:\s*0fr[^}]*opacity:\s*0[^}]*visibility:\s*hidden[^}]*visibility 0s 240ms/.test(css));
+  ok("the unfold is a keyframe animation from a zero-height row, and a link inside it keeps room for its focus ring", /@keyframes vc-unfold\s*\{\s*from\s*\{[^}]*grid-template-rows:\s*0fr[^}]*\}\s*to\s*\{[^}]*grid-template-rows:\s*1fr/.test(css) && /\.vc-unfold > \*\s*\{[^}]*overflow:\s*hidden[^}]*padding:\s*4px[^}]*margin:\s*-4px/.test(css));
+  ok("reduced motion: folds and unfolds are instant", /@media \(prefers-reduced-motion: reduce\)\s*\{[^@]*\.vc-fold[^{]*\{\s*transition:\s*none[^@]*\.vc-unfold\s*\{\s*animation:\s*none/.test(css));
+  ok("the card is raised: its shadow comes from the theme", /\.vc-card\s*\{[^}]*box-shadow:\s*var\(--vc-card-shadow\)/.test(css));
+  ok("the spacing scales with the small viewport height only (svh never moves with browser toolbars), behind @supports, with a fixed fallback", /@supports \(height: 1svh\)\s*\{[^@]*--vc-gap:\s*clamp\([^;]*100svh/.test(css) && !/--vc-[\w-]+:[^;]*\d(dvh|lvh|vh)\b/.test(css) && /\.vc-first\s*\{[^}]*--vc-gap:\s*\d+px/.test(css));
+  ok("a returning device never sees any of it (the whole view is still hidden by CSS)", /html\[data-returning\]\s+\.vc-first\s*\{\s*display:\s*none/.test(css));
+  const how = readFileSync(path.join(root, "app/how-it-works/page.js"), "utf8");
+  ok("/how-it-works has no em or en dashes, in its own text or in any sentence it draws from lib/sleepScience.js", !/[\u2013\u2014]/.test(how) && !/[\u2013\u2014]/.test(Object.values(SLEEP_SCIENCE).join(" ")));
 }
 
 // ---------- the explainer: two sentences and a link for a new visitor ----------
@@ -309,8 +362,7 @@ ok("no screen hardcodes a text color on theme.accent (must be theme.onAccent)", 
   ok("manifest names the app, starts at / and uses the night background", man.name === "Voco" && man.start_url === "/" && man.background_color === NIGHT.pageCss && man.theme_color === NIGHT.pageCss);
   ok("manifest icons all exist at their declared size, with a maskable one", man.icons.length === 3 && man.icons.every((i) => size(i.src.slice(1), ...i.sizes.split("x").map(Number))) && man.icons.some((i) => i.purpose === "maskable"));
   const layout = readFileSync(path.join(root, "app/layout.js"), "utf8");
-  const PROMISE = "SAT vocabulary you study before bed and get quizzed on the next day.";
-  ok("page title is built from the headline, description is the one-line promise", layout.includes(`const TITLE = "Voco: ${HEADLINE}"`) && layout.includes(`const DESCRIPTION = "${PROMISE}"`) && man.description === PROMISE);
+  ok("the manifest describes the app with the same one-line promise the page uses", man.description === PROMISE, man.description);
   ok("metadata declares icons, manifest, Open Graph and Twitter card with the share image", ["/favicon.ico", "/icon.svg", "/apple-touch-icon.png", 'manifest: "/manifest.webmanifest"', "openGraph", 'card: "summary_large_image"', "/og.jpg", "metadataBase"].every((s) => layout.includes(s)));
   // brand-assets is source material: no code may import, fetch or link it, and none of it may sit under public/.
   // (Comments naming it as the origin of the generated files are fine.)

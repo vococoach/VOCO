@@ -3,7 +3,7 @@ import { Fraunces, Inter } from "next/font/google";
 import "./globals.css";
 import { THEME_CSS } from "@/lib/timeTheme";
 import { PRE_HYDRATION_SCRIPT } from "@/lib/preHydration";
-import { SITE_URL } from "@/lib/site";
+import { SITE_URL, HEADLINE, PROMISE } from "@/lib/site";
 
 // Fonts are loaded through next/font: self-hosted from this origin, preloaded,
 // with a size-matched fallback so text doesn't jump when they arrive. (They used
@@ -25,13 +25,13 @@ const fraunces = Fraunces({
 });
 
 // The title and description are the first screen's own words (the headline, and the
-// one-line promise under it), so a tab, a search result and a shared link all say
-// what the page says. The icons, manifest and share image are the files in public/
-// (generated from brand-assets/, which is source material and is not served).
-// `metadataBase` turns the relative paths below into the absolute URLs that link
-// previews need.
-const TITLE = "Voco: Study tonight. Quiz tomorrow.";
-const DESCRIPTION = "SAT vocabulary you study before bed and get quizzed on the next day.";
+// one-line promise under it; both come from lib/site.js, the same place the screen
+// reads them from), so a tab, a search result and a shared link all say what the page
+// says. The icons, manifest and share image are the files in public/ (generated from
+// brand-assets/, which is source material and is not served). `metadataBase` turns
+// the relative paths below into the absolute URLs that link previews need.
+const TITLE = `Voco: ${HEADLINE}`;
+const DESCRIPTION = PROMISE;
 
 export const metadata = {
   metadataBase: new URL(SITE_URL),
@@ -52,7 +52,7 @@ export const metadata = {
     url: "/",
     title: TITLE,
     description: DESCRIPTION,
-    images: [{ url: "/og.jpg", width: 1200, height: 630, alt: "The Voco mark, a crescent moon and a sun, beside the line: SAT vocabulary you study before bed and get quizzed on the next day." }],
+    images: [{ url: "/og.jpg", width: 1200, height: 630, alt: `The Voco mark, a crescent moon and a sun, beside the line: ${PROMISE}` }],
   },
   twitter: {
     card: "summary_large_image",
