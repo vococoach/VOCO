@@ -139,9 +139,10 @@ async function sessionSentences(page, nextLabel) {
   await page.goto(BASE, { waitUntil: "networkidle" });
   await page.waitForTimeout(400);
   const body = await page.locator("main").innerText();
-  ok("home screen shows 3 words due (not 12)", /3 words due for review/.test(body), (body.match(/\d+ words? due for review/) || [""])[0]);
-  ok("home still-learning card counts only free-tier words", /3 words you're still learning/.test(body), (body.match(/\d+ words? you're still learning/) || [""])[0]);
-  ok("home 'still learning' lists only the free categories", !/Disagreement|Tone & Attitude|Emotional Nuance|Leadership/.test(body.split("still learning")[1] ? body.split("still learning")[1].split("Courses")[0] : ""));
+  ok("home screen shows 3 words due (not 12)", /3 words due/.test(body), (body.match(/\d+ words? due/) || [""])[0]);
+  const learning = [...body.matchAll(/(\d+) words? still learning/g)].reduce((n, m) => n + Number(m[1]), 0);
+  ok("home still-learning rows count only free-tier words", learning === 3, `${learning}`);
+  ok("home 'still learning' lists only the free categories", !/Disagreement|Tone & Attitude|Emotional Nuance|Leadership/.test(body.split("Courses")[0]));
   const tonight = await page.getByText("Tonight's study", { exact: true }).isVisible();
   ok("Tonight's study shows", tonight);
   const href = await page.locator('a:has-text("Start studying")').first().getAttribute("href").catch(() => null);
@@ -158,7 +159,7 @@ async function sessionSentences(page, nextLabel) {
   await page.goto(BASE, { waitUntil: "networkidle" });
   await page.waitForTimeout(400);
   const body = await page.locator("main").innerText();
-  ok("morning: 'Last night's words' does not feature the locked Advanced tier that was studied", !/Last night's words/.test(body) || /Foundational/.test(body), body.slice(0, 200).replace(/\n/g, " | "));
+  ok("morning: 'Quiz last night's words' does not feature the locked Advanced tier that was studied", !/last night's words/i.test(body) || /Foundational/.test(body), body.slice(0, 200).replace(/\n/g, " | "));
   await ctx.close();
 }
 
@@ -170,15 +171,16 @@ async function sessionSentences(page, nextLabel) {
   const agree = await page.locator("main").innerText();
   const lockedTierCards = await page.locator('a[href^="/preview/agreement-support-"]').count();
   ok("SAT free category: its Advanced and Expert tiers show a lock + sample link", lockedTierCards === 2, `${lockedTierCards}`);
-  ok("each locked tier shows the price + scope", (agree.match(/\$1\.99\/month for full access to every course/g) || []).length >= 7, `${(agree.match(/\$1\.99\/month for full access to every course/g) || []).length}`);
-  ok("the Foundational/Intermediate cards of the free category are still normal (Study + Take quiz)", (await page.locator('a[href="/sets/agreement-support-1/study"]').count()) === 1 && (await page.locator('a[href="/sets/agreement-support-2/quiz"]').count()) === 1);
+  const priceMentions = (agree.match(/\$1\.99\/month/g) || []).length, trialMentions = (agree.match(/7-day free trial/g) || []).length;
+  ok("the course page says the price and the free trial once, in one paywall card, and never inside a locked tier", priceMentions === 1 && trialMentions === 1 && (await page.locator('aside[aria-label="Subscription"]').count()) === 1, `${priceMentions}/${trialMentions}`);
+  ok("the Foundational/Intermediate cards of the free category are still normal (Study first, quiz one tap away)", (await page.locator('a[href="/sets/agreement-support-1/study"]').count()) === 1 && (await page.locator('a[href="/sets/agreement-support-2/quiz"]').count()) === 1);
   ok("no Study/Quiz link at all for a locked tier", (await page.locator('a[href="/sets/agreement-support-3/study"], a[href="/sets/agreement-support-3/quiz"]').count()) === 0);
   await shot(page, `v2-course-sat.png`, {fullPage: true });
   for (const section of ["passages", "grammar", "practice-test"]) {
     await page.goto(`${BASE}/courses/sat-vocab?section=${section}`, { waitUntil: "networkidle" });
     await page.waitForTimeout(250);
     const t = await page.locator("main").innerText();
-    ok(`SAT ${section} tab: everything locked, nothing free`, /Locked|Requires a subscription/.test(t) && !/\bFree\b/.test(t) && !/Read the passage|Start level|Take quiz/.test(t), "");
+    ok(`SAT ${section} tab: everything locked, nothing free, one paywall card`, /Locked/.test(t) && !/\bFree\b/.test(t) && !/Read the passage|Start level|Take quiz/.test(t) && (await page.locator('aside[aria-label="Subscription"]').count()) === 1, "");
     if (section !== "practice-test") ok(`SAT ${section} tab offers sample questions`, (await page.locator('a[href^="/preview/"]').count()) >= 4);
   }
   await page.goto(`${BASE}/courses/sat-vocab?section=strategy`, { waitUntil: "networkidle" });
@@ -240,7 +242,7 @@ for (const url of ["/preview/agreement-support-1", "/preview/agreement-support",
   await page.goto(BASE, { waitUntil: "networkidle" });
   await page.waitForTimeout(400);
   const body = await page.locator("main").innerText();
-  ok("subscriber home: all due words, 'full access' footer + Manage subscription", new RegExp(`${TOTAL} words due for review`).test(body) && body.includes("You have full access to every course.") && body.includes("Manage subscription"));
+  ok("subscriber home: all due words, 'full access' footer + Manage subscription", new RegExp(`${TOTAL} words due`).test(body) && body.includes("You have full access.") && body.includes("Manage subscription"));
   await page.goto(BASE + "/courses/sat-vocab", { waitUntil: "networkidle" });
   await page.waitForTimeout(300);
   ok("subscriber: no locked tier cards on the SAT course page", (await page.locator('a[href^="/preview/"]').count()) === 0 && (await page.locator('a[href="/sets/agreement-support-3/quiz"]').count()) === 1);

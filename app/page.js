@@ -2,18 +2,16 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Moon, Flame, RotateCcw, Sparkles, Target, Info, Sunrise, ChevronRight } from "lucide-react";
+import { Moon, Flame, RotateCcw, Sunrise, ChevronRight } from "lucide-react";
 import NightThemeExplainer from "@/components/NightThemeExplainer";
 import VocoMark from "@/components/VocoMark";
 import FirstVisit from "@/components/FirstVisit";
 import HomeLoading from "@/components/HomeLoading";
 import ShareButton from "@/components/ShareButton";
 import CourseProgress from "@/components/CourseProgress";
-import ScienceNote from "@/components/ScienceNote";
 import { streakCard } from "@/lib/milestones";
 import { getPhase, findLastNightsLevel, getTonight } from "@/lib/timeOfDay";
-import { pickScienceFact } from "@/lib/sleepScience";
-import { courses, categories, getCategoryCourse, missedWordsId, DUE_FOR_REVIEW_ID } from "@/lib/wordbanks";
+import { courses, categories, missedWordsId, DUE_FOR_REVIEW_ID } from "@/lib/wordbanks";
 import { TRADEMARK_NOTICE } from "@/lib/legal";
 import { getAllProgress, getStreak, getNightToMorningStreak, resetProgress, getDueWordIds, getStruggleWordIds } from "@/lib/progress";
 import { isLevelLocked, openBillingPortal } from "@/lib/purchase";
@@ -22,22 +20,27 @@ import { useSubscription } from "@/lib/useLearnerState";
 import { isReturningVisitor, setReturningAttribute, clearLegacyFlags } from "@/lib/visitor";
 
 function formatDate(iso) {
-  return new Date(iso).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-// "SAT Vocab · Agreement & Support · Foundational" — which course a suggested
-// level belongs to matters now that there's more than one.
+// "Agreement & Support · Intermediate · 12 words": which level a suggestion is for.
 function levelLabel(category, level) {
-  const course = getCategoryCourse(category.id);
-  return [course && course.title, category.title, level.label].filter(Boolean).join(" · ");
+  return [category.title, level.label, `${level.words.length} words`].join(" · ");
 }
 
 // The home screen has two layers. The top is the daily habit loop — due for
 // review, tonight's study, last night's words, words still being learned, the
 // streaks — and it is deliberately NOT scoped to any course: it pulls from
 // every course's words together, so nobody has to pick a course just to see
-// what's due. Below it, a card per course leads to that course's own category
-// list (app/courses/[courseId]/page.js).
+// what's due. Below it, a compact card per course leads to that course's own
+// category list (app/courses/[courseId]/page.js).
+//
+// It is the first screen's palette and button language (see "Home screen and course
+// pages" in app/globals.css), and it follows the real time of day the same way: night
+// by default, dawn in the morning. There is ONE obvious action. When words are due, the
+// due card carries the only filled button and the time-of-day card (tonight's study, or
+// last night's words) is quiet; with nothing due, that card takes the filled button. The
+// cards still appear under exactly the same conditions as before and link to the same places.
 //
 // That is the RETURNING view. A first-time visitor (no saved progress on this
 // device) gets components/FirstVisit.js instead: it is what the server renders,
@@ -144,17 +147,12 @@ export default function Home() {
   // Words still being learned, one drill per category (the per-category design
   // is deliberate — see lib/wordbanks.js), gathered across every course.
   const stillLearning = ready
-    ? categories
-        .filter((category) => struggleCounts[category.id] > 0)
-        .map((category) => ({ category, course: getCategoryCourse(category.id), count: struggleCounts[category.id] }))
+    ? categories.filter((category) => struggleCounts[category.id] > 0).map((category) => ({ category, count: struggleCounts[category.id] }))
     : [];
-  const stillLearningTotal = stillLearning.reduce((n, row) => n + row.count, 0);
 
-  let subtitle = "Study a level before bed. Quiz yourself whenever you're ready.";
-  if (tonight && (tonight.kind === "suggest" || tonight.kind === "choose"))
-    subtitle = "Good evening. Study a level before bed — sleep helps it stick.";
-  else if (tonight && tonight.kind === "done") subtitle = "Good evening. Sleep will help what you studied settle in.";
-  else if (lastNight) subtitle = "Good morning. A quiz now shows what stuck overnight.";
+  // The one filled button on the screen: the due card's, or (with nothing due) the time-of-day
+  // card's. The "pick a course" card has four equal choices, so it never has a filled one.
+  const hasDue = ready && dueCount > 0;
 
   if (!returning) {
     // Both are in the server HTML; CSS (html[data-returning], set before first
@@ -168,106 +166,118 @@ export default function Home() {
     );
   }
 
+  const learningRows = stillLearning.map(({ category, count }) => (
+    <div key={category.id} className="flex items-center justify-between gap-2">
+      <div className="min-w-0 py-1">
+        <p className="text-sm font-semibold">{category.title}</p>
+        <p className="vc-muted text-xs">
+          {count} word{count !== 1 ? "s" : ""} still learning
+        </p>
+      </div>
+      <div className="flex shrink-0">
+        <Link href={`/sets/${missedWordsId(category.id)}/study`} className="vc-link">
+          Study
+        </Link>
+        <Link href={`/sets/${missedWordsId(category.id)}/quiz`} className="vc-link font-semibold">
+          Quiz
+        </Link>
+      </div>
+    </div>
+  ));
+
   return (
-    <main className="min-h-dvh bg-[#1A1C3A] px-4 py-8">
-      <div className="max-w-md mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-2">
+    <main className="vc-page">
+      <div className="mx-auto max-w-md">
+        <header className="flex min-h-[44px] items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2">
             <VocoMark size={26} />
-            <span className="font-display text-xl text-[#EDEBFF]">Voco</span>
+            <span className="font-display text-xl">Voco</span>
             <NightThemeExplainer />
           </div>
-          <div className="flex flex-col items-end gap-1">
-            {/* Tap either streak to share it as an image (components/ShareButton.js). */}
+          <div className="-mr-2 flex items-center">
+            {/* Tap either streak to share it as an image (components/ShareButton.js). The visible
+                label is just the number; the full name is the accessible name and the tooltip. */}
             {streak > 0 && (
               <ShareButton
                 card={streakCard("daily", streak)}
-                className="flex items-center gap-1 text-sm text-[#9B97C4] hover:text-[#EDEBFF]"
-                title="Consecutive days you completed a quiz — tap to share"
-                ariaLabel={`${streak} day streak — share`}
+                className="vc-chip-btn"
+                title="Days in a row you finished a quiz. Tap to share."
+                ariaLabel={`${streak} day streak, share`}
               >
-                <Flame size={16} color="#FF9B5C" />
-                {streak} day streak
+                <Flame size={16} aria-hidden="true" style={{ color: "var(--vc-flame)" }} />
+                {streak}
               </ShareButton>
             )}
             {nightToMorningStreak > 0 && (
               <ShareButton
                 card={streakCard("streak", nightToMorningStreak)}
-                className="flex items-center gap-1 text-sm text-[#9B97C4] hover:text-[#EDEBFF]"
-                title="Consecutive mornings you quizzed the words you studied the night before — tap to share"
-                ariaLabel={`${nightToMorningStreak} day night-to-morning streak — share`}
+                className="vc-chip-btn"
+                title="Mornings in a row you quizzed the words you studied the night before. Tap to share."
+                ariaLabel={`${nightToMorningStreak} day night-to-morning streak, share`}
               >
-                <Sunrise size={16} color="#FFB27D" />
-                {nightToMorningStreak} day night-to-morning streak
+                <Sunrise size={16} aria-hidden="true" style={{ color: "var(--vc-flame)" }} />
+                {nightToMorningStreak}
               </ShareButton>
             )}
           </div>
-        </div>
+        </header>
 
-        {/* Hidden (not removed) until the clock is read, so the greeting never visibly swaps text. */}
-        <p className={`text-sm text-[#9B97C4] mb-4 ${ready ? "" : "invisible"}`}>{subtitle}</p>
-
-        {/* Always present, every visit (not a one-time tip, nothing to dismiss): one short
-            science fact matched to the time of day — sleep in the evening, retrieval
-            practice in the morning. See lib/sleepScience.js. */}
-        {ready && phase && <ScienceNote fact={pickScienceFact(phase, now)} />}
+        {hasDue && (
+          <section aria-labelledby="due-title" className="vc-surface mt-4 p-4">
+            <h2 id="due-title" className="text-2xl font-semibold">
+              {dueCount} word{dueCount !== 1 ? "s" : ""} due
+            </h2>
+            <Link href="/review" className="vc-btn mt-3 w-full">
+              Review
+            </Link>
+            <div className="mt-1 flex justify-center">
+              <Link href={`/sets/${DUE_FOR_REVIEW_ID}/study`} className="vc-link">
+                Study
+              </Link>
+            </div>
+            {stillLearning.length > 0 && (
+              <div className="mt-2 border-t pt-2" style={{ borderColor: "var(--vc-border)" }}>
+                {learningRows}
+              </div>
+            )}
+          </section>
+        )}
 
         {lastNight && (
-          <div
-            className="rounded-2xl p-4 mb-6"
-            style={{ background: "linear-gradient(to bottom, #FFD9B0, #FFEFDD)" }}
-          >
-            <div className="flex items-start gap-2 mb-1 text-[#3D2B4F] font-medium text-balance">
-              <Sunrise size={18} color="#D9772F" className="mt-0.5 shrink-0" />
-              Last night's words&nbsp;— quiz yourself now
+          <section className="vc-surface mt-3 p-4">
+            <div className="flex items-center gap-2">
+              <Sunrise size={16} aria-hidden="true" className="shrink-0" style={{ color: "var(--vc-flame)" }} />
+              <h2 className="text-base font-semibold">Quiz last night's words</h2>
             </div>
-            <p className="text-xs text-[#8A6E7D] mb-3">
-              {levelLabel(lastNight.category, lastNight.level)} · {lastNight.level.words.length} words
-            </p>
-            <div className="flex gap-2">
-              <Link
-                href={`/sets/${lastNight.level.id}/quiz`}
-                className="flex-1 text-center text-sm rounded-xl px-3 py-2 font-medium"
-                style={{ backgroundColor: "#FF9B5C", color: "#14152B" }}
-              >
+            <p className="vc-muted mt-1 text-xs">{levelLabel(lastNight.category, lastNight.level)}</p>
+            <div className="mt-3 flex items-center gap-1">
+              <Link href={`/sets/${lastNight.level.id}/quiz`} className={`vc-btn min-w-0 flex-1 ${hasDue ? "vc-btn-quiet" : ""}`}>
                 Take the quiz
               </Link>
-              <Link
-                href={`/sets/${lastNight.level.id}/study`}
-                className="flex-1 text-center text-sm rounded-xl px-3 py-2 border border-[#3D2B4F33] text-[#3D2B4F]"
-              >
+              <Link href={`/sets/${lastNight.level.id}/study`} className="vc-link shrink-0">
                 Restudy
               </Link>
             </div>
-          </div>
+          </section>
         )}
 
         {tonight && (
-          <div className="rounded-2xl p-4 mb-6 bg-[#20223F] border border-[#8B85FF40]">
-            <div className="flex items-center gap-2 mb-1 text-sm font-medium text-[#EDEBFF]">
-              <Moon size={16} color="#8B85FF" />
-              {tonight.kind === "done" ? "Tonight's study is done" : "Tonight's study"}
+          <section className="vc-surface mt-3 p-4">
+            <div className="flex items-center gap-2">
+              <Moon size={16} aria-hidden="true" className="shrink-0" style={{ color: "var(--vc-flame)" }} />
+              <h2 className="text-base font-semibold">{tonight.kind === "done" ? "Tonight's study is done" : "Tonight's study"}</h2>
             </div>
             {tonight.kind === "done" ? (
-              <p className="text-xs text-[#9B97C4]">
-                You studied {levelLabel(tonight.category, tonight.level)}. Sleep on it — quiz yourself in the
-                morning to see what stuck.
-              </p>
+              <p className="vc-muted mt-1 text-sm">Quiz it tomorrow morning.</p>
             ) : tonight.kind === "choose" ? (
               // Nothing to follow yet (no course started), and no default course
-              // on purpose: the learner picks where tonight's study happens.
+              // on purpose: the learner picks where tonight's study happens. Four equal
+              // choices, so none is the filled button.
               <>
-                <p className="text-xs text-[#9B97C4] mb-3">
-                  Pick a course to study tonight, then quiz yourself in the morning.
-                </p>
-                <div className="flex flex-col gap-2">
+                <p className="vc-muted mt-1 text-sm">Pick a course to study tonight.</p>
+                <div className="mt-3 flex flex-col gap-2">
                   {tonight.courses.map((course) => (
-                    <Link
-                      key={course.id}
-                      href={`/courses/${course.id}`}
-                      className="block text-center text-sm rounded-xl px-3 py-2 font-medium"
-                      style={{ backgroundColor: "#8B85FF", color: "#14152B" }}
-                    >
+                    <Link key={course.id} href={`/courses/${course.id}`} className="vc-btn vc-btn-quiet w-full">
                       {course.title}
                     </Link>
                   ))}
@@ -275,150 +285,71 @@ export default function Home() {
               </>
             ) : (
               <>
-                <p className="text-xs text-[#9B97C4] mb-3">
-                  {levelLabel(tonight.category, tonight.level)} · {tonight.level.words.length} words. Study it
-                  before bed, then quiz yourself in the morning.
-                </p>
-                <Link
-                  href={`/sets/${tonight.level.id}/study`}
-                  className="block text-center text-sm rounded-xl px-3 py-2 font-medium"
-                  style={{ backgroundColor: "#8B85FF", color: "#14152B" }}
-                >
+                <p className="vc-muted mt-1 text-xs">{levelLabel(tonight.category, tonight.level)}</p>
+                <p className="vc-muted mt-0.5 text-sm">Quiz it tomorrow morning.</p>
+                <Link href={`/sets/${tonight.level.id}/study`} className={`vc-btn mt-3 w-full ${hasDue ? "vc-btn-quiet" : ""}`}>
                   Start studying
                 </Link>
               </>
             )}
-          </div>
+          </section>
         )}
 
-        {ready && dueCount > 0 && (
-          <div className="rounded-2xl p-4 mb-6" style={{ backgroundColor: "#8B85FF" }}>
-            <div className="flex items-center gap-2 mb-3 text-[#14152B] font-medium">
-              <Sparkles size={18} />
-              {dueCount} word{dueCount !== 1 ? "s" : ""} due for review
-            </div>
-            <div className="flex gap-2">
-              <Link
-                href={`/sets/${DUE_FOR_REVIEW_ID}/study`}
-                className="flex-1 text-center text-sm rounded-xl px-3 py-2 border border-[#14152B40] text-[#14152B] font-medium"
-              >
-                Study
-              </Link>
-              <Link
-                href="/review"
-                className="flex-1 text-center text-sm rounded-xl px-3 py-2 font-medium bg-[#14152B] text-[#EDEBFF]"
-              >
-                Review
-              </Link>
-            </div>
-          </div>
-        )}
-
-        {stillLearning.length > 0 && (
-          <div className="rounded-2xl p-4 mb-6 bg-[#20223F] border border-[#ffffff1a]">
-            <div className="flex items-center gap-2 mb-3">
-              <Target size={18} color="#FF9B5C" />
-              <span className="text-sm font-medium text-[#EDEBFF]">
-                {stillLearningTotal} word{stillLearningTotal !== 1 ? "s" : ""} you're still learning
-              </span>
-            </div>
-            <div className="space-y-3">
-              {stillLearning.map(({ category, course, count }) => (
-                <div key={category.id} className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm text-[#EDEBFF] truncate">{category.title}</p>
-                    <p className="text-xs text-[#6E699B]">
-                      {course ? `${course.title} · ` : ""}
-                      {count} word{count !== 1 ? "s" : ""}
-                    </p>
-                  </div>
-                  <div className="flex gap-2 shrink-0">
-                    <Link
-                      href={`/sets/${missedWordsId(category.id)}/study`}
-                      className="text-center text-xs rounded-lg px-3 py-2 border border-[#ffffff26] text-[#EDEBFF]"
-                    >
-                      Study
-                    </Link>
-                    <Link
-                      href={`/sets/${missedWordsId(category.id)}/quiz`}
-                      className="text-center text-xs rounded-lg px-3 py-2 font-medium"
-                      style={{ backgroundColor: "#FF9B5C", color: "#14152B" }}
-                    >
-                      Quiz
-                    </Link>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+        {/* Words still being learned: part of the due card when words are due, a card of its own otherwise. */}
+        {!hasDue && stillLearning.length > 0 && (
+          <section className="vc-surface mt-3 px-4 py-2">{learningRows}</section>
         )}
 
         {ready && subscribed && cancelAt && (
-          <div className="rounded-2xl p-4 mb-6 bg-[#20223F] border border-[#FF9B5C40]">
-            <div className="flex items-center gap-2 mb-1 text-sm font-medium text-[#EDEBFF]">
-              <Info size={16} color="#FF9B5C" />
-              Your subscription ends on {formatDate(cancelAt)}
-            </div>
-            <p className="text-xs text-[#9B97C4] mb-3">You'll keep access to every course until then.</p>
-            <button
-              onClick={handleManageSubscription}
-              disabled={openingPortal}
-              className="text-sm text-[#8B85FF] disabled:opacity-50"
-            >
+          <section className="vc-surface mt-3 p-4">
+            <p className="text-base font-semibold">Subscription ends {formatDate(cancelAt)}</p>
+            <p className="vc-muted mt-0.5 text-sm">Full access until then.</p>
+            <button onClick={handleManageSubscription} disabled={openingPortal} className="vc-link -ml-3 disabled:opacity-50">
               {openingPortal ? "Opening..." : "Manage subscription"}
             </button>
-          </div>
+          </section>
         )}
 
-        <h2 className="font-display text-lg text-[#EDEBFF] mb-3">Courses</h2>
+        <h2 className="vc-muted mb-3 mt-8 text-sm font-semibold">Courses</h2>
         <div className="space-y-3">
           {courses.map((course) => (
-            <Link
-              key={course.id}
-              href={`/courses/${course.id}`}
-              className="block bg-[#20223F] rounded-2xl p-4 border border-[#ffffff14] hover:border-[#8B85FF66]"
-            >
+            <Link key={course.id} href={`/courses/${course.id}`} className="vc-surface vc-tap p-4">
               <div className="flex items-center justify-between gap-3">
-                <h3 className="font-display text-lg text-[#EDEBFF]">{course.title}</h3>
-                <ChevronRight size={18} color="#8B85FF" className="shrink-0" />
+                <h3 className="font-display text-xl">{course.title}</h3>
+                <ChevronRight size={18} aria-hidden="true" className="shrink-0" style={{ color: "var(--vc-subtext)" }} />
               </div>
-              <p className="text-xs text-[#9B97C4] mt-1 mb-3">{course.description}</p>
-              <CourseProgress course={course} progress={progress} />
+              <p className="vc-muted mt-1 text-sm">{course.tagline}</p>
+              <CourseProgress course={course} progress={progress} className="mt-3" />
             </Link>
           ))}
         </div>
 
-        {ready && (
-          <button
-            onClick={handleReset}
-            className="flex items-center gap-1 text-xs text-[#6E699B] mt-8 mx-auto"
-          >
-            <RotateCcw size={12} /> Reset progress on this device
-          </button>
-        )}
-
-        {ready && subscribed && !cancelAt && (
-          <div className="text-center mt-3">
-            <p className="text-xs text-[#9B97C4]">You have full access to every course.</p>
-            <button
-              onClick={handleManageSubscription}
-              disabled={openingPortal}
-              className="text-xs text-[#8B85FF] mt-1 disabled:opacity-50"
-            >
-              {openingPortal ? "Opening..." : "Manage subscription"}
+        <footer className="mt-8 flex flex-col items-center">
+          {ready && (
+            <button onClick={handleReset} className="vc-link">
+              <RotateCcw size={14} aria-hidden="true" className="mr-1.5" /> Reset progress
             </button>
-          </div>
-        )}
+          )}
 
-        <div className="flex items-center justify-center gap-4 mt-6">
-          <Link href="/terms" className="text-xs text-[#6E699B]">
-            Terms of Service
-          </Link>
-          <Link href="/privacy" className="text-xs text-[#6E699B]">
-            Privacy Policy
-          </Link>
-        </div>
-        <p className="text-[10px] leading-snug text-[#9B97C4] text-center mt-3">{TRADEMARK_NOTICE}</p>
+          {ready && subscribed && !cancelAt && (
+            <div className="flex flex-col items-center">
+              <p className="vc-muted text-xs">You have full access.</p>
+              <button onClick={handleManageSubscription} disabled={openingPortal} className="vc-link disabled:opacity-50">
+                {openingPortal ? "Opening..." : "Manage subscription"}
+              </button>
+            </div>
+          )}
+
+          <div className="flex items-center justify-center">
+            <Link href="/terms" className="vc-link !text-xs">
+              Terms of Service
+            </Link>
+            <Link href="/privacy" className="vc-link !text-xs">
+              Privacy Policy
+            </Link>
+          </div>
+          <p className="vc-muted mt-1 text-center text-xs leading-snug">{TRADEMARK_NOTICE}</p>
+        </footer>
       </div>
     </main>
   );

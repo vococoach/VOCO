@@ -16,9 +16,10 @@ body {
    the inline script in lib/preHydration.js marks a device that already has
    saved progress with data-returning before first paint, so a returning
    visitor never sees it flash before the normal home replaces it. The body
-   matches the dark shell in that case, so nothing white shows meanwhile. */
+   takes the page palette (night or dawn) in that case, so nothing white shows
+   meanwhile and the loading shell does not flip colors when the home replaces it. */
 html[data-returning] .vc-first { display: none; }
-html[data-returning] body { background: #1A1C3A; }
+html[data-returning] body { background: var(--vc-page); }
 
 /* Returning-device loading state (components/HomeLoading.js): in every page
    load's HTML but hidden unless the pre-paint script marked this device as
@@ -31,7 +32,7 @@ html[data-returning] .vc-loading { display: block; }
   0%, 100% { opacity: 1; }
   50% { opacity: 0.55; }
 }
-.vc-skeleton { background-color: #2A2C52; animation: vc-pulse 1.6s ease-in-out infinite; }
+.vc-skeleton { background-color: var(--vc-option-fill); animation: vc-pulse 1.6s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
   .vc-skeleton { animation: none; }
 }
@@ -175,4 +176,160 @@ html[data-returning] .vc-loading { display: block; }
 @media (prefers-reduced-motion: reduce) {
   .vc-fold, .vc-fold[data-folded="true"] { transition: none; }
   .vc-unfold { animation: none; }
+}
+
+/* Home screen and course pages.
+
+   The first screen's palette and button language, applied to the two pages a returning
+   learner lives on. Every color is a theme variable (lib/timeTheme.js), so night and dawn
+   need no separate rules. Nothing here changes behavior.
+
+   Type scale (Tailwind sizes): 12px (text-xs) labels and fine print, 14px (text-sm) secondary
+   text, links and pills, 16px (text-base) card titles and buttons, 24px (text-2xl) page titles
+   and the due count. Fraunces (font-display) is only the 20px wordmark, page titles and course
+   titles; titles and buttons are Inter semibold. Muted text is --vc-subtext (at least 4.5:1).
+   Every tap target is at least 44px. */
+
+/* The page shell. The padding is at least 1rem and never less than the device's safe area, so
+   the top bar cannot sit under a status bar or the Dynamic Island, nor the last line under the
+   home indicator, whenever the browser lays the page out into those areas (viewport-fit=cover,
+   a home-screen app). env() is 0 elsewhere, so nothing moves. */
+.vc-page {
+  min-height: 100dvh;
+  background: var(--vc-page);
+  color: var(--vc-text);
+  padding-top: max(1rem, env(safe-area-inset-top));
+  padding-right: max(1rem, env(safe-area-inset-right));
+  padding-bottom: max(2rem, calc(env(safe-area-inset-bottom) + 1rem));
+  padding-left: max(1rem, env(safe-area-inset-left));
+}
+.vc-muted { color: var(--vc-subtext); }
+
+/* A flat card: the same fill and edge as the first screen's question card, without its shadow. */
+.vc-surface {
+  background-color: var(--vc-card);
+  border: 1px solid var(--vc-border);
+  border-radius: 1rem;
+}
+.vc-surface-done { border-color: var(--vc-ok); }
+
+/* Buttons and links, in the style of the first screen's Keep going button. A primary button is
+   filled (accent, with the theme's button text); .vc-btn-quiet is the outlined secondary. */
+.vc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 1rem;
+  border: 1px solid transparent;
+  border-radius: 0.75rem;
+  background-color: var(--vc-accent);
+  color: var(--vc-cta-text);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 90ms ease, background-color 160ms ease;
+}
+.vc-btn-quiet {
+  background-color: transparent;
+  border-color: var(--vc-option-edge);
+  color: var(--vc-text);
+}
+.vc-btn:active { transform: scale(0.98); }
+.vc-btn-quiet:active { background-color: var(--vc-option-press); }
+/* A text link with a 44px-tall hit area: the quiet secondary action next to a button. */
+.vc-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 0.75rem;
+  color: var(--vc-text);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.25;
+  text-decoration: underline;
+  text-decoration-color: var(--vc-option-edge);
+  text-underline-offset: 4px;
+  -webkit-tap-highlight-color: transparent;
+}
+.vc-btn:focus-visible, .vc-link:focus-visible, .vc-pill:focus-visible, .vc-chip-btn:focus-visible, .vc-tap:focus-visible {
+  outline: 2px solid var(--vc-focus);
+  outline-offset: 2px;
+}
+/* A whole card that is one link (the course cards on the home screen). */
+.vc-tap { display: block; -webkit-tap-highlight-color: transparent; }
+@media (hover: hover) {
+  .vc-tap:hover { border-color: var(--vc-option-edge); }
+}
+
+/* The section pills on a course page: one row, never wrapping, scrolling sideways when they
+   do not all fit. The row bleeds to the screen edges and keeps 1rem of padding inside, so the
+   first and last pill (and the active one, which the page scrolls to the middle) are never
+   clipped. The active pill is filled with the focus color (lavender at night, plum at dawn). */
+.vc-pills {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: -1rem;
+  margin-right: -1rem;
+  padding: 2px 1rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.vc-pills::-webkit-scrollbar { display: none; }
+.vc-pill {
+  flex: none;
+  min-height: 44px;
+  padding: 0 1rem;
+  border: 1px solid var(--vc-option-edge);
+  border-radius: 9999px;
+  background-color: var(--vc-option-fill);
+  color: var(--vc-text);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+.vc-pill[aria-selected="true"] {
+  background-color: var(--vc-focus);
+  border-color: var(--vc-focus);
+  color: var(--vc-card);
+}
+
+/* A thin progress bar. The label next to it carries the information, so the bar is decoration. */
+.vc-bar {
+  height: 4px;
+  border-radius: 9999px;
+  background-color: var(--vc-bar-track);
+  overflow: hidden;
+}
+.vc-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background-color: var(--vc-bar-fill);
+  transition: width 240ms ease;
+}
+
+/* A streak on the home screen's top bar: an icon and a number, in a 44px target. */
+.vc-chip-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 0.5rem;
+  color: var(--vc-text);
+  font-size: 14px;
+  font-weight: 600;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vc-btn, .vc-bar > span { transition: none; }
+  .vc-btn:active { transform: none; }
 }

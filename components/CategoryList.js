@@ -1,175 +1,123 @@
 "use client";
 
 import Link from "next/link";
-import { Lock, Target } from "lucide-react";
-import { getScoreTier, TIERS } from "@/lib/scoreTier";
-import { TIER_ICONS } from "@/components/QuizResults";
+import { Target } from "lucide-react";
+import { getScoreTier } from "@/lib/scoreTier";
 import { missedWordsId } from "@/lib/wordbanks";
-import { isCategoryLocked, isLevelLocked, PRICE_LABEL, TRIAL_LABEL } from "@/lib/purchase";
+import { isCategoryLocked, isLevelLocked } from "@/lib/purchase";
+import ItemCard from "@/components/ItemCard";
+import LockedRow from "@/components/LockedRow";
+import Paywall from "@/components/Paywall";
 
-// One course's categories, each with its levels (or the locked card with a
-// sample-question link), and a "still learning" drill when the learner has
-// missed words in it. A course's free category is open only at its Foundational
-// and Intermediate tiers: its other tiers show as locked cards of their own,
-// each with its own price and sample-question link (lib/purchase.js has the one
-// definition of what's free). This is the category list the home screen used to render
-// directly, now shown on a course's page (app/courses/[courseId]/page.js).
+// One course's categories, each with its levels, and a compact "still learning" row when the
+// learner has missed words in it. A course's free category is open only at its Foundational
+// and Intermediate tiers: its other tiers show as locked rows of their own (lib/purchase.js
+// has the one definition of what's free), and every other category is one locked row.
 //
-// `ready` is false until the page has read localStorage — locked/unlocked
-// state isn't known before then, so nothing renders as locked prematurely.
+// The look is deliberately light (see "Home screen and course pages" in app/globals.css):
+// an open level is its name, a small word count, a quiet status ("Not started", "Studied",
+// "Done" or the last quiz score) and ONE primary button, Study first and then Take quiz. The
+// other action stays one tap away as a quiet text link, so quizzing before studying and
+// restudying both still work. A locked item is a lock and its name with a quiet "Try a
+// sample question" link and no price: the one paywall card (components/Paywall.js) is placed
+// just before the first locked item and says the price and the free trial once.
+//
+// `ready` is false until the page has read localStorage — locked/unlocked state isn't known
+// before then, so nothing renders as locked prematurely.
 export default function CategoryList({ categories, progress, struggleCounts, subscribed, ready }) {
+  let paywallShown = false;
+  const paywallOnce = () => {
+    if (paywallShown || !ready || subscribed) return null;
+    paywallShown = true;
+    return <Paywall />;
+  };
+
   return (
-    <div className="space-y-7">
+    <div className="space-y-6">
       {categories.map((category) => {
         const struggleCount = struggleCounts[category.id] || 0;
-        // The whole category is behind the subscription (every category but
-        // each course's free one)…
+        // The whole category is behind the subscription (every category but each course's free one)…
         const locked = ready && isCategoryLocked(category.id, subscribed);
 
+        if (locked && category.levels.length > 0) {
+          const words = category.levels.reduce((sum, level) => sum + level.words.length, 0);
+          return (
+            <div key={category.id} className="space-y-2">
+              {paywallOnce()}
+              <LockedRow name={category.title} meta={`${words} words`} sampleHref={`/preview/${category.id}`} />
+            </div>
+          );
+        }
+
         return (
-          <div key={category.id}>
-            <h2 className="font-display text-lg text-[#EDEBFF]">{category.title}</h2>
-            <p className="text-xs text-[#9B97C4] mt-1 mb-3">{category.description}</p>
+          <section key={category.id}>
+            <h2 className="text-base font-semibold">{category.title}</h2>
 
             {category.levels.length === 0 ? (
-              <div className="rounded-2xl p-4 flex items-center gap-2 text-xs text-[#6E699B] border border-dashed border-[#ffffff1a]">
-                <Lock size={14} /> Coming soon
-              </div>
-            ) : locked ? (
-              <div className="rounded-2xl p-4 bg-[#20223F] border border-[#ffffff1a]">
-                <Link href="/unlock" className="block">
-                  <span className="flex items-center gap-2 text-sm text-[#9B97C4]">
-                    <Lock size={14} />
-                    Locked — {category.levels.reduce((s, l) => s + l.words.length, 0)} words
-                  </span>
-                  <span className="block text-xs font-medium text-[#8B85FF] mt-2">
-                    {PRICE_LABEL} for full access to every course
-                  </span>
-                  <span className="block text-[10px] text-[#6E699B] mt-0.5">{TRIAL_LABEL}</span>
-                </Link>
-                {/* One real sample question — shows the format before paying (app/preview). */}
-                <Link
-                  href={`/preview/${category.id}`}
-                  className="mt-3 inline-flex items-center min-h-[40px] rounded-xl px-3.5 text-xs font-medium text-[#8B85FF] border border-[#8B85FF66]"
-                >
-                  Try a sample question
-                </Link>
-              </div>
+              <p className="vc-muted vc-surface mt-2 p-4 text-sm">Coming soon</p>
             ) : (
-              <div className="space-y-2">
+              <div className="mt-2 space-y-2">
                 {category.levels.map((level) => {
+                  const meta = `${level.words.length} words`;
                   // …or just this tier of a free category.
                   if (ready && isLevelLocked(category.id, level.level, subscribed)) {
                     return (
-                      <div key={level.id} className="rounded-2xl p-4 bg-[#20223F] border border-[#ffffff1a]">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="flex items-center gap-2 text-sm font-medium text-[#9B97C4]">
-                            <Lock size={14} />
-                            {level.label}
-                          </span>
-                          <span className="text-xs text-[#6E699B]">{level.words.length} words</span>
-                        </div>
-                        <Link href="/unlock" className="block">
-                          <span className="block text-xs font-medium text-[#8B85FF] mt-2">
-                            {PRICE_LABEL} for full access to every course
-                          </span>
-                          <span className="block text-[10px] text-[#6E699B] mt-0.5">{TRIAL_LABEL}</span>
-                        </Link>
-                        <Link
-                          href={`/preview/${level.id}`}
-                          className="mt-3 inline-flex items-center min-h-[40px] rounded-xl px-3.5 text-xs font-medium text-[#8B85FF] border border-[#8B85FF66]"
-                        >
-                          Try a sample question
-                        </Link>
+                      <div key={level.id} className="space-y-2">
+                        {paywallOnce()}
+                        <LockedRow name={level.label} meta={meta} sampleHref={`/preview/${level.id}`} />
                       </div>
                     );
                   }
+
                   const p = progress[level.id] || {};
                   const studied = Boolean(p.studiedAt);
                   const quizzed = Boolean(p.lastQuizAt);
-                  // Tier of the most recent quiz (same tiers and colors as
-                  // the end-of-quiz card); null until the level is quizzed.
+                  // The tier of the most recent quiz (the same rule as the end-of-quiz card);
+                  // a perfect score is "Done".
                   const tier = quizzed && p.lastQuizTotal > 0 ? getScoreTier(p.lastScore, p.lastQuizTotal) : null;
-                  const tierStyle = tier ? TIERS[tier] : null;
-                  const TierIcon = tier ? TIER_ICONS[tier] : null;
+                  const done = tier === "perfect";
+                  const study = `/sets/${level.id}/study`;
+                  const quiz = `/sets/${level.id}/quiz`;
+
+                  let status, primary, secondary;
+                  if (!studied && !quizzed) {
+                    status = "Not started";
+                    primary = { href: study, label: "Study" };
+                    secondary = { href: quiz, label: "Quiz" };
+                  } else if (!quizzed) {
+                    status = "Studied";
+                    primary = { href: quiz, label: "Take quiz" };
+                    secondary = { href: study, label: "Restudy" };
+                  } else {
+                    status = done ? "Done" : tier ? `Last quiz ${p.lastScore}/${p.lastQuizTotal}` : "Quizzed";
+                    primary = { href: quiz, label: "Retake quiz", quiet: done };
+                    secondary = { href: study, label: studied ? "Restudy" : "Study" };
+                  }
 
                   return (
-                    <div
-                      key={level.id}
-                      className={`bg-[#20223F] rounded-2xl p-4 ${tier === "perfect" ? "ring-1 ring-[#7BC9A066]" : ""}`}
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="flex items-center gap-2 text-sm font-medium text-[#EDEBFF]">
-                          {tier && (
-                            <span
-                              aria-hidden="true"
-                              className="w-4 h-4 rounded-full flex items-center justify-center"
-                              style={{ backgroundColor: tierStyle.accent }}
-                            >
-                              <TierIcon size={11} color="#14152B" strokeWidth={3} />
-                            </span>
-                          )}
-                          {level.label}
-                        </span>
-                        <span className="text-xs text-[#6E699B]">{level.words.length} words</span>
-                      </div>
-                      <p
-                        className={`text-xs mb-3 ${tier ? "font-medium" : "text-[#6E699B]"}`}
-                        style={tier ? { color: tierStyle.accent } : undefined}
-                      >
-                        {tier
-                          ? `${tierStyle.label} — ${p.lastScore}/${p.lastQuizTotal}`
-                          : studied
-                          ? "Studied — quiz whenever you're ready"
-                          : "Not started"}
-                      </p>
-                      <div className="flex gap-2">
-                        <Link
-                          href={`/sets/${level.id}/study`}
-                          className="flex-1 text-center text-sm rounded-xl px-3 py-2 border border-[#ffffff26] text-[#EDEBFF]"
-                        >
-                          {studied ? "Restudy" : "Study"}
-                        </Link>
-                        <Link
-                          href={`/sets/${level.id}/quiz`}
-                          className="flex-1 text-center text-sm rounded-xl px-3 py-2 font-medium"
-                          style={{ backgroundColor: "#8B85FF", color: "#14152B" }}
-                        >
-                          {quizzed ? "Retake quiz" : "Take quiz"}
-                        </Link>
-                      </div>
-                    </div>
+                    <ItemCard key={level.id} name={level.label} meta={meta} status={status} done={done} primary={primary} secondary={secondary} />
                   );
                 })}
               </div>
             )}
 
             {ready && !locked && struggleCount > 0 && (
-              <div className="rounded-2xl p-4 mt-2 bg-[#20223F] border border-[#ffffff1a]">
-                <div className="flex items-center gap-2 mb-3">
-                  <Target size={18} color="#FF9B5C" />
-                  <span className="text-sm font-medium text-[#EDEBFF]">
-                    {struggleCount} word{struggleCount !== 1 ? "s" : ""} you're still learning
-                  </span>
-                </div>
-                <div className="flex gap-2">
-                  <Link
-                    href={`/sets/${missedWordsId(category.id)}/study`}
-                    className="flex-1 text-center text-sm rounded-xl px-3 py-2 border border-[#ffffff26] text-[#EDEBFF]"
-                  >
+              <div className="vc-surface mt-2 flex items-center justify-between gap-2 py-1 pl-4 pr-1">
+                <span className="flex min-w-0 items-center gap-2 text-sm">
+                  <Target size={16} aria-hidden="true" className="shrink-0" style={{ color: "var(--vc-flame)" }} />
+                  {struggleCount} still learning
+                </span>
+                <span className="flex shrink-0">
+                  <Link href={`/sets/${missedWordsId(category.id)}/study`} className="vc-link">
                     Study
                   </Link>
-                  <Link
-                    href={`/sets/${missedWordsId(category.id)}/quiz`}
-                    className="flex-1 text-center text-sm rounded-xl px-3 py-2 font-medium"
-                    style={{ backgroundColor: "#FF9B5C", color: "#14152B" }}
-                  >
+                  <Link href={`/sets/${missedWordsId(category.id)}/quiz`} className="vc-link font-semibold">
                     Quiz
                   </Link>
-                </div>
+                </span>
               </div>
             )}
-          </div>
+          </section>
         );
       })}
     </div>

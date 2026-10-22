@@ -33,7 +33,7 @@ To keep this MVP simple and reliable, based on what we decided:
   are smaller (10/10/8 — see below).
   - **SAT Vocab** (249 words): organized by function — Agreement & Support,
     Disagreement & Refutation, Degree & Intensity, Change & Consequence,
-    Certainty & Doubt, and Tone & Attitude. The course page has five tabs:
+    Certainty & Doubt, and Tone & Attitude. The course page has five sections, one row of pills:
     **Vocabulary** (the categories, including the Expert level, whose
     distractors are extremely close near-synonyms), **Passages** (16 original
     reading passages and 4 cross-text pairs, all with the
@@ -54,9 +54,10 @@ To keep this MVP simple and reliable, based on what we decided:
     courses at every tier, in an academic/scholarly voice.
 - **No unlock timer.** The quiz is available any time, even right after
   studying. That's intentional for now, so it's easy to test and demo.
-  The home screen does adapt to the time of day (evenings suggest tonight's
-  study, mornings surface last night's words), but that's only a suggestion —
-  nothing is ever locked by the clock.
+  The home screen and course pages do adapt to the time of day (night blues in the
+  evening, dawn tones in the morning; evenings suggest tonight's study, mornings
+  surface last night's words), but that's only a suggestion. Nothing is ever
+  locked by the clock.
 - **One subscription, no ads.** In each course, one category's Foundational and Intermediate levels are free forever (its Advanced level, SAT's Expert level and everything else need the subscription); a
   single $1.99/month subscription (7-day free trial, via Stripe) unlocks every
   category in every course. Still no accounts — see `CLAUDE.md`.
@@ -96,7 +97,7 @@ npm run test:browser   # real-Chromium suites; needs a running build, see script
 ```
 
 `npm test` runs `validate:contact`, `validate:passages`, `validate:grammar`,
-`validate:vocab`, `test:first-visit`, `test:access`, `test:practice` and
+`validate:vocab`, `test:first-visit`, `test:pages` (the home screen and course pages), `test:access`, `test:practice` and
 `test:stripe`. The validators catch mechanical problems only; new content still
 needs a close read.
 

@@ -143,10 +143,10 @@ for (const [label, time, expectDawn] of [["morning 08:00", "2026-10-05T08:00:00-
   const seed = () => { localStorage.setItem("voco_word_srs_v1", JSON.stringify({ "agreement-support-1::confirm": { box: 1, maxBox: 1, timesSeen: 1, lastResult: "incorrect", nextReviewDate: "2020-01-01" } })); localStorage.setItem("voco_progress_v1", JSON.stringify({ "agreement-support-1": { studiedAt: "2026-10-04", studiedTs: Date.now() - 86400000 } })); };
   const { ctx, page } = await fresh({ time: "2026-10-05T21:00:00-04:00", init: `(${seed.toString()})(); window.__flash=[]; new MutationObserver(()=>{ const f=document.querySelector("main.vc-first"); if(f && getComputedStyle(f).display!=="none") window.__flash.push(performance.now()); }).observe(document,{childList:true,subtree:true,attributes:true});` });
   await page.goto(BASE, { waitUntil: "load" });
-  await page.waitForSelector("text=due for review", { timeout: 5000 }).catch(() => {});
-  ok("returning user sees normal home (due for review)", await page.getByText(/word.? due for review/).isVisible());
+  await page.waitForSelector("text=/words? due/", { timeout: 5000 }).catch(() => {});
+  ok("returning user sees normal home (words due)", await page.getByText(/\d+ words? due/).first().isVisible());
   ok("returning user sees Tonight's study", await page.getByText("Tonight's study", { exact: true }).isVisible());
-  ok("returning user sees science note", (await page.locator("text=/How much (sleep|self-testing)/").count()) > 0);
+  ok("returning user no longer sees the intro sentence or the science note", (await page.locator("text=/Study a level before bed|How much (sleep|self-testing)/").count()) === 0);
   ok("returning user does not see the first-visit question", (await page.getByText("Which word fits the blank?").count()) === 0);
   const flash = await page.evaluate(() => window.__flash);
   ok("first-visit view never visible to a returning device (pre-paint script)", flash.length === 0, JSON.stringify(flash));

@@ -641,3 +641,36 @@ changed and why:
   in `test:access` now also asserts that the home page never carries a trial link, the terms, the
   price or a Stripe link. Twenty deliberate breaks were all caught, each restored byte for byte. The
   `verify1` browser suite was updated (it needs Playwright and was not run).
+
+## 2026-10-22: Home screen and course pages
+
+The design note is in `CLAUDE.md` ("Home screen and course pages"). Design and copy only: routes,
+access rules, Stripe, the paywall's logic, analytics events and localStorage keys are as they were.
+What changed and why:
+
+- **The change.** The home screen and the course pages now speak the first screen's language: its
+  colors, its mark, its filled and outlined buttons, few words, one obvious action. The home has
+  one filled button when words are due ("3 words due" and Review, with a small Study link and the
+  still-learning rows folded in), no intro sentence and no science card, and a compact card per
+  course (title, a one-line tagline, a thin bar, "N of M levels"). A course page has a title, one
+  line, one scrolling row of section pills, and light cards with one filled button each. Locked
+  levels are a lock and a name; the price and the 7-day free trial are said once, in one card per
+  section.
+- **Fewer words.** At 390 px the home went from 261 words to 107, and the SAT course page (Vocabulary
+  tab, not subscribed) from 265 to 117. No em dashes. Fraunces is only the wordmark and the page and
+  course titles; type is 12, 14, 16 and 24 px (Inter) plus 20 px (Fraunces).
+- **Readable and tappable.** Muted text is at least 4.5:1 on night and on every dawn surface (dawn
+  uses the darker plum the first screen already had). Every target is at least 44 px tall. The page
+  pads for `env(safe-area-inset-*)`.
+- **Kept on purpose.** The science facts stay on the study-complete screen, `/how-it-works` and the
+  info dialog (`components/ScienceNote.js` and `SCIENCE_FACTS` stay, unused). `TrialLink` and its
+  placements (`preview`, `unlock`, `unlock-error`) are untouched; the new paywall card is a plain
+  link to `/unlock`. The loading shell now follows the night or dawn palette, because the home does.
+- **Not done, and why.** `viewport-fit=cover` is not set: it would change every other screen, and
+  `env(safe-area-inset-top)` is 0 without it. The top bar was therefore not seen under a Dynamic Island.
+- **Tests.** New `test:pages` (93 checks, in `npm test`); 58 deliberate breaks were all caught, each
+  restored byte for byte. The four Playwright suites were updated for the new copy and the contrast
+  sweep now covers the course page (they need Playwright and were not run; `node --check` only).
+- **Checked live** at 390, 375 and 360 px wide, night and dawn: no overflow, no target under 44 px,
+  the pills never clipped, one paywall card per section, none for a subscriber, and
+  `trial_cta_clicked` still sent from a sample page and `/unlock`.

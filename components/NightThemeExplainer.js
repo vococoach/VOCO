@@ -24,12 +24,13 @@ import { SLEEP_SCIENCE } from "@/lib/sleepScience";
 //     the full explanation lives. A first-time visitor has no streaks yet, so
 //     nothing about streaks is in it.
 //
-// `iconClassName`/`iconStyle` let a screen that isn't the dark shell (the
-// first-visit screen, which follows the real time of day) color the control to
-// match its own background; the defaults are the dark shell's colors.
+// `iconClassName`/`iconStyle` let a screen color the control to match its own
+// background. The defaults are the muted text color of the current palette (night or
+// dawn, at least 4.5:1 on the page), which is what the home screen's header uses.
+const DEFAULT_ICON_STYLE = { color: "var(--vc-subtext)" };
 export default function NightThemeExplainer({
-  iconClassName = "text-[#6E699B] hover:text-[#9B97C4] focus-visible:text-[#9B97C4]",
-  iconStyle,
+  iconClassName = "hover:opacity-80",
+  iconStyle = DEFAULT_ICON_STYLE,
   label,
   compact = false,
 }) {
@@ -56,7 +57,7 @@ export default function NightThemeExplainer({
           onClick={open}
           // Padding + equal negative margin: a 44px tap target around a 16px
           // icon without shifting the header layout.
-          className={`p-3.5 -m-3.5 rounded-full ${iconClassName}`}
+          className={`p-3.5 -m-3.5 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:[outline-color:var(--vc-focus)] ${iconClassName}`}
           style={iconStyle}
         >
           <Info size={16} />
@@ -106,15 +107,12 @@ export default function NightThemeExplainer({
                 {SLEEP_SCIENCE.retrieval}
               </p>
               <p>
-                The colors follow the actual time of day, wherever you are in the app: deep night
-                blues in the evening, warm dawn tones in the morning — not which screen you're on.
-                The home screen also shifts gently with your local time — evenings point you to
-                tonight's study, and mornings bring back last night's words.
+                The colors follow the time of day: night blues in the evening, dawn tones in the
+                morning. Evenings suggest tonight's study, and mornings bring back last night's words.
               </p>
               <p>
-                Two different streaks: the flame counts days you completed any quiz; the sunrise is
-                your night-to-morning streak — consecutive mornings you quizzed the words you
-                studied the night before. Tap either one to share it as an image.
+                Two streaks. The flame counts days you finished a quiz. The sunrise counts mornings
+                in a row you quizzed the words you studied the night before. Tap one to share it.
               </p>
               <p className="text-xs text-[#9B97C4]">{SLEEP_SCIENCE.hedge}</p>
             </div>
