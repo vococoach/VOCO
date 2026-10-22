@@ -616,3 +616,28 @@ changed and why:
   page-side code was run in the in-app browser).
 - **Left out on purpose.** The mark does not change with the phase (the owner said to leave it on
   dawn as it is), and the manifest still sets no `display`.
+
+## 2026-10-22: The trial leaves the first screen
+
+The design note is in `CLAUDE.md` ("Follow-up, 2026-10-22" under the first-visit screen). What
+changed and why:
+
+- **The change.** After an answer, the first screen no longer shows "Start free trial" and "7 days
+  free, then $1.99/month. Cancel anytime. Full access to every course." Keep going is the only
+  action, with one muted line under it: "Free to start. No sign-up." The block existed only after an
+  answer, so the question screen is unchanged. Terms of Service and Privacy Policy stay in the footer.
+- **Kept on purpose.** `components/TrialLink.js`, `TRIAL_TERMS`, the sample pages and `/unlock` (the
+  price, the terms and the trial links, with their `preview`, `unlock` and `unlock-error`
+  placements), the legal pages, the free tier, the paywall and Stripe were not touched. The
+  `first-visit` placement of `trial_cta_clicked` is simply no longer sent. The event and the other
+  placements work as before, which was checked live on a sample page and on `/unlock`;
+  `first_question_answered` and `keep_going_clicked` still fire from the first screen.
+- **Fit.** The answered screen is about 17px shorter. At 375 by 667 it ends at y=592 with 27px to
+  spare (it was 11px). Checked at 390 by 844, 360 by 740 and 375 by 667 in both phases: no
+  overflow, no jump (the stack grows steadily and has settled by 240ms), and the largest empty gap
+  after answering is 87px, 39px and 41px.
+- **Tests.** `test:first-visit` went from 189 to 198 checks (the new line, no trial link or price in
+  the screen's code, the other placements untouched, Terms and Privacy kept). The built-page check
+  in `test:access` now also asserts that the home page never carries a trial link, the terms, the
+  price or a Stripe link. Twenty deliberate breaks were all caught, each restored byte for byte. The
+  `verify1` browser suite was updated (it needs Playwright and was not run).

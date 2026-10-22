@@ -387,12 +387,15 @@ re-litigated or silently changed.
   "First-screen polish, stage 2" below), and one real free question; after
   answering (right or wrong) there is instant feedback with the explanation, a
   primary **Keep going** (a real next page: `/sets/agreement-support-1/quiz`,
-  the free level the question came from) and a quieter **Start free trial**
-  link with "7 days free, then $1.99/month. Cancel anytime." beside it (the
-  line is `TRIAL_TERMS` in `lib/purchase.js`, and every start-trial link
-  anywhere goes through `components/TrialLink.js`, which counts it and is
-  required by the test to sit next to that line). Below the first screen is the
-  list of the four courses, so the other three stay discoverable. A returning
+  the free level the question came from; it is the screen's only action) with
+  one muted line of fine print under it, "Free to start. No sign-up." There is
+  **no trial link, no price and no trial terms on this screen** (since
+  2026-10-22, see the follow-up below; it used to show "Start free trial" with
+  "7 days free, then $1.99/month. Cancel anytime. Full access to every course.").
+  The trial and the price first appear on the sample pages and `/unlock`. Every
+  start-trial link anywhere still goes through `components/TrialLink.js`, which
+  counts it and is required by the test to sit next to the `TRIAL_TERMS` line
+  (`lib/purchase.js`). Below the first screen is the list of the four courses, so the other three stay discoverable. A returning
   device skips all of it and gets the normal home (review, tonight's study).
   **First-screen polish, stage 1 (2026-10-21).** The header carries the Voco mark
   (see "Brand mark, icons and share image") and a labelled "How it works" link
@@ -461,7 +464,7 @@ re-litigated or silently changed.
   load-bearing: a fold's padding goes on an inner element (padding on the clipped element
   itself stops it reaching zero height), and `.vc-unfold` keeps 4px of padding inside its
   clip, cancelled by a negative margin, so the keyboard focus ring on Keep going is not cut
-  off (checked with real Tab presses). Keep going, the trial link and its terms, and the
+  off (checked with real Tab presses). Keep going, its fine print and the
   explanation are not in the served HTML at all until an answer (asserted on the built page).
   **Taller phones: no dead band.** The spacing grows with the SMALL viewport height
   (`svh`, which does not change as mobile browser toolbars slide in and out, unlike `dvh`),
@@ -472,7 +475,7 @@ re-litigated or silently changed.
   screen height alone, never on what is showing, so answering does not move the card on a
   tall phone for any reason except the chip folding. `--vc-strip-gap` can be generous because
   the line leaves on answering, so the answered screen pays nothing for it. The sentence
-  (19px) and the options (56px) do not grow. **Measured 2026-10-21** (largest empty gap
+  (19px) and the options (56px) do not grow. **Measured 2026-10-21, while the trial block was still on the answered screen** (largest empty gap
   between two blocks, measuring to the footer's text; production build; before / after
   answering): **375×667** 83 / 25px, content ends at y=550 before answering and y=608
   after, with the footer's 44px targets starting at y=619 (11px to spare), and no scrolling
@@ -489,6 +492,39 @@ re-litigated or silently changed.
   (compared against the previous text). Those strings are shared, so the returning-home
   dialog and the closing screen show the same punctuation; the full returning-home dialog
   in `components/NightThemeExplainer.js` and `SCIENCE_FACTS` were not touched.
+  **Follow-up, 2026-10-22: the trial left the first screen (the owner's decision).**
+  After an answer the screen showed a small "Start free trial" link with "7 days free,
+  then $1.99/month. Cancel anytime. Full access to every course." under Keep going. That
+  block is gone, so Keep going is the only action, and one muted, centered line takes its
+  place: "Free to start. No sign-up." It is the same size and color family as the old fine
+  print (a 12px `<p>` in `--vc-subtext`, 5.99:1 at night and 5.25 to 6.20:1 on the dawn
+  gradient; not a link, not a button, no handler). The block only ever existed after an
+  answer, so the question screen did not change. Terms of Service and Privacy Policy stay in
+  the footer. **Where the trial and price still show after the first visit:** the sample
+  pages (`/preview/...`: "$1.99/month for full access to every course" and the terms line
+  beside the button), `/unlock` (the terms line beside both buttons, the price in the pitch),
+  the locked cards, and the Terms page; none of those files changed. **Analytics:** the
+  `first-visit` value of `placement` on `trial_cta_clicked` is no longer sent by anything.
+  The event and its other values (`preview`, `unlock`, `unlock-error`) are untouched, and in
+  a real browser the sample page and `/unlock` each still fire it with their own label
+  (checked 2026-10-22); `first_question_answered` and `keep_going_clicked` still fire from
+  the first screen, and it sends no trial event. Older data may still contain `first-visit`.
+  The funnel's third step can now only be reached after Keep going, through a sample page or
+  `/unlock`, not from the first screen. Privacy section 4 needs no change (same events, same
+  one property, and "which screen it was on" is still true). **Layout:** with the two-line
+  block replaced by one line the answered screen is about 17px shorter and nothing else
+  moved (no spacing value changed; the glide is still the chip's 42px). **Measured
+  2026-10-22** (production build, Night and Dawn identical; largest empty gap before / after
+  answering; answered content ends at y, footer targets start at y): **375×667** 83 / 41px,
+  y=592 (footer 619, 27px to spare, was 11px); **390×844** 92 / 87px, y=723 (footer 796);
+  **360×740** 63 / 39px, y=669 (footer 692). No overflow or horizontal scroll in any of them.
+  Sampled mid-animation at each size, the section height never changes, the stack grows
+  steadily and never touches the footer, and everything has settled by 240ms. 430×932 was not
+  re-measured (its last figures, 131 / 125px, are above and include the old block). The
+  first-visit tests assert the new line (exact words, muted, after the button, only after an
+  answer), that the screen's code has no `TrialLink`, `TRIAL_TERMS`, price or payment link,
+  that the other placements are untouched, and that the built page never carries a trial
+  link, the terms or the price.
   **Speed and no-flash design.** The server renders the first-visit view and it
   is usable the moment the HTML arrives — no `invisible` gate, nothing waiting
   on localStorage. After hydration, `app/page.js` swaps to the returning view
@@ -1443,10 +1479,10 @@ Three custom Vercel Web Analytics events, all through `trackEvent()` in
 |---|---|---|
 | `first_question_answered` | a first-time visitor answers the first-visit question (once per answer; right or wrong) | none |
 | `keep_going_clicked` | they tap **Keep going** after answering | none |
-| `trial_cta_clicked` | any start-trial link is tapped (all go through `components/TrialLink.js`) | `placement`: `first-visit`, `preview`, `unlock` or `unlock-error` — a fixed screen label, nothing about the person |
+| `trial_cta_clicked` | any start-trial link is tapped (all go through `components/TrialLink.js`) | `placement`: `preview`, `unlock` or `unlock-error` (`first-visit` was sent by the first screen's trial link until 2026-10-22; that link is gone, so nothing sends it now) — a fixed screen label, nothing about the person |
 
 No cookies, no user or customer ids, nothing derived from progress. `placement` is the
-one property, added so the three trial buttons can be compared; it is not personal data
+one property, added so the trial buttons on different screens can be compared; it is not personal data
 and is easy to drop (delete the argument in `TrialLink`). Privacy §4 names these events;
 if one is added, removed or given a property, Privacy has to change with it.
 **Plan caveat — not confirmed:** Vercel documents custom events as available on Pro and
@@ -1685,7 +1721,8 @@ components/
                          data-returning; never visible to a new visitor)
   FirstVisit.js           The first-visit home screen (chip, headline and promise,
                          one real free question on a raised card, course line,
-                         Keep going / trial link) + the course list
+                         Keep going and one line of fine print; no trial link or
+                         price) + the course list
                          below it — see "First-visit screen instead of onboarding"
   TrialLink.js            The one component every start-trial link uses (counts
                          trial_cta_clicked); must sit beside TRIAL_TERMS

@@ -342,7 +342,7 @@ if (existsSync(indexHtmlPath)) {
   ok("home HTML: chip, headline, promise, then the question (instruction, sentence, four options), the note, the course strip, the footer and the courses list, in that order", where.every((i, n) => i >= 0 && (n === 0 || i > where[n - 1])), where.join(" < "));
   ok("home HTML: nothing for a new visitor to dismiss (no open dialog, no onboarding)", !/<dialog[^>]*\sopen[\s=>]/.test(body) && !/onboard/i.test(body));
   const q = getFirstVisitQuestion().quiz;
-  ok("home HTML: Keep going, the trial link, the trial terms and the explanation are not in the page until an answer", !body.includes("Keep going") && !body.includes("Start free trial") && !body.includes(purchase.TRIAL_TERMS) && !body.includes(q.explanation.split('"')[0]), "");
+  ok("home HTML: Keep going, its fine print and the explanation are not in the page until an answer, and the page never carries a trial link, the trial terms or the price", !body.includes("Keep going") && !body.includes("Free to start") && !body.includes("Start free trial") && !body.includes(purchase.TRIAL_TERMS) && !body.includes(purchase.PRICE_LABEL) && !body.includes("buy.stripe.com") && !body.includes(q.explanation.split('"')[0]), "");
   ok("home HTML: the chip, the note and the strip start open, and all four options start unanswered", (body.match(/data-folded="false"/g) || []).length === 3 && !/data-folded="true"/.test(body) && (body.match(/data-state="idle"/g) || []).length === 4 && !/data-state="(correct|wrong)"/.test(body));
   ok("home HTML: the course strip is plain text (not inside a link or button)", !new RegExp(`<(a|button)[^>]*>[^<]*${strip.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`).test(body));
 } else {

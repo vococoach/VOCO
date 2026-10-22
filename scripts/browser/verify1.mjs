@@ -22,7 +22,7 @@ const settled = (page) => page.evaluate(() => Promise.all(document.getAnimations
 const LARGEST_GAP = () => {
   const sec = document.querySelector(".vc-first section");
   const p = (t) => [...sec.querySelectorAll("p")].find((e) => e.textContent.trim().startsWith(t));
-  const els = [sec.querySelector("header"), sec.querySelector(".vc-chip"), sec.querySelector("h1"), sec.querySelector("h1 + p"), sec.querySelector(".vc-card"), p("Four courses"), [...sec.querySelectorAll("a")].find((a) => a.textContent.trim() === "Keep going"), [...sec.querySelectorAll("a")].find((a) => a.textContent.trim() === "Start free trial")?.parentElement, sec.querySelector("footer a")];
+  const els = [sec.querySelector("header"), sec.querySelector(".vc-chip"), sec.querySelector("h1"), sec.querySelector("h1 + p"), sec.querySelector(".vc-card"), p("Four courses"), [...sec.querySelectorAll("a")].find((a) => a.textContent.trim() === "Keep going"), p("Free to start"), sec.querySelector("footer a")];
   const rects = els.filter((e) => e && getComputedStyle(e).visibility !== "hidden" && e.getBoundingClientRect().height > 0 && !e.closest("[aria-hidden='true']")).map((e) => e.getBoundingClientRect());
   rects.sort((a, b) => a.top - b.top);
   let max = 0;
@@ -64,10 +64,11 @@ const lum = (rgb) => { const [r, g, b] = rgb.match(/\d+/g).map(Number).map((v) =
   await page.getByRole("button", { name: "Uphold" }).click({ force: true }); // second tap ignored
   ok("a second tap changes nothing", (await page.locator('[aria-label="not correct"]').count()) === 1);
   ok("Keep going appears", await page.getByRole("link", { name: "Keep going" }).isVisible());
-  const trial = page.getByRole("link", { name: "Start free trial" });
-  ok("quieter trial link with exact terms beside it", (await trial.isVisible()) && (await page.getByText("7 days free, then $1.99/month. Cancel anytime.", { exact: false }).isVisible()));
+  ok("one muted fine-print line under Keep going", await page.getByText("Free to start. No sign-up.").isVisible());
+  ok("no trial link, trial terms, price or payment link on the first screen", (await page.getByRole("link", { name: /free trial/i }).count()) === 0 && (await page.getByText("$1.99").count()) === 0 && (await page.locator('a[href*="buy.stripe.com"]').count()) === 0);
+  ok("Keep going is the only action in the answered block (the fine print is not a link)", (await page.locator(".vc-unfold a, .vc-unfold button").count()) === 1 && (await page.locator(".vc-unfold p", { hasText: "Free to start" }).locator("a, button").count()) === 0);
   const geo2 = await page.evaluate(() => { const sec = document.querySelector(".vc-first section"); const kids = [...sec.children].filter((e) => e.tagName !== "FOOTER"); return { innerH: innerHeight, bottom: Math.round(kids[kids.length - 1].getBoundingClientRect().bottom), footer: Math.round(sec.querySelector("footer").getBoundingClientRect().bottom) }; });
-  ok("answered state (explanation + Keep going + trial) also fits without scrolling", geo2.bottom <= geo2.innerH && geo2.footer <= geo2.innerH, JSON.stringify(geo2));
+  ok("answered state (explanation + Keep going + fine print) also fits without scrolling", geo2.bottom <= geo2.innerH && geo2.footer <= geo2.innerH, JSON.stringify(geo2));
   await shot(page, `v-night-wrong.png`, {});
   const events = await page.evaluate(() => (window.vaq || []).map((a) => JSON.stringify(a)));
   ok("first_question_answered fired once, no properties", events.filter((e) => e.includes("first_question_answered")).length === 1, events.join(" "));
@@ -98,7 +99,7 @@ const lum = (rgb) => { const [r, g, b] = rgb.match(/\d+/g).map(Number).map((v) =
   await ctx.close();
 }
 
-// ---- 2. fresh visitor, RIGHT answer + trial click + info icon
+// ---- 2. fresh visitor, RIGHT answer + no trial on this screen + the How it works dialog
 {
   const { ctx, page } = await fresh({ time: "2026-10-05T14:00:00-04:00" });
   await page.goto(BASE, { waitUntil: "networkidle" });
@@ -110,10 +111,9 @@ const lum = (rgb) => { const [r, g, b] = rgb.match(/\d+/g).map(Number).map((v) =
   await page.getByRole("button", { name: "Uphold" }).click();
   ok("right answer: green check + explanation", (await page.locator('[aria-label="correct"]').count()) === 1 && (await page.locator('[aria-label="not correct"]').count()) === 0);
   await shot(page, `v-midday-right.png`, {});
-  await page.evaluate(() => { document.querySelector('a[href^="https://buy.stripe.com"]').addEventListener("click", (e) => e.preventDefault(), true); });
-  await page.getByRole("link", { name: "Start free trial" }).click();
+  ok("no payment link on the first screen to click", (await page.locator('a[href*="buy.stripe.com"]').count()) === 0);
   const ev = await page.evaluate(() => (window.vaq || []).map((a) => JSON.stringify(a)));
-  ok("trial_cta_clicked fired with placement only", ev.some((e) => e.includes("trial_cta_clicked") && e.includes('"placement":"first-visit"')), ev.join(" "));
+  ok("the answer was counted and the first screen sends no trial_cta_clicked (that placement is gone; the preview and unlock pages still send theirs)", ev.some((e) => e.includes("first_question_answered")) && !ev.some((e) => e.includes("trial_cta_clicked")), ev.join(" "));
   const cl = page.errors; ok("no console errors (right path)", cl.length === 0, cl.join(" | "));
   await ctx.close();
 }
