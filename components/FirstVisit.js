@@ -18,7 +18,7 @@ const strip = getCourseStrip();
 // screen: a chip saying the sample is free, the headline and the one-line promise
 // (both from lib/site.js, the same words the page title and share preview use), one
 // real free question they can answer right now on a raised card, a quiet line naming
-// the four courses and — once they have answered — a real next step into that free
+// the courses (only when more than one is live, see lib/liveCourses.js) and — once they have answered — a real next step into that free
 // level (Keep going, the only action, with one muted line of fine print under it; there
 // is no trial link and no price on this screen). It is server-rendered and fully usable
 // the moment the HTML arrives; nothing waits on localStorage, the clock or a client-side
@@ -37,8 +37,9 @@ const strip = getCourseStrip();
 // chip, the line under the options and the course strip leave once the question is
 // answered (they fold away, see `.vc-fold` in app/globals.css) and the explanation and
 // the Keep going block take their place. On taller phones the spacing grows a little so
-// the screen has no band of empty space. The courses list below it is there so the
-// other courses stay discoverable; it is not part of that first screen.
+// the screen has no band of empty space. The course list below it is there so the
+// courses stay discoverable; it is not part of that first screen. With one course live it
+// is a single card with no "Courses" heading, and the strip line is left out.
 
 // A block that leaves once the question is answered. It folds to nothing rather than
 // vanishing, so what is below it glides up instead of jumping, and once folded it is out
@@ -167,12 +168,14 @@ export default function FirstVisit() {
             </div>
           )}
 
-          {/* Plain text, not links: the courses themselves are listed below this screen. */}
-          <Fold folded={answered} className="pt-[var(--vc-strip-gap)]">
-            <p className="text-center text-xs leading-4 text-balance" style={{ color: "var(--vc-subtext)" }}>
-              {strip.text}
-            </p>
-          </Fold>
+          {/* Plain text, not links: the courses themselves are listed below this screen. With one course live there is no line to show. */}
+          {strip && (
+            <Fold folded={answered} className="pt-[var(--vc-strip-gap)]">
+              <p className="text-center text-xs leading-4 text-balance" style={{ color: "var(--vc-subtext)" }}>
+                {strip.text}
+              </p>
+            </Fold>
+          )}
         </div>
 
         <footer className="mt-auto flex items-center justify-center gap-1 text-xs" style={{ color: "var(--vc-subtext)" }}>
@@ -187,7 +190,7 @@ export default function FirstVisit() {
       </section>
 
       <section className="mx-auto max-w-md px-4 pb-10 pt-2">
-        <h2 className="font-display text-lg mb-3">Courses</h2>
+        {courses.length > 1 && <h2 className="font-display text-lg mb-3">Courses</h2>}
         <div className="space-y-3">
           {courses.map((course) => (
             <Link

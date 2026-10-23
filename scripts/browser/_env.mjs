@@ -34,3 +34,27 @@ function findChromium() {
 export async function launch(chromium) {
   return chromium.launch({ executablePath: findChromium(), args: ["--no-sandbox"] });
 }
+
+// Which of these courses the app under test shows. A live course's page opens (200); a course that is
+// not live (lib/liveCourses.js) redirects home (307). Asked of the running app, not read from the repo,
+// so the answer is about the build that is actually being driven.
+export async function probeLiveCourses(courseIds) {
+  const live = [];
+  for (const id of courseIds) {
+    const r = await fetch(`${BASE}/courses/${id}`, { redirect: "manual" });
+    if (r.status === 200) live.push(id);
+  }
+  return live;
+}
+
+// For suites that check every course (verify2): say SKIP and stop, with a success exit, when the app under
+// test hides some of them. Build with every course in LIVE_COURSES to run them; verify4 covers the
+// single-course launch.
+export async function requireAllCoursesLive(suite, courseIds) {
+  const live = await probeLiveCourses(courseIds);
+  const hidden = courseIds.filter((id) => !live.includes(id));
+  if (hidden.length > 0) {
+    console.log(`SKIP ${suite}: it checks every course, and the app at ${BASE} hides ${hidden.join(", ")} (LIVE_COURSES in lib/liveCourses.js). Build with every course live to run it.`);
+    process.exit(0);
+  }
+}

@@ -1,6 +1,9 @@
 import { chromium } from "playwright-core";
-import { BASE, launch, shot } from "./_env.mjs";
+import { BASE, launch, shot, requireAllCoursesLive } from "./_env.mjs";
 const wb = await import("../../lib/wordbanks.js");
+// This suite checks the free set and the gate across EVERY course (run through scripts/register-loader-all-courses.mjs, as
+// `npm run test:browser` does). Against a build that hides some courses (lib/liveCourses.js) it says SKIP: verify4 covers that.
+await requireAllCoursesLive("verify2", wb.allCourses.map((c) => c.id));
 const purchase = await import("../../lib/purchase.js");
 const flat = wb.getAllWordsFlat();
 const isLockedWord = (w) => purchase.isLevelLocked(w.categoryId, w.levelNumber, false);

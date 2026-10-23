@@ -77,7 +77,7 @@ const screens = {
   "preview": ["", async (page, sweep) => { await page.goto(BASE + "/preview/disagreement-refutation"); }, null, true],
   "first-visit": ["", async (page, sweep) => { await page.goto(BASE + "/"); await page.getByRole("button", { name: "Uphold" }).click(); await sweep("answered"); }, null, true],
   "home (returning)": ["", async (page, sweep) => { await page.goto(BASE + "/"); await page.waitForSelector("text=/words? due/"); await sweep("home"); }, DUE],
-  "course (SAT, non-subscriber)": ["", async (page, sweep) => { await page.goto(BASE + "/courses/sat-vocab"); await page.waitForSelector("text=Full access to every course"); await sweep("course"); }, null, true],
+  "course (SAT, non-subscriber)": ["", async (page, sweep) => { await page.goto(BASE + "/courses/sat-vocab"); await page.waitForSelector("aside[aria-label=Subscription]"); await sweep("course"); }, null, true],
   "course (SAT, subscriber)": ["", async (page, sweep) => { await page.goto(BASE + "/courses/sat-vocab"); await page.waitForSelector("text=Foundational"); await sweep("course"); }, DUE],
 };
 const only = process.argv[2];

@@ -1,7 +1,12 @@
 import { chromium } from "playwright-core";
-import { BASE, launch, shot } from "./_env.mjs";
+import { BASE, launch, shot, probeLiveCourses } from "./_env.mjs";
 import { PROMISE } from "../../lib/site.js";
 const browser = await launch(chromium);
+// Which courses the app under test shows (lib/liveCourses.js). The first screen names the live courses in one line only when
+// more than one is live, and a hidden course's deep link goes home.
+const COURSE_IDS = ["sat-vocab", "everyday-vocabulary", "professional-vocabulary", "gre-vocab"];
+const LIVE = await probeLiveCourses(COURSE_IDS);
+const EXPECT_STRIP = LIVE.length > 1;
 let pass = 0, fail = 0;
 const ok = (name, cond, extra = "") => { cond ? pass++ : fail++; console.log(`${cond ? "PASS" : "FAIL"} ${name}${extra ? "  — " + extra : ""}`); };
 
@@ -22,7 +27,7 @@ const settled = (page) => page.evaluate(() => Promise.all(document.getAnimations
 const LARGEST_GAP = () => {
   const sec = document.querySelector(".vc-first section");
   const p = (t) => [...sec.querySelectorAll("p")].find((e) => e.textContent.trim().startsWith(t));
-  const els = [sec.querySelector("header"), sec.querySelector(".vc-chip"), sec.querySelector("h1"), sec.querySelector("h1 + p"), sec.querySelector(".vc-card"), p("Four courses"), [...sec.querySelectorAll("a")].find((a) => a.textContent.trim() === "Keep going"), p("Free to start"), sec.querySelector("footer a")];
+  const els = [sec.querySelector("header"), sec.querySelector(".vc-chip"), sec.querySelector("h1"), sec.querySelector("h1 + p"), sec.querySelector(".vc-card"), [...sec.querySelectorAll("p")].find((e) => /^(Two|Three|Four) courses:/.test(e.textContent.trim())), [...sec.querySelectorAll("a")].find((a) => a.textContent.trim() === "Keep going"), p("Free to start"), sec.querySelector("footer a")];
   const rects = els.filter((e) => e && getComputedStyle(e).visibility !== "hidden" && e.getBoundingClientRect().height > 0 && !e.closest("[aria-hidden='true']")).map((e) => e.getBoundingClientRect());
   rects.sort((a, b) => a.top - b.top);
   let max = 0;
@@ -38,8 +43,9 @@ const lum = (rgb) => { const [r, g, b] = rgb.match(/\d+/g).map(Number).map((v) =
   const h1 = await page.locator("h1").innerText();
   ok("headline", /Study tonight\.\s*Quiz tomorrow\./.test(h1), JSON.stringify(h1));
   ok("promise line", await page.getByText(PROMISE).isVisible());
-  ok("chip, the line under the options and the course strip are showing before an answer", (await page.getByText("Free sample · no sign-up").isVisible()) && (await page.getByText("One question. No account needed.").isVisible()) && (await page.getByText("Four courses: SAT · Everyday · Professional · GRE").isVisible()));
-  ok("the course strip is not a link or a button", (await page.locator("a, button").filter({ hasText: "Four courses" }).count()) === 0);
+  const stripShown = (await page.getByText(/^(Two|Three|Four) courses: SAT/).count()) > 0;
+  ok("chip and the line under the options are showing before an answer; the course strip too, but only while more than one course is live", (await page.getByText("Free sample · no sign-up").isVisible()) && (await page.getByText("One question. No account needed.").isVisible()) && stripShown === EXPECT_STRIP && (!stripShown || (await page.getByText(/^(Two|Three|Four) courses: SAT/).isVisible())), `live: ${LIVE.join(", ")}`);
+  ok("the course strip is not a link or a button", (await page.locator("a, button").filter({ hasText: /courses: SAT/ }).count()) === 0);
   const geo = await page.evaluate(() => {
     const sec = document.querySelector(".vc-first section");
     const kids = [...sec.children].filter((e) => e.tagName !== "FOOTER");
@@ -59,7 +65,7 @@ const lum = (rgb) => { const [r, g, b] = rgb.match(/\d+/g).map(Number).map((v) =
   await page.getByRole("button", { name: "Overturn" }).click(); // WRONG on purpose
   await settled(page);
   ok("wrong answer shows explanation", await page.getByText("Keeping a decision in place despite pressure").isVisible());
-  ok("once answered, the chip, the line under the options and the course strip are gone", !(await page.getByText("Free sample · no sign-up").isVisible()) && !(await page.getByText("One question. No account needed.").isVisible()) && !(await page.getByText("Four courses: SAT").isVisible()));
+  ok("once answered, the chip, the line under the options and the course strip are gone", !(await page.getByText("Free sample · no sign-up").isVisible()) && !(await page.getByText("One question. No account needed.").isVisible()) && !(await page.getByText(/courses: SAT/).isVisible()));
   ok("wrong answer marked, correct revealed", (await page.locator('[aria-label="not correct"]').count()) === 1 && (await page.locator('[aria-label="correct"]').count()) === 1);
   await page.getByRole("button", { name: "Uphold" }).click({ force: true }); // second tap ignored
   ok("a second tap changes nothing", (await page.locator('[aria-label="not correct"]').count()) === 1);
@@ -169,8 +175,15 @@ for (const [label, time, expectDawn] of [["morning 08:00", "2026-10-05T08:00:00-
 // ---- 6. a deep link to a course page no longer shows any intro
 {
   const { ctx, page } = await fresh();
-  await page.goto(BASE + "/courses/everyday-vocabulary", { waitUntil: "networkidle" });
-  ok("course deep link goes straight to the course", await page.getByRole("heading", { name: "Everyday Vocabulary" }).isVisible());
+  await page.goto(BASE + "/courses/sat-vocab", { waitUntil: "networkidle" });
+  ok("course deep link goes straight to the course", await page.getByRole("heading", { name: "SAT Vocab" }).isVisible());
+  if (LIVE.includes("everyday-vocabulary")) {
+    await page.goto(BASE + "/courses/everyday-vocabulary", { waitUntil: "networkidle" });
+    ok("a live course's deep link goes straight to that course", await page.getByRole("heading", { name: "Everyday Vocabulary" }).isVisible());
+  } else {
+    await page.goto(BASE + "/courses/everyday-vocabulary", { waitUntil: "networkidle" });
+    ok("a hidden course's deep link goes to the home screen (a redirect, not a 404 or a blank page)", new URL(page.url()).pathname === "/" && (await page.getByText("Which word fits the blank?").isVisible()));
+  }
   ok("no dialog auto-open on course page", (await page.locator("dialog[open]").count()) === 0);
   await ctx.close();
 }

@@ -8,6 +8,7 @@ import PassageCard from "@/components/PassageCard";
 import PassageChart from "@/components/PassageChart";
 import TrialLink from "@/components/TrialLink";
 import { getPreviewSample } from "@/lib/preview";
+import { courseScope } from "@/lib/courseScope";
 import { PRICE_LABEL, TRIAL_LABEL, TRIAL_TERMS, isSubscribedCached } from "@/lib/purchase";
 import { getActivityTheme, NIGHT } from "@/lib/timeTheme";
 
@@ -34,6 +35,7 @@ export default function PreviewPage() {
   const params = useParams();
   const router = useRouter();
   const sample = getPreviewSample(params.categoryId);
+  const scope = courseScope();
   const [subscribed, setSubscribed] = useState(null); // null = not checked yet
   const [selected, setSelected] = useState(null);
   const [order, setOrder] = useState([0, 1, 2, 3]);
@@ -122,9 +124,9 @@ export default function PreviewPage() {
 
         {answered && (
           <div className="rounded-2xl p-5 border text-center" style={{ backgroundColor: theme.card, borderColor: `${theme.accent}66` }}>
-            <p className="font-display text-xl mb-1" style={{ color: theme.text }}>{PRICE_LABEL} for full access to every course</p>
+            <p className="font-display text-xl mb-1" style={{ color: theme.text }}>{PRICE_LABEL} for full access to {scope.access}</p>
             <p className="text-sm mb-4" style={{ color: theme.subtext }}>
-              {countLine} One subscription unlocks every course.
+              {countLine} One subscription unlocks {scope.all}.
             </p>
             <TrialLink
               placement="preview"

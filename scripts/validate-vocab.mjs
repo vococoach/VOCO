@@ -12,7 +12,10 @@
 // are shuffled); no duplicate words anywhere in the library (a word in two
 // places would have two spaced-repetition identities); no duplicate quiz
 // sentences; level ids unique (word ids are derived from level id + word, so unique words imply unique ids).
-import { courses } from "../lib/wordbanks.js";
+//
+// It reads `allCourses`, not `courses`: a course that is not live (lib/liveCourses.js) is hidden from
+// learners but its words stay in the repo, so they are validated like the rest.
+import { allCourses as courses } from "../lib/wordbanks.js";
 
 let checks = 0;
 const problems = [];

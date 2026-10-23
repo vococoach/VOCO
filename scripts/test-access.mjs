@@ -3,6 +3,11 @@
 // page). Plain Node, no browser, no Stripe: it tests the rules and the
 // seeded-progress behavior. Route-level redirects and the live pages were
 // verified in a real browser — see CLAUDE.md.
+//
+// It checks the whole library and every rule, so it runs with EVERY course live
+// (`npm run test:access` goes through scripts/register-loader-all-courses.mjs), even
+// while some are hidden for learners (lib/liveCourses.js). The built pages further
+// down reflect the real switch, so they are checked against that instead.
 
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import path from "node:path";
@@ -37,6 +42,10 @@ const { CONTACT_EMAIL, CONTACT_MAILTO } = await import("../lib/contact.js");
 const { SITE_URL } = await import("../lib/site.js");
 const { getCourseStrip, getFirstVisitQuestion } = await import("../lib/firstVisit.js");
 const { courses, categories } = wb;
+ok("this suite runs with every course live (use npm run test:access)", courses.length === wb.allCourses.length && categories.length === wb.allCategories.length);
+// The switch as written in the repo, which is what the built pages below were made with.
+const REAL_LIVE = JSON.parse(readFileSync(path.join(root, "lib/liveCourses.js"), "utf8").match(/export const LIVE_COURSES = (\[[^\]]*\]);/)[1]);
+const realCourses = courses.filter((c) => REAL_LIVE.includes(c.id));
 const { isLevelLocked, isCategoryLocked, isFreeLevel, isPassageLocked, isGrammarCategoryLocked, FREE_CATEGORY_BY_COURSE } = purchase;
 
 // ---------- the free set, exactly as decided ----------
@@ -278,7 +287,7 @@ ok(
     !unlock.replace(unlockFailure, "").includes("Having trouble?") &&
     !/href=\{CONTACT_MAILTO\}/.test(unlock.replace(unlockFailure, ""))
 );
-ok("the sample-question prompt uses the existing 'full access to every course' wording", /for full access to every course/.test(read("app/preview/[categoryId]/page.js")));
+ok("the sample-question prompt names what a subscription covers from the live courses (lib/courseScope.js), not by hand", /for full access to \{scope\.access\}/.test(read("app/preview/[categoryId]/page.js")) && /unlocks \{scope\.all\}/.test(read("app/preview/[categoryId]/page.js")));
 
 // ---------- Terms and Privacy ----------
 const termsHtmlPath = path.join(root, ".next/server/app/terms.html");
@@ -291,10 +300,11 @@ if (existsSync(termsHtmlPath) && existsSync(privacyHtmlPath)) {
   const privacy = strip(privacyRaw);
   for (const id of FREE_CATS) {
     const cat = categories.find((c) => c.id === id);
-    ok(`Terms names the free category ${cat.title}`, terms.includes(cat.title));
+    const live = REAL_LIVE.includes(wb.getCategoryCourse(id).id);
+    ok(live ? `Terms names the free category ${cat.title}` : `Terms leaves out ${cat.title} (its course is not live)`, live ? terms.includes(cat.title) : !terms.includes(cat.title));
   }
   ok("Terms says only Foundational and Intermediate are free", /only the Foundational and Intermediate levels are free/.test(terms));
-  ok("Terms names the locked tiers of the free categories", /the Advanced and Expert levels of those free categories/.test(terms));
+  ok("Terms names the locked tiers of the free categories", REAL_LIVE.length > 1 ? /the Advanced and Expert levels of those free categories/.test(terms) : /the Advanced and Expert levels of that free category/.test(terms));
   for (const g of courses.flatMap((c) => c.grammar || [])) ok(`Terms lists the paid grammar category ${g.title}`, terms.includes(g.title));
   ok("Terms no longer calls Boundaries or the Tide Pool passage free", !/Boundaries[^.]*free/.test(terms) && !/first reading passage[^.]*free/.test(terms));
   ok("Terms states price, trial, auto-conversion and monthly renewal until cancelled", terms.includes("$1.99/month") && terms.includes("7-day free trial") && /automatically becomes a paid subscription/.test(terms) && /renews every month/.test(terms) && /until you cancel/.test(terms));
@@ -336,15 +346,16 @@ if (existsSync(indexHtmlPath)) {
   // question comes before everything else, there is nothing to dismiss, and nothing that only
   // exists after an answer is in the page.
   const body = html.slice(html.indexOf("</head>"));
-  const strip = getCourseStrip().text;
-  const marks = ["Free sample · no sign-up", "<h1", PROMISE, "Which word fits the blank?", "______", ">Overturn<", ">Delay<", ">Uphold<", ">Forget<", "One question. No account needed.", strip, "Terms of Service", ">Courses<"];
+  const realStrip = getCourseStrip(realCourses);
+  const strip = realStrip ? realStrip.text : null;
+  const marks = ["Free sample · no sign-up", "<h1", PROMISE, "Which word fits the blank?", "______", ">Overturn<", ">Delay<", ">Uphold<", ">Forget<", "One question. No account needed.", ...(strip ? [strip] : []), "Terms of Service", ...(realCourses.length > 1 ? [">Courses<"] : ["/courses/sat-vocab"])];
   const where = marks.map((m) => body.indexOf(m));
-  ok("home HTML: chip, headline, promise, then the question (instruction, sentence, four options), the note, the course strip, the footer and the courses list, in that order", where.every((i, n) => i >= 0 && (n === 0 || i > where[n - 1])), where.join(" < "));
+  ok("home HTML: chip, headline, promise, then the question (instruction, sentence, four options), the note, the course strip (only with several courses live), the footer and the courses list (one card with no heading while one course is live), in that order", where.every((i, n) => i >= 0 && (n === 0 || i > where[n - 1])), where.join(" < "));
   ok("home HTML: nothing for a new visitor to dismiss (no open dialog, no onboarding)", !/<dialog[^>]*\sopen[\s=>]/.test(body) && !/onboard/i.test(body));
   const q = getFirstVisitQuestion().quiz;
   ok("home HTML: Keep going, its fine print and the explanation are not in the page until an answer, and the page never carries a trial link, the trial terms or the price", !body.includes("Keep going") && !body.includes("Free to start") && !body.includes("Start free trial") && !body.includes(purchase.TRIAL_TERMS) && !body.includes(purchase.PRICE_LABEL) && !body.includes("buy.stripe.com") && !body.includes(q.explanation.split('"')[0]), "");
-  ok("home HTML: the chip, the note and the strip start open, and all four options start unanswered", (body.match(/data-folded="false"/g) || []).length === 3 && !/data-folded="true"/.test(body) && (body.match(/data-state="idle"/g) || []).length === 4 && !/data-state="(correct|wrong)"/.test(body));
-  ok("home HTML: the course strip is plain text (not inside a link or button)", !new RegExp(`<(a|button)[^>]*>[^<]*${strip.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`).test(body));
+  ok("home HTML: the chip, the note and the strip (when there is one) start open, and all four options start unanswered", (body.match(/data-folded="false"/g) || []).length === (strip ? 3 : 2) && !/data-folded="true"/.test(body) && (body.match(/data-state="idle"/g) || []).length === 4 && !/data-state="(correct|wrong)"/.test(body));
+  ok("home HTML: the course strip is plain text (not inside a link or button)", !strip || !new RegExp(`<(a|button)[^>]*>[^<]*${strip.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`).test(body));
 } else {
   console.log("SKIP home <head> checks — run `npm run build` first to produce .next/server/app/index.html");
 }
