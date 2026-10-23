@@ -8,6 +8,7 @@ import VocoMark from "@/components/VocoMark";
 import { TRADEMARK_NOTICE } from "@/lib/legal";
 import { CONTACT_EMAIL, CONTACT_MAILTO } from "@/lib/contact";
 import { courses } from "@/lib/wordbanks";
+import { courseScope } from "@/lib/courseScope";
 import {
   isFreeCategory,
   isFreeLevel,
@@ -115,6 +116,8 @@ export default function UnlockPage() {
     wordsIn(lockedCategories.flatMap((c) => c.levels)) + wordsIn(lockedTierLevels);
   const lockedTierLabels = [...new Set(lockedTierLevels.map((l) => l.label))];
   const freeTitles = joinList(freeCategories.map((c) => c.title));
+  // "SAT Vocab" while one course is live, "every course" once there are several (lib/courseScope.js).
+  const scope = courseScope(courses);
 
   return (
     <main className="min-h-dvh bg-[#1A1C3A] px-4 py-8 flex items-center justify-center">
@@ -140,7 +143,7 @@ export default function UnlockPage() {
             </div>
             <p className="font-display text-xl text-[#EDEBFF] mb-2">You're unlocked</p>
             <p className="text-sm text-[#9B97C4] mb-6">
-              Every course is now available on this device.
+              {scope.subject} is now available on this device.
             </p>
             <Link
               href="/"
@@ -169,7 +172,7 @@ export default function UnlockPage() {
               Start {TRIAL_LABEL}
             </TrialLink>
             <p className="text-center text-xs text-[#6E699B] mb-3">
-              {TRIAL_TERMS} One subscription gives you full access to every course.
+              {TRIAL_TERMS} One subscription gives you full access to {scope.access}.
             </p>
             <p className="text-center text-sm text-[#9B97C4] mb-3">
               Having trouble? Email us at{" "}
@@ -198,12 +201,12 @@ export default function UnlockPage() {
           <div>
             <div className="text-center mb-6">
               <Lock size={28} color="#8B85FF" className="mx-auto mb-3" />
-              <p className="font-display text-xl text-[#EDEBFF] mb-2">Unlock every course</p>
+              <p className="font-display text-xl text-[#EDEBFF] mb-2">Unlock {scope.access}</p>
               <p className="text-sm text-[#9B97C4]">
-                One subscription gives you full access to every course. The {joinList(freeTierLabels)} levels of{" "}
+                One subscription gives you full access to {scope.access}. The {joinList(freeTierLabels)} levels of{" "}
                 {freeTitles} stay free ({wordsIn(freeLevels)} words, with quizzes and spaced repetition); everything
                 else — {lockedCategories.length} more categories, the {joinList(lockedTierLabels)}{" "}
-                {lockedTierLabels.length === 1 ? "level" : "levels"} of the free ones, {lockedWordCount} more words in
+                {lockedTierLabels.length === 1 ? "level" : "levels"} of the free {freeCategories.length === 1 ? "one" : "ones"}, {lockedWordCount} more words in
                 all — unlocks together with a {TRIAL_LABEL}, then {PRICE_LABEL}.
                 {lockedPassageCount > 0 && ` That includes ${lockedPassageCount} reading passages`}
                 {lockedCrossTextCount > 0 && `, ${lockedCrossTextCount} cross-text pairs`}
@@ -217,7 +220,7 @@ export default function UnlockPage() {
               <p className="text-xs text-[#9B97C4]">One subscription unlocks all of these:</p>
               {lockedByCourse.map(({ course, categories: locked, tiers, passages, crossTextPairs, grammar }) => (
                 <div key={course.id} className="space-y-2">
-                  <p className="text-xs uppercase tracking-wide text-[#8B85FF]">{course.title}</p>
+                  {scope.many && <p className="text-xs uppercase tracking-wide text-[#8B85FF]">{course.title}</p>}
                   {tiers.map(({ category, levels }) => (
                     <div key={category.id} className="flex items-center gap-2 text-sm text-[#EDEBFF]">
                       <Lock size={14} color="#6E699B" />
@@ -260,7 +263,7 @@ export default function UnlockPage() {
               Start {TRIAL_LABEL}
             </TrialLink>
             <p className="text-center text-xs text-[#6E699B] mb-3">
-              {TRIAL_TERMS} One subscription gives you full access to every course.
+              {TRIAL_TERMS} One subscription gives you full access to {scope.access}.
             </p>
             <Link href="/" className="block text-center text-[#8B85FF] text-sm">
               Not yet — back home

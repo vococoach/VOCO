@@ -89,12 +89,13 @@ re-litigated or silently changed.
     exactly one product/price. Because each
     locked card on the home screen sits under its own category heading, a
     bare price next to it reads as "$1.99 to unlock *this*." So wherever
-    the price appears in the UI it's paired with its scope — "every
-    course" now that there are several: the course pages' one paywall card ("Full access to every
-    course", then "$1.99/month. 7-day free trial."; the locked rows carry no price, since
+    the price appears in the UI it's paired with its scope: "every
+    course" once several courses are live, the course's name while one is
+    (2026-10-22, see "Launching and hiding courses"; `lib/courseScope.js` builds both from the
+    live list): the course pages' one paywall card ("Full access to SAT Vocab" / "Full access to
+    every course", then "$1.99/month. 7-day free trial."; the locked rows carry no price, since
     2026-10-22), the `/unlock` pitch and error state ("One
-    subscription gives you full access to every course", "$1.99/month after
-    your trial, for full access to every course"), the sample-question
+    subscription gives you full access to SAT Vocab" / "... to every course"), the sample-question
     prompt, the cancellation banner, and the subscribed footer (since 2026-10-22 just "You have
     full access.", which is not a price). If per-category, per-course or tiered
     pricing is ever added, that copy — and this bullet — need to change
@@ -400,7 +401,7 @@ re-litigated or silently changed.
   The trial and the price first appear on the sample pages and `/unlock`. Every
   start-trial link anywhere still goes through `components/TrialLink.js`, which
   counts it and is required by the test to sit next to the `TRIAL_TERMS` line
-  (`lib/purchase.js`). Below the first screen is the list of the four courses, so the other three stay discoverable. A returning
+  (`lib/purchase.js`). Below the first screen is the list of the live courses (four before 2026-10-22; with one course live, one card and no "Courses" heading). A returning
   device skips all of it and gets the normal home (review, tonight's study).
   **First-screen polish, stage 1 (2026-10-21).** The header carries the Voco mark
   (see "Brand mark, icons and share image") and a labelled "How it works" link
@@ -433,7 +434,8 @@ re-litigated or silently changed.
   the header (mark, wordmark, "How it works"); a chip, "Free sample · no sign-up"; the
   headline and, under it, the promise; a raised question card holding the 14px instruction,
   the sentence at 19px, the four 56px options and, under them, "One question. No account
-  needed."; a quiet line, "Four courses: SAT · Everyday · Professional · GRE"; and the 44px
+  needed."; a quiet line, "Four courses: SAT · Everyday · Professional · GRE" (only while more
+  than one course is live; with one course there is no line, 2026-10-22); and the 44px
   footer links. **The words.** The headline (`HEADLINE_LINES`, shown on two lines) and the
   promise (`PROMISE`) live in `lib/site.js`; the screen, the page title ("Voco: " + the
   headline), the meta description, the share-preview description and its alt text all read
@@ -752,7 +754,10 @@ re-litigated or silently changed.
 ## Courses — Voco is a multi-course platform
 
 Voco began as SAT-vocab-only. It is now a vocabulary-learning platform with
-**SAT Vocab** as one course among others, all under the one subscription.
+**SAT Vocab** as one course among others, all under the one subscription. **Since 2026-10-22 it
+launches with SAT Vocab only: which courses learners can see is one switch,
+`lib/liveCourses.js`; see "Launching and hiding courses" below. Everything in this section
+describes all four courses, which still exist and are still tested.**
 
 **Why Everyday Vocabulary exists.** SAT Vocab is exam-shaped: its content and its
 organization exist to match the real Digital SAT. That's a narrow audience. Everyday
@@ -796,6 +801,72 @@ free-set text updates itself (it is computed); when adding a category, nothing e
 changes. A free category's Advanced tier and SAT's Expert tier are locked (the gate is per
 tier, `isLevelLocked()`); the other categories are wholly paid. Passages, cross-text pairs
 and grammar have no free item at all now — see "SAT Vocab has five sections".
+
+## Launching and hiding courses (2026-10-22): one switch
+
+**Voco launches with SAT Vocab only.** Which courses learners can see is ONE line,
+`LIVE_COURSES` in `lib/liveCourses.js` (`["sat-vocab"]` now). Everyday, Professional and GRE
+stay in the repo, whole, and are validated and tested like before; they are only hidden.
+Launching one is adding its id to that line. Nothing else changes by hand.
+
+**How it works.** `lib/wordbanks.js` keeps every course in `allCourses` / `allCategories` (read by
+the validators and the tests only) and exports `courses` / `categories`, the live ones, which the
+whole app reads. Every lookup (`findLevel`, `getCourse`, `getAllWordsFlat`, `getCategoryCourse`,
+the "still learning" and due-for-review sets, the sample questions) walks the live view, so a
+hidden course has no pages, links, levels, words or samples, and `lib/access.js`, which was not
+touched, treats a hidden word like a word that no longer exists. A typo in the switch fails the
+build (a name that is not a course, or no course at all). SAT must stay live: the first screen's
+free question and the practice test live in it.
+
+**What a learner sees with one course live.** The first screen has no "Four courses: ..." line and
+no "Courses" heading: the course is one card below the footer links. The home screen has no
+"Courses" heading or list: the course is one card, a little larger (a 24px Fraunces title), below
+the due, tonight and last-night cards. A new learner's "Tonight's study" has no "pick a course"
+buttons: one button, "Open SAT Vocab". The Terms and /unlock name the live course only. With
+several courses live all of that is back as it was (the strip, the heading, the list, the buttons).
+
+**Saved progress is never deleted.** A learner's records in a hidden course stay in `localStorage`
+(`voco_progress_v1`, `voco_word_srs_v1`, ...). The word lists skip them (`isWordIdLocked` treats a
+word that is not in the live word bank as locked, even for a subscriber), so they are not served,
+counted or suggested, and they are all there again when the course launches. Milestones and
+"tonight" are worked out from the live courses only.
+
+**Old links.** A URL that belongs to a hidden course (its page, a level's study or quiz, its
+"still learning" sets, a sample page) is a real redirect to the home screen (HTTP 307, `Location: /`)
+from a server layout (`app/courses/[courseId]/layout.js`, `app/sets/[setId]/layout.js`,
+`app/preview/[categoryId]/layout.js`, using `belongsToHiddenCourse()`), so there is no 404 and no
+blank page. An id that never existed keeps what it had (the page's own handling). There is no
+sitemap, robots file or site search in the app, so there is nothing to remove there; the test
+fails if any file other than `lib/wordbanks.js` imports `allCourses` or `allCategories`, so one added
+later cannot list a hidden course by accident.
+
+**The wording follows the count.** `lib/courseScope.js` builds the few phrases that say what a
+subscription covers: "full access to SAT Vocab" / "Unlock SAT Vocab" / "One subscription unlocks all
+of SAT Vocab" / "SAT Vocab is now available on this device" while one course is live, and the old
+"every course" wording once there are several. The paywall card, the sample page and /unlock use it.
+The Terms page says "SAT Vocab has one free category" and "Everything else:" with one course, and
+"Each course has one free category" and "in every course" with several. `test-launch` fails if any
+other file writes "every course", "all courses", "several courses" or "four courses" by hand. **The
+price is unchanged and is the owner's decision when more courses launch.** Two things the code
+cannot reach: the Stripe product description ("Full access to every Voco course, with spaced
+repetition review", in the Stripe Dashboard) and the Terms' "Last updated" date (left at October 16,
+2026). Both need an owner's edit.
+
+**Tests.** `scripts/test-launch.mjs` (`npm run test:launch`, in `npm test`): the switch is one line
+of real courses with SAT on; nothing is deleted; `scripts/launch-checks.mjs` runs for the switch as
+shipped, for each hidden course launched alone and for every course launched (lists, lookups, word
+pools, samples, first-screen line, wording); no file outside `lib/wordbanks.js` can read a hidden
+course or names one; the real build has no strip or heading and every hidden URL is a 307 home; and
+**the re-launch test**: a scratch copy of the app has a hidden course added to the switch by editing
+that one line, is built (about 10 seconds), and is checked: the course is on the first screen and in
+the Terms, its routes open, the courses still hidden redirect, and the "every course" wording is back.
+The suites that check the whole library and every rule (`validate:vocab`, `test:first-visit`,
+`test:pages`, `test:access`) run with every course live through
+`scripts/register-loader-all-courses.mjs`; the loader (`scripts/loader-hooks.mjs`) can swap the
+switch for a process, with `VOCO_TEST_LIVE_COURSES` ("all" or a list of ids), and the app never reads
+it. The built-page checks in `test:access` follow the switch as written. Playwright: `verify4.mjs`
+checks the same things in a browser; `verify2.mjs` (every course) says SKIP against a build that
+hides some, and `verify1.mjs` follows the live courses (it needs Playwright; none was run here).
 
 ## The free set (narrowed 2026-10-05) — decided with the owner, don't re-litigate
 
@@ -843,7 +914,8 @@ see what's due. *Below:* a compact card per course (its title, its one-line `tag
 levels" from `CourseProgress` / `getCourseProgress()`, where a level counts once it has ever been
 perfect (the same rule as the mastery milestone); the categories-mastered count is still
 computed but no longer shown), leading to `/courses/[courseId]`, which shows that course's
-category list (the old home screen, scoped). "Back" from a level's study/quiz page
+category list (the old home screen, scoped). With one course live (2026-10-22) there is no "Courses"
+heading or list: that course's card stands on its own. "Back" from a level's study/quiz page
 returns to its course page; the due-for-review set spans courses, so it goes home.
 
 **"Tonight's study" has no default course, on purpose — and, since 2026-09-23,
@@ -1767,7 +1839,11 @@ app/
   review/                 Spaced-repetition review session (capped at 20)
   preview/[categoryId]/   One sample question from any locked item (category,
                          tier, grammar category, passage or pair), with the
-                         "$1.99/month for full access" prompt after answering
+                         "$1.99/month for full access" prompt after answering;
+                         layout.js sends an item of a hidden course home (307)
+  courses/[courseId]/layout.js and sets/[setId]/layout.js
+                         The same redirect for a hidden course's page and for its
+                         levels' study and quiz routes (belongsToHiddenCourse())
   sets/[setId]/study/     Study flow — setId is a real level id (e.g.
                          "agreement-support-2"), a per-category "still
                          learning" id (missedWordsId()), or
@@ -1881,7 +1957,12 @@ lib/
                          step afterwards by setReturningAttribute in visitor.js)
   firstVisit.js           The first-visit question (Uphold), its fixed
                          on-screen option order, and getCourseStrip() (the
-                         "Four courses: SAT · Everyday · ..." line, from `courses`)
+                         "Four courses: SAT · Everyday · ..." line, from the live
+                         `courses`; null while only one course is live)
+  liveCourses.js          THE SWITCH: LIVE_COURSES, the ids of the courses learners can
+                         see (see "Launching and hiding courses")
+  courseScope.js          The phrases that say what a subscription covers ("SAT Vocab"
+                         with one course live, "every course" with several)
   analytics.js            The three custom events + trackEvent() (the only
                          place track() is called)
   contact.js              The one place the contact address is written
@@ -1913,9 +1994,12 @@ lib/
   scoreTier.js            Tier thresholds (100 / 70 / below) + colors,
                          shared by QuizResults and the home screen
   wordbanks.js            The `courses` layer (courses > categories > levels >
-                         words), the SAT Vocab content, and the helpers that
-                         work across every course (findLevel(),
-                         getAllWordsFlat(), getCategoryCourse()), plus
+                         words): `allCourses` (every course, for the validators and
+                         tests) and `courses` (the live ones, which the app reads),
+                         the SAT Vocab content, and the helpers that
+                         work across every live course (findLevel(),
+                         getAllWordsFlat(), getCategoryCourse(),
+                         belongsToHiddenCourse()), plus
                          getMissedWordsLevel() / getDueForReviewLevel() for
                          the dynamic study sets and getSetCategoryId() for
                          paywall gating
@@ -2002,13 +2086,25 @@ scripts/
                          other email-shaped string, the address typed anywhere else, a
                          link not built from the constant, a changed value, or the
                          retired provider's name (added 2026-10-16)
-  browser/                Real-Chromium suites (verify1–3, contrast) against a
+  test-launch.mjs         `npm run test:launch` — the one switch: it is one line of real
+                         courses with SAT on; nothing is deleted; launch-checks.mjs for
+                         every choice of live courses; nothing but wordbanks.js reads a
+                         hidden course; the real build's pages and routes; and the
+                         RE-LAUNCH test (a scratch copy with a hidden course added to the
+                         switch is built and checked). Added 2026-10-22
+  launch-checks.mjs       The checks test-launch.mjs runs once per choice of live courses
+                         (not run on its own)
+  browser/                Real-Chromium suites (verify1–4, contrast) against a
                          running build; need `npm i --no-save playwright-core` and
                          BASE_URL — see browser/_env.mjs. `npm run test:browser`.
-                         NOT part of `npm test`.
-  loader-hooks.mjs / register-loader.mjs  Let plain Node import the app's own
-                         extensionless/"@/" modules (and next/server) for the
-                         scripts above (`npm test` runs every non-browser script)
+                         NOT part of `npm test`. verify4 is the live-courses suite.
+  loader-hooks.mjs / register-loader.mjs / register-loader-all-courses.mjs
+                         Let plain Node import the app's own extensionless/"@/"
+                         modules (and next/server) for the scripts above (`npm test`
+                         runs every non-browser script). The loader can also swap the
+                         one switch for a process (VOCO_TEST_LIVE_COURSES, or the
+                         -all-courses entry point): the suites that check all of the
+                         content and every rule run with every course live
 public/                   Served as-is: favicon.ico, icon.svg, apple-touch-icon.png,
                          icons/ (192, 512, maskable 512), og.jpg, manifest.webmanifest.
                          Generated from brand-assets/ (see "Brand mark, icons and share image")

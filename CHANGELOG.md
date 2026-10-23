@@ -674,3 +674,30 @@ What changed and why:
 - **Checked live** at 390, 375 and 360 px wide, night and dawn: no overflow, no target under 44 px,
   the pills never clipped, one paywall card per section, none for a subscriber, and
   `trial_cta_clicked` still sent from a sample page and `/unlock`.
+
+## 2026-10-22: Launch with SAT Vocab only
+
+The design note is in `CLAUDE.md` ("Launching and hiding courses"). Nothing was deleted, and Stripe,
+the free set, the access rules and the paywall logic are as they were. What changed and why:
+
+- **One switch.** `LIVE_COURSES` in `lib/liveCourses.js` (`["sat-vocab"]`) decides which courses
+  learners can see. Everyday, Professional and GRE stay in the repo and in every validator and test.
+  Launching a course is adding its id to that line.
+- **What is gone with one course live.** The first screen's "Four courses: ..." line and "Courses"
+  heading; the home screen's "Courses" heading and list (the course is one card now); the "pick a
+  course" buttons (one button, "Open SAT Vocab"); the other courses from /unlock and the Terms.
+  Their words are never served by review, due-for-review or "still learning", and a learner's saved
+  progress in them is kept for when they return.
+- **Old links.** A URL of a hidden course (its page, a level, its "still learning" sets, a sample page)
+  redirects to the home screen (HTTP 307), from three server layouts. No 404, no blank page.
+- **Wording.** Every place that said "every course" now says "SAT Vocab" while one course is live
+  (the paywall card, /unlock, the sample page, the Terms), and says "every course" again by itself
+  when several are live (`lib/courseScope.js`). The list of changes was shown to the owner before this
+  was committed. Not touched, and needing the owner: the Stripe product description and the Terms'
+  "Last updated" date.
+- **Tests.** New `test:launch` (in `npm test`): the switch, "nothing deleted", the per-course checks for
+  every choice of live courses, the real build's pages and routes, and the re-launch test (a scratch
+  copy with a hidden course added to that one line is built and checked). The suites that check all
+  of the content and every rule now run with every course live (`scripts/register-loader-all-courses.mjs`).
+  New Playwright suite `verify4`; `verify1` follows the live courses and `verify2` says SKIP against
+  a build that hides some (Playwright is not installed here, so none of them was run).

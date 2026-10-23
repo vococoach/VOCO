@@ -33,7 +33,9 @@ function levelLabel(category, level) {
 // streaks — and it is deliberately NOT scoped to any course: it pulls from
 // every course's words together, so nobody has to pick a course just to see
 // what's due. Below it, a compact card per course leads to that course's own
-// category list (app/courses/[courseId]/page.js).
+// category list (app/courses/[courseId]/page.js). Which courses exist for a learner is one
+// switch (lib/liveCourses.js): with ONE course live there is no "Courses" heading and no list,
+// that course's card stands on its own as the main card, and there is nothing to pick between.
 //
 // It is the first screen's palette and button language (see "Home screen and course
 // pages" in app/globals.css), and it follows the real time of day the same way: night
@@ -269,9 +271,18 @@ export default function Home() {
             </div>
             {tonight.kind === "done" ? (
               <p className="vc-muted mt-1 text-sm">Quiz it tomorrow morning.</p>
+            ) : tonight.kind === "choose" && tonight.courses.length === 1 ? (
+              // Nothing to follow yet, and only one course is live: nothing to choose between, so
+              // one button to its levels (quiet while words are due, like the other cards).
+              <>
+                <p className="vc-muted mt-1 text-sm">Pick a level to study tonight.</p>
+                <Link href={`/courses/${tonight.courses[0].id}`} className={`vc-btn mt-3 w-full ${hasDue ? "vc-btn-quiet" : ""}`}>
+                  Open {tonight.courses[0].title}
+                </Link>
+              </>
             ) : tonight.kind === "choose" ? (
               // Nothing to follow yet (no course started), and no default course
-              // on purpose: the learner picks where tonight's study happens. Four equal
+              // on purpose: the learner picks where tonight's study happens. Equal
               // choices, so none is the filled button.
               <>
                 <p className="vc-muted mt-1 text-sm">Pick a course to study tonight.</p>
@@ -310,19 +321,34 @@ export default function Home() {
           </section>
         )}
 
-        <h2 className="vc-muted mb-3 mt-8 text-sm font-semibold">Courses</h2>
-        <div className="space-y-3">
-          {courses.map((course) => (
-            <Link key={course.id} href={`/courses/${course.id}`} className="vc-surface vc-tap p-4">
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="font-display text-xl">{course.title}</h3>
-                <ChevronRight size={18} aria-hidden="true" className="shrink-0" style={{ color: "var(--vc-subtext)" }} />
-              </div>
-              <p className="vc-muted mt-1 text-sm">{course.tagline}</p>
-              <CourseProgress course={course} progress={progress} className="mt-3" />
-            </Link>
-          ))}
-        </div>
+        {courses.length > 1 ? (
+          <>
+            <h2 className="vc-muted mb-3 mt-8 text-sm font-semibold">Courses</h2>
+            <div className="space-y-3">
+              {courses.map((course) => (
+                <Link key={course.id} href={`/courses/${course.id}`} className="vc-surface vc-tap p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="font-display text-xl">{course.title}</h3>
+                    <ChevronRight size={18} aria-hidden="true" className="shrink-0" style={{ color: "var(--vc-subtext)" }} />
+                  </div>
+                  <p className="vc-muted mt-1 text-sm">{course.tagline}</p>
+                  <CourseProgress course={course} progress={progress} className="mt-3" />
+                </Link>
+              ))}
+            </div>
+          </>
+        ) : (
+          // One live course: its card is the main card. No heading, no list. The same card, a
+          // little larger (a page-title-sized Fraunces title), and a whole-card link.
+          <Link href={`/courses/${courses[0].id}`} className="vc-surface vc-tap mt-6 p-5">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="font-display text-2xl">{courses[0].title}</h2>
+              <ChevronRight size={18} aria-hidden="true" className="shrink-0" style={{ color: "var(--vc-subtext)" }} />
+            </div>
+            <p className="vc-muted mt-1 text-sm">{courses[0].tagline}</p>
+            <CourseProgress course={courses[0]} progress={progress} className="mt-4" />
+          </Link>
+        )}
 
         <footer className="mt-8 flex flex-col items-center">
           {ready && (

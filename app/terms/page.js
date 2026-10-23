@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import VocoMark from "@/components/VocoMark";
 import { courses } from "@/lib/wordbanks";
+import { courseScope } from "@/lib/courseScope";
 import { PRICE_LABEL, TRIAL_LABEL, isFreeCategory, isFreeLevel, isLevelLocked, isGrammarCategoryLocked } from "@/lib/purchase";
 
 export const metadata = {
@@ -20,11 +21,16 @@ function joinList(items) {
 // match the app exactly. These lists are therefore computed from the same data
 // and the same one free-set definition (lib/purchase.js) the app enforces — not
 // typed by hand — and scripts/test-access.mjs checks that this page renders
-// them. Course and category names are the app's own.
+// them. Course and category names are the app's own. Only LIVE courses are named (the one
+// switch in lib/liveCourses.js), and the wording is singular while one course is live: "SAT
+// Vocab has one free category" instead of "Each course has one free category".
+const scope = courseScope(courses);
 const freeCategories = courses.flatMap((course) =>
   course.categories.filter((c) => isFreeCategory(c.id)).map((category) => ({ course, category }))
 );
-const freeCategoryText = joinList(freeCategories.map(({ course, category }) => `${category.title} in ${course.title}`));
+const freeCategoryText = joinList(
+  freeCategories.map(({ course, category }) => (scope.many ? `${category.title} in ${course.title}` : category.title))
+);
 const freeTierLabels = joinList([
   ...new Set(freeCategories.flatMap(({ category }) => category.levels.filter((l) => isFreeLevel(category.id, l.level)).map((l) => l.label))),
 ]);
@@ -64,7 +70,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-[#EDEBFF] font-medium mb-2">2. What Voco Is</h2>
             <p>
-              Voco is a vocabulary study tool with several courses, built around spaced
+              Voco is a vocabulary study tool{scope.many ? " with several courses" : ""}, built around spaced
               repetition and words-in-context quizzes. It's meant for personal study use — we
               don't guarantee any particular test score or outcome.
             </p>
@@ -82,14 +88,16 @@ export default function TermsPage() {
           <section>
             <h2 className="text-[#EDEBFF] font-medium mb-2">4. Subscription & Billing</h2>
             <p className="mb-2">
-              <span className="text-[#EDEBFF]">What's free.</span> Each course has one free
-              category: {freeCategoryText}. In those categories, only the {freeTierLabels} levels
-              are free. All of the SAT Vocab strategy guides are also free.
+              <span className="text-[#EDEBFF]">What's free.</span>{" "}
+              {scope.many ? "Each course has one free category" : `${courses[0].title} has one free category`}:{" "}
+              {freeCategoryText}. {scope.many ? "In those categories" : "In that category"}, only the{" "}
+              {freeTierLabels} levels are free. All of the SAT Vocab strategy guides are also free.
             </p>
             <p className="mb-2">
-              <span className="text-[#EDEBFF]">What needs a subscription.</span> Everything else,
-              in every course: the {lockedTierLabels} levels of those free categories (where a
-              category has them), every other category, all SAT Vocab reading passages and
+              <span className="text-[#EDEBFF]">What needs a subscription.</span> Everything else
+              {scope.many ? ", in every course:" : ":"} the {lockedTierLabels} levels of{" "}
+              {scope.many ? "those free categories (where a category has them)" : "that free category"}, every
+              other category, all SAT Vocab reading passages and
               cross-text pairs, the SAT Vocab Grammar &amp; Usage categories ({lockedGrammarTitles}),
               and the SAT Vocab practice test. One subscription unlocks all of it.
             </p>

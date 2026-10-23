@@ -52,6 +52,10 @@ To keep this MVP simple and reliable, based on what we decided:
     Charge, Negative Charge, and Neutral & Academic — since recognizing a
     word's charge is a real GRE vocabulary technique. Harder than the other
     courses at every tier, in an academic/scholarly voice.
+- **One switch for which courses are live.** Voco launches with SAT Vocab only. `LIVE_COURSES` in
+  `lib/liveCourses.js` is the list of course ids learners can see; Everyday, Professional and GRE stay
+  in the repo (and in the tests) and come back, on every screen, link and word list, when their id is
+  added to that line. See "Launching and hiding courses" in `CLAUDE.md`.
 - **No unlock timer.** The quiz is available any time, even right after
   studying. That's intentional for now, so it's easy to test and demo.
   The home screen and course pages do adapt to the time of day (night blues in the
@@ -97,7 +101,8 @@ npm run test:browser   # real-Chromium suites; needs a running build, see script
 ```
 
 `npm test` runs `validate:contact`, `validate:passages`, `validate:grammar`,
-`validate:vocab`, `test:first-visit`, `test:pages` (the home screen and course pages), `test:access`, `test:practice` and
+`validate:vocab`, `test:first-visit`, `test:pages` (the home screen and course pages), `test:launch` (which
+courses are live; it builds a scratch copy with a hidden course switched on), `test:access`, `test:practice` and
 `test:stripe`. The validators catch mechanical problems only; new content still
 needs a close read.
 
