@@ -9,6 +9,50 @@ theme, set in academic/scholarly voice) — see "Courses" below. Read this file 
 making changes — it captures decisions already made, so they shouldn't be
 re-litigated or silently changed.
 
+## Working rules
+
+The owner's standing rules. They apply to every session and every task. If a task seems to need
+breaking one, stop and ask.
+
+**Branches and pull requests**
+- Work only on branches and pull requests. Never merge, and never push to `main`.
+- Run `npm test` and `npm run build` before every PR.
+- Commit with the GitHub noreply identity: the address on `users.noreply.github.com` that is
+  already in this repo's git config. Never use a personal email, and never change git config.
+  Check a new commit with `git log -1 --format='%an <%ae>'` before pushing.
+
+**Hands off unless the task says so**
+- Stripe, the paywall, the access rules, the free tier and analytics. Stripe is `app/api/` and
+  `lib/purchase.js`. The paywall is `components/Paywall.js` and `components/LockedRow.js`. The
+  access rules are `lib/access.js` and the free-set constants in `lib/purchase.js`. Analytics is
+  `lib/analytics.js` and the `<Analytics />` in `app/layout.js`. Reading the code is fine.
+  Changing it, or anything in the Stripe account, is not.
+
+**Secrets**
+- Never print, read aloud or store a token, key or secret. That covers chat, logs, files,
+  commits, PRs and memory notes. If one turns up in terminal scrollback or a pasted message,
+  do not use it or repeat it, and tell the owner to revoke it. `.env.local` is gitignored, so
+  do not `cat` it.
+
+**Copy**
+- Short sentences. No em dashes. Sentence case. Nothing that promises score gains.
+- The longer copy rules are in "Home screen and course pages". Question writing is in
+  "Content rules".
+
+**The SAT mark**
+- Use "SAT" only as an adjective: "SAT Vocab", "SAT vocabulary", "SAT questions". Never as a
+  noun, as in "for the SAT" or "the Digital SAT's sections".
+- Every page that shows the mark carries the College Board notice, `TRADEMARK_NOTICE` in
+  `lib/legal.js`.
+- Never copy official College Board questions. Write every question fresh.
+- The app does not meet these three rules everywhere yet. `docs/BACKLOG.md`, item 3, lists the
+  gaps.
+
+**The owner is a minor**
+- Put no school, last name, location or personal email in any content, commit, PR text, test
+  or doc. The one email address in the repo is the shared contact constant in `lib/contact.js`,
+  and `npm run validate:contact` enforces that.
+
 ## Stack & architecture (deliberate choices, not defaults)
 
 - Next.js 14 App Router, plain JavaScript (no TypeScript), Tailwind.
