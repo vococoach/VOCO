@@ -16,8 +16,9 @@ mark, and "SAT" only as an adjective.
 ### Where the app shows "SAT"
 
 When the audit ran, the ® sign appeared in one place only: inside `TRADEMARK_NOTICE` in
-`lib/legal.js`. It is now also in `TRADEMARK_FOOTER`, the shorter notice. "Yes" in the last column
-means a notice and the ® are both on that page.
+`lib/legal.js`. The same constant now also reaches the other pages through
+`components/TrademarkNotice.js`. "Yes" in the last column means the notice and the ® are both on
+that page.
 
 | Where | What it shows | Notice and ® |
 |---|---|---|

@@ -707,11 +707,12 @@ the free set, the access rules and the paywall logic are as they were. What chan
 Branch `claude/sat-marks-and-privacy`, from the audit at the top of `docs/BACKLOG.md`. Stripe, the
 paywall, the access rules, the free tier and analytics were not touched.
 
-- **The notice.** New `components/TrademarkNotice.js` shows `TRADEMARK_FOOTER` ("SAT® is a registered
-  trademark of the College Board, which does not endorse Voco.", the owner's wording) last in the
-  content column of the course page (all five tabs), the strategy guides, the sample question page,
-  the practice test (intro and results) and the privacy page. The fuller `TRADEMARK_NOTICE` stays,
-  unchanged, on the home screen, the first-visit screen, /unlock and the Terms.
+- **The notice.** New `components/TrademarkNotice.js` shows `TRADEMARK_NOTICE` ("SAT® is a registered
+  trademark of the College Board, which is not affiliated with and does not endorse Voco.") last in
+  the content column of the course page (all five tabs), the strategy guides, the sample question
+  page, the practice test (intro and results) and the privacy page. The home screen, the first-visit
+  screen, /unlock and the Terms print the same sentence, unchanged. The first version of the footer
+  used a shorter sentence. It was replaced on the owner's say, so the app says one thing everywhere.
 - **"SAT" as an adjective.** "the Digital SAT" became "the Digital SAT exam" in the course tagline and
   card text (`lib/wordbanks.js`) and in the pacing guide (`lib/satStrategy.js`).
 - **Rules.** The commit name for this repo is now "Owen" (this checkout's git config; the noreply
@@ -719,15 +720,17 @@ paywall, the access rules, the free tier and analytics were not touched.
   reworded: "Keep personal details (school, last name, location, personal email) out of all content
   and commits."
 - **Measured** at 390x844 in a real browser, before and after. The notice is two lines (33px) at 390,
-  375, 360 and 320px. Every element above it is where it was, and every page grew by exactly 53px at
-  its end. A page that fitted one screen still does, except the Grammar & usage tab for a
+  375 and 360px, breaking after "College Board,", and three lines (50px) at 320px. `text-balance`
+  keeps "College Board" together at 320px, where the plain wrap split it and stranded the last two
+  words. Every element above it is where it was, and at 390px every page grew by exactly 53px at its
+  end. A page that fitted one screen still does, except the Grammar & usage tab for a
   non-subscriber, which fitted exactly (14px spare) and now scrolls by 39px at that one height. The
   Strategy tab has 11px to spare, down from 64. At 320px the home card's tagline wraps to two lines
   (one before).
-- **Tests.** New `test:trademark` (in `npm test`): both wordings, the component's shape, the five
-  pages, a guard that fails for any new page that shows "SAT" with no notice, the contrast of each
-  colour the notice can take (5.99:1 on night, 5.25:1 on dawn), and "SAT" never a noun. Broken on
-  purpose six ways and caught each time.
+- **Tests.** New `test:trademark` (in `npm test`): the wording, pinned exactly with one notice only,
+  the component's shape, the five pages, a guard that fails for any new page that shows "SAT" with no
+  notice, the contrast of each colour the notice can take (5.99:1 on night, 5.25:1 on dawn), and "SAT"
+  never a noun. Broken on purpose eight ways and caught each time.
 - **Not done.** The share image and text, the page head and link preview, `public/og.jpg` and the
   manifest still show "SAT" with no notice. The question stems, and the one noun use that is not
   written out (`getCourseStrip` in `lib/firstVisit.js`), stay open in `docs/BACKLOG.md`.

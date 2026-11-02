@@ -44,10 +44,10 @@ breaking one, stop and ask.
 **The SAT mark**
 - Use "SAT" only as an adjective: "SAT Vocab", "SAT vocabulary", "SAT questions", "the Digital
   SAT exam". Never as a noun, as in "for the SAT" or "the Digital SAT's sections".
-- Every page that shows the mark carries the College Board notice. The home screen, the
-  first-visit screen, /unlock and the Terms have the fuller one (`TRADEMARK_NOTICE`). Every other
-  page renders `components/TrademarkNotice.js` (`TRADEMARK_FOOTER`), last in its content column.
-  See "The College Board notice" below.
+- Every page that shows the mark carries the College Board notice, `TRADEMARK_NOTICE` in
+  `lib/legal.js`. The home screen, the first-visit screen, /unlock and the Terms print it
+  themselves. Every other page renders `components/TrademarkNotice.js`, last in its content
+  column. See "The College Board notice" below.
 - Never copy official College Board questions. Write every question fresh.
 - `npm run test:trademark` checks the first two. Still open, in `docs/BACKLOG.md` item 3: the
   share image and text, the page head and link preview, and the question stems.
@@ -1326,14 +1326,14 @@ restored byte for byte).
 
 ## The College Board notice (2026-11-02): one small footer on every page that shows "SAT"
 
-**One rule, two notices.** Every page that shows "SAT", the course name or the promise carries a
-College Board notice. The home screen, the first-visit screen, /unlock and the Terms keep the
-fuller one, `TRADEMARK_NOTICE` ("... which is not affiliated with and does not endorse Voco."),
-unchanged. Terms section 2 is legal text with its own "Last updated" date, so its words are the
-owner's to change. Every other page renders `components/TrademarkNotice.js`, which shows
-`TRADEMARK_FOOTER` from `lib/legal.js`: "SAT® is a registered trademark of the College Board, which
-does not endorse Voco." That is the owner's own wording, and `test:trademark` pins it. If the two
-sentences should become one, change `lib/legal.js` only, and decide about Terms section 2 first.
+**One notice.** Every page that shows "SAT", the course name or the promise carries the same College
+Board notice, `TRADEMARK_NOTICE` in `lib/legal.js`: "SAT® is a registered trademark of the College
+Board, which is not affiliated with and does not endorse Voco." The home screen, the first-visit
+screen, /unlock and the Terms print it in their own layouts, unchanged (Terms section 2 is legal text
+with its own "Last updated" date, so its words are the owner's to change). Every other page renders
+`components/TrademarkNotice.js`, which shows the same constant. The first version of this footer used
+a shorter sentence ("... which does not endorse Voco."). It was removed on the owner's say so that the
+app says one thing everywhere. `test:trademark` pins the wording and fails if a second notice returns.
 
 **Where it is.** The course page, on all five tabs. Every strategy guide. The sample question page,
 before and after the answer. The practice test's intro and results (the timed modules and the break
@@ -1344,19 +1344,25 @@ preview), `public/og.jpg` and the manifest. A footer cannot sit in those.
 **Why it cannot get in the way.** It is 12px, centred, `leading-snug`, with one top margin (`mt-5`),
 in the normal flow and the last element of the content column. It is never fixed, sticky or
 absolute, so it cannot cover anything, follow the screen or move what is above it. It only makes a
-page 53px longer at its end (20 of margin and two lines of 16.5). Its colour is the page's own muted
+page longer at its end: 53px (20 of margin and two lines of 16.5) from 360 to 390px wide, 70px
+(three lines) at 320px. `text-balance` evens the lines out. Without it the break at 320px fell
+between "College" and "Board" and left "endorse Voco." alone on the last line. It never adds a line,
+so it changes no height. Its colour is the page's own muted
 text, at 4.5:1 or better on that page (asserted in `test:trademark`): `.vc-muted` on the course page,
 which follows night and dawn; `#9B97C4` on the strategy guides and the privacy page, which paint a
 fixed night palette; `theme.subtextAA` on the sample page and the practice test (the plain
 `theme.subtext` is only 3.4:1 on dawn).
 
-**Measured in a real browser, before and after.** On the course page the notice is two lines (33px)
-at 390, 375, 360 and 320px wide, and no measured page scrolls sideways at 390. On every measured page
-the position of every element above the notice is identical to before (the sample pages shuffle
-their options, so only their footprint can be compared: plus 53px). A page that fitted one screen at
-390x844 still does, with one exception. The Strategy tab, the Practice test tab, the practice test
-intro and results, and the sample page before the answer all still fit; the Strategy tab has 11px to
-spare, down from 64. The exception is the Grammar & usage tab for someone who has not subscribed: it
+**Measured in a real browser, before and after.** The notice is two lines (33px) at 390, 375 and 360px
+wide, breaking after "College Board,", and three lines (50px) at 320px, with "College Board" kept
+together. That holds on the course page, the strategy guides, the privacy page and the sample page,
+and no measured page scrolls sideways. On every measured page the position of every element above the
+notice is identical to before (the sample pages shuffle their options, so only their footprint can be
+compared: plus 53px). A page that fitted one screen at 390x844 still does, with one exception. The
+Strategy tab, the Practice test tab, the practice test intro and results, and the sample page before
+the answer all still fit; the Strategy tab has 11px to spare, down from 64. (The long pages were
+measured with the first, shorter wording. At 390px both wordings are two lines, so their heights are
+the same, and the tight pages were measured again with the final wording.) The exception is the Grammar & usage tab for someone who has not subscribed: it
 fitted an 844px screen exactly, with 14px to spare, and now scrolls by 39px at exactly that height.
 A phone browser's window is shorter than its screen, so on a real phone that tab already scrolled
 (not checked on a phone). Nothing on the tab was moved to make room.
@@ -1378,11 +1384,11 @@ written out: `getCourseStrip` in `lib/firstVisit.js` builds "Two courses: SAT ·
 `course.title.split(" ")[0]` once a second course is live. Reword it when that happens
 (`docs/BACKLOG.md` item 9).
 
-**Tests.** `scripts/test-trademark.mjs` (`npm run test:trademark`, in `npm test`): the wording of
-both notices, the component's shape (small, quiet, in the flow, no state), the five pages that
-render it, the every-page guard, the contrast of every colour it can take, and the adjective rule.
-Each check was broken on purpose and caught (six mutations, each restored byte for byte), including a
-new page that shows "SAT" with no notice.
+**Tests.** `scripts/test-trademark.mjs` (`npm run test:trademark`, in `npm test`): the wording
+(pinned exactly, and one notice only), the component's shape (small, quiet, balanced, in the flow, no
+state), the five pages that render it, the every-page guard, the contrast of every colour it can take,
+and the adjective rule. Each check was broken on purpose and caught (eight mutations, each restored
+byte for byte), including a new page that shows "SAT" with no notice.
 
 ## SAT Vocab has five sections — Vocabulary, Passages, Grammar & Usage, Practice Test, Strategy (Practice Test added 2026-09-23; Grammar renamed "Grammar & Usage" 2026-09-24 — see "SAT content coverage" and `CHANGELOG.md` below)
 
@@ -1989,7 +1995,7 @@ components/
                          free trial said once; links to /unlock; no tracking)
   TrademarkNotice.js      The College Board footer for a page that shows "SAT" and has
                          no footer of its own: small, quiet, last in the column, in the
-                         flow; shows TRADEMARK_FOOTER from lib/legal.js (added 2026-11-02)
+                         flow; shows TRADEMARK_NOTICE from lib/legal.js (added 2026-11-02)
   SectionPills.js         The course page's sections as one scrolling row of pills
   CourseProgress.js       A thin bar and "X of N levels" (also ProgressLine, used
                          for passages): home cards + course page

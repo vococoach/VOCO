@@ -35,25 +35,26 @@ function walk(dir) {
   return out;
 }
 
-const { TRADEMARK_NOTICE, TRADEMARK_FOOTER } = await import("../lib/legal.js");
+const { TRADEMARK_NOTICE } = await import("../lib/legal.js");
 const { NIGHT, DAWN } = await import("../lib/timeTheme.js");
 
 // ---------- the wording ----------
 {
-  for (const [name, text] of Object.entries({ TRADEMARK_NOTICE, TRADEMARK_FOOTER })) {
-    ok(`${name} names the mark with the registered sign and the College Board`, /^SAT® is a registered trademark of the College Board, which /.test(text), text);
-    ok(`${name} is one plain sentence that says the College Board does not endorse Voco, with no em dash`, /does not endorse Voco\.$/.test(text) && !/[—!?;]/.test(text) && count(text, /\. /g) === 0);
-  }
-  ok("the footer says what the owner asked it to say", TRADEMARK_FOOTER === "SAT® is a registered trademark of the College Board, which does not endorse Voco.");
-  ok("it is short enough to stay on two lines on a 360px phone (90 characters)", TRADEMARK_FOOTER.length <= 90, String(TRADEMARK_FOOTER.length));
+  ok("the notice names the mark with the registered sign and the College Board", /^SAT® is a registered trademark of the College Board, which /.test(TRADEMARK_NOTICE), TRADEMARK_NOTICE);
+  ok("it is one plain sentence that says the College Board is not affiliated with and does not endorse Voco, with no em dash", /which is not affiliated with and does not endorse Voco\.$/.test(TRADEMARK_NOTICE) && !/[—!?;]/.test(TRADEMARK_NOTICE) && count(TRADEMARK_NOTICE, /\. /g) === 0);
+  ok("it is the wording the home screen, the first screen, /unlock and the Terms already showed, unchanged", TRADEMARK_NOTICE === "SAT® is a registered trademark of the College Board, which is not affiliated with and does not endorse Voco.");
+  ok("it stays one sentence of about a hundred characters (two lines from 360 to 390px wide, three at 320px, measured)", TRADEMARK_NOTICE.length <= 110, String(TRADEMARK_NOTICE.length));
+  const shorter = [...walk("app"), ...walk("components"), ...walk("lib"), ...walk("scripts")].filter((f) => f !== "scripts/test-trademark.mjs" && /\.m?js$/.test(f) && /TRADEMARK_FOOTER/.test(read(f)));
+  ok("there is one notice: the shorter TRADEMARK_FOOTER wording is gone everywhere", shorter.length === 0, shorter.join(", "));
 }
 
 // ---------- the shared component ----------
 {
   const src = code("components/TrademarkNotice.js");
-  ok("it shows TRADEMARK_FOOTER from lib/legal.js and types none of the words itself", /import \{ TRADEMARK_FOOTER \} from "@\/lib\/legal"/.test(src) && /\{TRADEMARK_FOOTER\}/.test(src) && !/College Board|registered trademark|endorse/i.test(src));
+  ok("it shows TRADEMARK_NOTICE from lib/legal.js and types none of the words itself", /import \{ TRADEMARK_NOTICE \} from "@\/lib\/legal"/.test(src) && /\{TRADEMARK_NOTICE\}/.test(src) && !/College Board|registered trademark|endorse/i.test(src));
   ok("it is a footer element with a data-trademark-notice hook", /<footer\b/.test(src) && /data-trademark-notice/.test(src));
   ok("it is small and quiet: 12px, centred, snug, in the muted colour unless the page gives its own", /\btext-xs\b/.test(src) && /\btext-center\b/.test(src) && /\bleading-snug\b/.test(src) && /vc-muted/.test(src) && /color \? ""/.test(src));
+  ok("its lines are balanced, so a narrow phone never splits \"College Board\" or strands the last two words", /\btext-balance\b/.test(src));
   ok("it stays in the flow: never fixed, sticky or absolute, so it cannot cover anything or follow the screen", !/\b(fixed|sticky|absolute|inset-\d|z-\d|top-\d|bottom-\d)\b/.test(src));
   ok("it adds space above itself only (one top margin), so it only lengthens a page at its end", /\bmt-5\b/.test(src) && !/\b(mb|my|pb|py|p)-\d/.test(src));
   ok("it is plain markup: no client directive, state or effects", !/use client|useState|useEffect|\buse[A-Z]\w*\(/.test(src));
@@ -103,7 +104,7 @@ const { NIGHT, DAWN } = await import("../lib/timeTheme.js");
 
   for (const f of ["app/page.js", "components/FirstVisit.js", "app/unlock/page.js", "app/terms/page.js"]) {
     const src = code(f);
-    ok(`${f} keeps showing the fuller notice`, /import \{ TRADEMARK_NOTICE \} from "@\/lib\/legal";/.test(src) && /\{TRADEMARK_NOTICE\}/.test(src));
+    ok(`${f} still prints the same notice itself`,/import \{ TRADEMARK_NOTICE \} from "@\/lib\/legal";/.test(src) && /\{TRADEMARK_NOTICE\}/.test(src));
   }
 }
 
