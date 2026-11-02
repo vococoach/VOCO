@@ -2,7 +2,7 @@
 
 A vocabulary-learning platform. Study before bed, quiz yourself whenever you're ready.
 Voco has multiple courses under one subscription — **SAT Vocab** (the original
-course, matched to the Digital SAT), **Everyday Vocabulary** (general audience, no
+course, matched to the Digital SAT exam), **Everyday Vocabulary** (general audience, no
 exam), **Professional Vocabulary** (working adults, set in real workplace
 situations) and **GRE Vocab** (graduate-level, organized by connotation instead of
 theme, set in academic/scholarly voice) — see "Courses" below. Read this file before
@@ -17,9 +17,11 @@ breaking one, stop and ask.
 **Branches and pull requests**
 - Work only on branches and pull requests. Never merge, and never push to `main`.
 - Run `npm test` and `npm run build` before every PR.
-- Commit with the GitHub noreply identity: the address on `users.noreply.github.com` that is
-  already in this repo's git config. Never use a personal email, and never change git config.
-  Check a new commit with `git log -1 --format='%an <%ae>'` before pushing.
+- Commit with the GitHub noreply address (on `users.noreply.github.com`) and the author name
+  "Owen". The name is set in this checkout's git config and the address in the global one. Never
+  use a personal email, and do not change git config unless the owner asks. Do not rewrite history
+  to change an old commit's name. Check a new commit with `git log -1 --format='%an <%ae>'` before
+  pushing.
 
 **Hands off unless the task says so**
 - Stripe, the paywall, the access rules, the free tier and analytics. Stripe is `app/api/` and
@@ -40,17 +42,19 @@ breaking one, stop and ask.
   "Content rules".
 
 **The SAT mark**
-- Use "SAT" only as an adjective: "SAT Vocab", "SAT vocabulary", "SAT questions". Never as a
-  noun, as in "for the SAT" or "the Digital SAT's sections".
+- Use "SAT" only as an adjective: "SAT Vocab", "SAT vocabulary", "SAT questions", "the Digital
+  SAT exam". Never as a noun, as in "for the SAT" or "the Digital SAT's sections".
 - Every page that shows the mark carries the College Board notice, `TRADEMARK_NOTICE` in
-  `lib/legal.js`.
+  `lib/legal.js`. The home screen, the first-visit screen, /unlock and the Terms print it
+  themselves. Every other page renders `components/TrademarkNotice.js`, last in its content
+  column. See "The College Board notice" below.
 - Never copy official College Board questions. Write every question fresh.
-- The app does not meet these three rules everywhere yet. `docs/BACKLOG.md`, item 3, lists the
-  gaps.
+- `npm run test:trademark` checks the first two. Still open, in `docs/BACKLOG.md` item 3: the
+  share image and text, the page head and link preview, and the question stems.
 
-**The owner is a minor**
-- Put no school, last name, location or personal email in any content, commit, PR text, test
-  or doc. The one email address in the repo is the shared contact constant in `lib/contact.js`,
+**Personal details**
+- Keep personal details (school, last name, location, personal email) out of all content and
+  commits. The one email address in the repo is the shared contact constant in `lib/contact.js`,
   and `npm run validate:contact` enforces that.
 
 ## Stack & architecture (deliberate choices, not defaults)
@@ -1320,6 +1324,72 @@ button, and "nothing else changed" (same routes, same gates, no tracking, no sto
 re-implemented free tier). Each check was broken on purpose and caught (58 mutations, each
 restored byte for byte).
 
+## The College Board notice (2026-11-02): one small footer on every page that shows "SAT"
+
+**One notice.** Every page that shows "SAT", the course name or the promise carries the same College
+Board notice, `TRADEMARK_NOTICE` in `lib/legal.js`: "SAT® is a registered trademark of the College
+Board, which is not affiliated with and does not endorse Voco." The home screen, the first-visit
+screen, /unlock and the Terms print it in their own layouts, unchanged (Terms section 2 is legal text
+with its own "Last updated" date, so its words are the owner's to change). Every other page renders
+`components/TrademarkNotice.js`, which shows the same constant. The first version of this footer used
+a shorter sentence ("... which does not endorse Voco."). It was removed on the owner's say so that the
+app says one thing everywhere. `test:trademark` pins the wording and fails if a second notice returns.
+
+**Where it is.** The course page, on all five tabs. Every strategy guide. The sample question page,
+before and after the answer. The practice test's intro and results (the timed modules and the break
+between them show no "SAT", so they have none). The privacy page. Still without one, and listed in
+`docs/BACKLOG.md` item 3: the share image and share text, the page head (description and link
+preview), `public/og.jpg` and the manifest. A footer cannot sit in those.
+
+**Why it cannot get in the way.** It is 12px, centred, `leading-snug`, with one top margin (`mt-5`),
+in the normal flow and the last element of the content column. It is never fixed, sticky or
+absolute, so it cannot cover anything, follow the screen or move what is above it. It only makes a
+page longer at its end: 53px (20 of margin and two lines of 16.5) from 360 to 390px wide, 70px
+(three lines) at 320px. `text-balance` evens the lines out. Without it the break at 320px fell
+between "College" and "Board" and left "endorse Voco." alone on the last line. It never adds a line,
+so it changes no height. Its colour is the page's own muted
+text, at 4.5:1 or better on that page (asserted in `test:trademark`): `.vc-muted` on the course page,
+which follows night and dawn; `#9B97C4` on the strategy guides and the privacy page, which paint a
+fixed night palette; `theme.subtextAA` on the sample page and the practice test (the plain
+`theme.subtext` is only 3.4:1 on dawn).
+
+**Measured in a real browser, before and after.** The notice is two lines (33px) at 390, 375 and 360px
+wide, breaking after "College Board,", and three lines (50px) at 320px, with "College Board" kept
+together. That holds on the course page, the strategy guides, the privacy page and the sample page,
+and no measured page scrolls sideways. On every measured page the position of every element above the
+notice is identical to before (the sample pages shuffle their options, so only their footprint can be
+compared: plus 53px). A page that fitted one screen at 390x844 still does, with one exception. The
+Strategy tab, the Practice test tab, the practice test intro and results, and the sample page before
+the answer all still fit; the Strategy tab has 11px to spare, down from 64. (The long pages were
+measured with the first, shorter wording. At 390px both wordings are two lines, so their heights are
+the same, and the tight pages were measured again with the final wording.) The exception is the Grammar & usage tab for someone who has not subscribed: it
+fitted an 844px screen exactly, with 14px to spare, and now scrolls by 39px at exactly that height.
+A phone browser's window is shorter than its screen, so on a real phone that tab already scrolled
+(not checked on a phone). Nothing on the tab was moved to make room.
+
+**Adding a page that shows the mark.** Render `<TrademarkNotice />` last in the content column, and
+pass `color` if the page paints its own palette. `test:trademark` scans every `app/**/page.js` for
+"SAT", `course.title`, `course.tagline`, `courseScope(` or `PROMISE`, and fails for a page that has
+one of them and no notice, so a forgotten page fails `npm test`.
+
+**"SAT" as an adjective.** Three strings used it as a noun and now say "exam": the course tagline
+("Words in context for the Digital SAT exam.", 42 characters, exactly the `test:pages` limit), the
+first-screen card text ("the Digital SAT exam's Words in Context questions") and the pacing guide
+("the Digital SAT exam's Reading and Writing section"). At 320px the home card's tagline now wraps to
+two lines where it was one; at 360px and up it is one line, and the first-screen card text is the
+same number of lines as before at every width. `test:trademark` fails on any "SAT" in `app/`,
+`components/`, `lib/` or the manifest that is not followed by Vocab, vocabulary, exam, test, score,
+question(s), administration, domain or the ® sign. One noun use is not covered, because it is not
+written out: `getCourseStrip` in `lib/firstVisit.js` builds "Two courses: SAT · Everyday" from
+`course.title.split(" ")[0]` once a second course is live. Reword it when that happens
+(`docs/BACKLOG.md` item 9).
+
+**Tests.** `scripts/test-trademark.mjs` (`npm run test:trademark`, in `npm test`): the wording
+(pinned exactly, and one notice only), the component's shape (small, quiet, balanced, in the flow, no
+state), the five pages that render it, the every-page guard, the contrast of every colour it can take,
+and the adjective rule. Each check was broken on purpose and caught (eight mutations, each restored
+byte for byte), including a new page that shows "SAT" with no notice.
+
 ## SAT Vocab has five sections — Vocabulary, Passages, Grammar & Usage, Practice Test, Strategy (Practice Test added 2026-09-23; Grammar renamed "Grammar & Usage" 2026-09-24 — see "SAT content coverage" and `CHANGELOG.md` below)
 
 The SAT course was **deepened, not turned into a fourth course**, with harder vocabulary,
@@ -1923,6 +1993,9 @@ components/
                          question" link; never a price
   Paywall.js              The one paywall card per course section (price and
                          free trial said once; links to /unlock; no tracking)
+  TrademarkNotice.js      The College Board footer for a page that shows "SAT" and has
+                         no footer of its own: small, quiet, last in the column, in the
+                         flow; shows TRADEMARK_NOTICE from lib/legal.js (added 2026-11-02)
   SectionPills.js         The course page's sections as one scrolling row of pills
   CourseProgress.js       A thin bar and "X of N levels" (also ProgressLine, used
                          for passages): home cards + course page
@@ -2138,6 +2211,10 @@ scripts/
                          switch is built and checked). Added 2026-10-22
   launch-checks.mjs       The checks test-launch.mjs runs once per choice of live courses
                          (not run on its own)
+  test-trademark.mjs      `npm run test:trademark` (in `npm test`): the College Board
+                         notice and the word "SAT": the wording, the component's shape,
+                         the five pages that render it, every page that shows the mark
+                         has a notice, and no "SAT" written as a noun (added 2026-11-02)
   browser/                Real-Chromium suites (verify1–4, contrast) against a
                          running build; need `npm i --no-save playwright-core` and
                          BASE_URL — see browser/_env.mjs. `npm run test:browser`.

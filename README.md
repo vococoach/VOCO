@@ -3,7 +3,7 @@
 A vocabulary-learning platform. Study before bed, quiz yourself whenever you're ready.
 
 Voco has multiple courses, all under one subscription: **SAT Vocab** (matched to the
-Digital SAT's Words in Context questions), **Everyday Vocabulary** (evergreen words
+Digital SAT exam's Words in Context questions), **Everyday Vocabulary** (evergreen words
 for reading, writing and conversation, organized by theme — no exam required),
 **Professional Vocabulary** (words for meetings, decisions, and leading people, set in
 real workplace situations), and **GRE Vocab** (graduate-level vocabulary organized by
@@ -101,7 +101,8 @@ npm run test:browser   # real-Chromium suites; needs a running build, see script
 ```
 
 `npm test` runs `validate:contact`, `validate:passages`, `validate:grammar`,
-`validate:vocab`, `test:first-visit`, `test:pages` (the home screen and course pages), `test:launch` (which
+`validate:vocab`, `test:first-visit`, `test:pages` (the home screen and course pages), `test:trademark` (the College Board notice and how
+"SAT" is used), `test:launch` (which
 courses are live; it builds a scratch copy with a hidden course switched on), `test:access`, `test:practice` and
 `test:stripe`. The validators catch mechanical problems only; new content still
 needs a close read.
@@ -150,7 +151,7 @@ app/          Routes: home, courses/, sets/[setId]/study + quiz, review/, passag
 components/   Shared UI: first-visit screen (chip, headline, one real question,
               course line), the Voco mark (VocoMark.js, used in every header),
               category/passage/grammar lists, results and milestone cards, share
-              dialog, loading state
+              dialog, the College Board footer (TrademarkNotice.js), loading state
 lib/          Content (wordbanks.js and the per-course files), progress and spaced
               repetition (progress.js), the free-set / subscription rules
               (purchase.js, access.js), time-of-day logic and themes, sleep-science
