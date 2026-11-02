@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import TrademarkNotice from "@/components/TrademarkNotice";
 import { findGuide } from "@/lib/wordbanks";
 import { guideReadingMinutes } from "@/lib/satStrategy";
 
@@ -94,6 +95,9 @@ export default function StrategyGuidePage() {
             Try a passage
           </Link>
         </div>
+
+        {/* This page paints its own night palette, so the notice gets that palette's muted colour. */}
+        <TrademarkNotice color="#9B97C4" />
       </div>
     </main>
   );

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import TrademarkNotice from "@/components/TrademarkNotice";
 import VocoMark from "@/components/VocoMark";
 import { CONTACT_EMAIL, CONTACT_MAILTO } from "@/lib/contact";
 
@@ -161,6 +162,8 @@ export default function PrivacyPage() {
         <Link href="/terms" className="block text-[#8B85FF] text-sm mt-10">
           Read the Terms of Service →
         </Link>
+
+        <TrademarkNotice color="#9B97C4" />
       </div>
     </main>
   );

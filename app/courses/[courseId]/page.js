@@ -12,6 +12,7 @@ import GrammarList from "@/components/GrammarList";
 import PracticeTestTab from "@/components/PracticeTestTab";
 import SectionPills from "@/components/SectionPills";
 import StrategyList from "@/components/StrategyList";
+import TrademarkNotice from "@/components/TrademarkNotice";
 import { getCourse, getCourseSections } from "@/lib/wordbanks";
 import { getAllProgress, getStruggleWordIds } from "@/lib/progress";
 import { accessibleWordIds, countByCategory } from "@/lib/access";
@@ -142,6 +143,9 @@ export default function CoursePage() {
             )}
             {section === "strategy" && <StrategyList guides={course.guides} />}
           </div>
+
+          {/* The College Board notice: last in the column, on every tab. */}
+          <TrademarkNotice />
         </div>
       </div>
     </main>

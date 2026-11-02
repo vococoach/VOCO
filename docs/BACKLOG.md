@@ -1,7 +1,8 @@
 # Voco backlog
 
 The order is the priority. Every item ends with one line that says when it is done.
-Last updated 2 November 2026, against `main` at `60deb65`.
+Last updated 2 November 2026. The audit below was run against `main` at `60deb65`. The branch
+`claude/sat-marks-and-privacy` then fixed its gaps 1 and 3. The status lines say what is left.
 
 ## Item 3 findings: the SAT mark, the College Board notice and borrowed wording
 
@@ -14,22 +15,23 @@ mark, and "SAT" only as an adjective.
 
 ### Where the app shows "SAT"
 
-The ® sign appears in one place only: inside the notice (`TRADEMARK_NOTICE` in `lib/legal.js`).
-So "yes" in the last column means the notice and the ® are both on that page.
+When the audit ran, the ® sign appeared in one place only: inside `TRADEMARK_NOTICE` in
+`lib/legal.js`. It is now also in `TRADEMARK_FOOTER`, the shorter notice. "Yes" in the last column
+means a notice and the ® are both on that page.
 
 | Where | What it shows | Notice and ® |
 |---|---|---|
-| Home, first visit (`/`) | The promise "SAT vocabulary you study before bed and get quizzed on the next day." The card title "SAT Vocab". The card text "...matched to the Digital SAT's Words in Context questions..." | Yes |
-| Home, returning visitor | "SAT Vocab" and the tagline "Words in context for the Digital SAT." | Yes |
+| Home, first visit (`/`) | The promise "SAT vocabulary you study before bed and get quizzed on the next day." The card title "SAT Vocab". The card text "...matched to the Digital SAT exam's Words in Context questions..." | Yes |
+| Home, returning visitor | "SAT Vocab" and the tagline "Words in context for the Digital SAT exam." | Yes |
 | `/unlock` | "Unlock SAT Vocab" and "full access to SAT Vocab" twice | Yes |
 | `/terms` | The notice in section 2, then "SAT Vocab" five times and "any specific SAT administration" | Yes |
-| Course page (`/courses/sat-vocab`), all five tabs | The title "SAT Vocab", the tagline, "Full access to SAT Vocab" in the paywall card, and "Not a predicted SAT score." on the practice test tab | **No** |
-| Strategy guides (4 pages) | The header "SAT Vocab · Strategy". The pacing guide also says "the Digital SAT's Reading and Writing section". Two guides (words in context, unknown word) add a plain sentence that Voco is not affiliated with the College Board | **No** (that sentence is not the notice) |
-| Sample question page (`/preview/<category>`) | "One real question from SAT Vocab", "full access to SAT Vocab" and "unlocks all of SAT Vocab" | **No** |
-| `/practice-test` | "isn't a predicted SAT score" in the intro. The results notes repeat it (read in the code, not rendered) | **No** |
-| `/privacy` | "includes SAT vocabulary" | **No** |
-| Share image and share text for a mastery milestone | Read in the code, not drawn. The image says "SAT VOCAB MASTERY", "Every SAT Vocab category mastered." and "That's all of SAT Vocab." The share text says "N of 6 SAT Vocab categories mastered on Voco." | **No** |
-| Every page head, `public/manifest.webmanifest` and `public/og.jpg` | The promise line, in the description, in the link preview text and alt text, and drawn in the preview picture | **No** (these cannot carry a footer) |
+| Course page (`/courses/sat-vocab`), all five tabs | The title "SAT Vocab", the tagline, "Full access to SAT Vocab" in the paywall card, and "Not a predicted SAT score." on the practice test tab | No in the audit, **yes now** |
+| Strategy guides (4 pages) | The header "SAT Vocab · Strategy". The pacing guide also says "the Digital SAT exam's Reading and Writing section". Two guides (words in context, unknown word) add a plain sentence that Voco is not affiliated with the College Board | No in the audit, **yes now** (that sentence is not the notice) |
+| Sample question page (`/preview/<category>`) | "One real question from SAT Vocab", "full access to SAT Vocab" and "unlocks all of SAT Vocab" | No in the audit, **yes now** |
+| `/practice-test` | "isn't a predicted SAT score" in the intro. The results notes repeat it | No in the audit, **yes now** (intro and results; the timed screens show no "SAT") |
+| `/privacy` | "includes SAT vocabulary" | No in the audit, **yes now** |
+| Share image and share text for a mastery milestone | Read in the code, not drawn. The image says "SAT VOCAB MASTERY", "Every SAT Vocab category mastered." and "That's all of SAT Vocab." The share text says "N of 6 SAT Vocab categories mastered on Voco." | **No**, still open |
+| Every page head, `public/manifest.webmanifest` and `public/og.jpg` | The promise line, in the description, in the link preview text and alt text, and drawn in the preview picture | **No**, still open (these cannot carry a footer) |
 
 No "SAT" shows on how it works, review, study, quiz, passage, cross-text or grammar level pages.
 
@@ -43,16 +45,20 @@ Two more places are in the code but on no screen today:
 ### Gaps against the rules
 
 1. **No notice and no ®** on the course page, the strategy guides, the sample question page, the
-   practice test, the privacy page, and the share image and text.
+   practice test, the privacy page, and the share image and text. **Fixed** for every page in
+   that list by `components/TrademarkNotice.js`, checked by `npm run test:trademark`. **Open:**
+   the share image and text.
 2. **Link previews and search.** The page head, the manifest and `public/og.jpg` show "SAT" and
    cannot carry a footer. Decide: reword the line so it does not use the mark, or accept it there.
-3. **"SAT" as a noun.** The tagline "Words in context for the Digital SAT." (`lib/wordbanks.js`,
-   shown on the returning home and the course page). The card text "...the Digital SAT's Words in
-   Context questions..." (`lib/wordbanks.js`, shown on the first-visit home). The pacing guide
-   line "the Digital SAT's Reading and Writing section." (`lib/satStrategy.js`). Everything else
-   uses it as an adjective: "SAT Vocab", "SAT vocabulary", "SAT score", "SAT administration".
+   **Open.**
+3. **"SAT" as a noun.** The tagline, the first-visit card text and the pacing guide line all said
+   "the Digital SAT" (`lib/wordbanks.js`, `lib/satStrategy.js`). **Fixed:** they now say "the
+   Digital SAT exam", and `npm run test:trademark` fails if a noun use comes back. Everything else
+   already used it as an adjective: "SAT Vocab", "SAT vocabulary", "SAT score", "SAT
+   administration". **Open:** the line in `lib/firstVisit.js` that is on no screen yet (see above).
 4. **The "not affiliated" sentence** in two strategy guides is weaker than the notice. It has no
-   ®, and it does not say the College Board does not endorse Voco.
+   ®, and it does not say the College Board does not endorse Voco. **Still true.** Those guides
+   now also end with the footer, so each page carries the notice.
 
 ### Content that may be borrowed
 
@@ -106,9 +112,9 @@ It is not copied text.
   in Stripe, not in the repo, and the rules say not to touch Stripe.
 - The GitHub repo description and the Vercel project name.
 - The vocabulary quiz sentences (hundreds of them). They were not compared with any source.
-- The practice test results screen and the share image. I read them in the code and did not
-  render them.
-- A real phone. I used one desktop browser.
+- The share image. I read it in the code and did not draw it.
+- A real phone. I used one desktop browser. The layout checks for the notice used a resized pane
+  at 390, 375, 360 and 320px wide.
 
 ## The list
 
@@ -127,7 +133,13 @@ It is not copied text.
    `voco-profile-picture.png`. It does today, so cross this off unless there is newer artwork.
 
 3. **Audit the "SAT" marks and disclaimer placement.** The audit is the section at the top of this
-   file. Acting on it is the work that is left.
+   file. Done so far, in `claude/sat-marks-and-privacy`: the notice on the course page, strategy
+   guides, sample question page, practice test and privacy page, and the three noun uses reworded.
+   Left: the share image and text, the page head, link preview and manifest, the question stems,
+   and the noun use in `lib/firstVisit.js` that is on no screen yet. Known effect of the notice:
+   the Grammar & usage tab for a non-subscriber scrolls by 39px at exactly 844px tall, and the home
+   card's tagline wraps to two lines at 320px wide. Both are in "The College Board notice" in
+   `CLAUDE.md`.
    *Done when:* every screen and image that shows "SAT" carries the College Board notice or no
    longer shows the mark, "SAT" is only an adjective, and the owner has decided what to do about
    the stems.
@@ -149,8 +161,9 @@ It is not copied text.
    2 November 2026 `components/NightThemeExplainer.js` has none. `lib/sleepScience.js` has one, on
    line 74, in `SCIENCE_FACTS` (the testing effect fact). Its only reader is the unused card from
    item 4, so doing item 4 first may remove it. A wider scan finds about 150 more lines with an
-   em dash, whether typed as the character or written as an escape code. Most are question content: `lib/greVocabulary.js` (54, a
-   hidden course), `lib/wordbanks.js` (23), the passages, the grammar and the cross-text files.
+   em dash, whether typed as the character or written as an escape code. Most are question
+   content: `lib/greVocabulary.js` (54, a hidden course), `lib/wordbanks.js` (23), the passages,
+   the grammar and the cross-text files.
    Some are screen copy: the privacy, terms, unlock and practice test pages, `lib/milestones.js`,
    `components/ShareButton.js` and the first-visit course card text in `lib/wordbanks.js`. Say
    whether the rule covers question content as well as screen copy.
@@ -181,9 +194,12 @@ It is not copied text.
    3. Look at the home screen, the course page, the paywall card, `/unlock` and the Terms in a
       browser. Their wording follows the number of live courses on its own, through
       `lib/courseScope.js`.
-   4. The owner edits what the code cannot reach: the Stripe product description, the Terms
+   4. Reword `getCourseStrip` in `lib/firstVisit.js`. With two courses live it would print "Two
+      courses: SAT · Everyday", which uses "SAT" as a noun (see "The College Board notice" in
+      `CLAUDE.md`).
+   5. The owner edits what the code cannot reach: the Stripe product description, the Terms
       "Last updated" date, and the price.
-   5. Open a PR from a branch. Do not merge it.
+   6. Open a PR from a branch. Do not merge it.
 
    More detail is in "Launching and hiding courses" in `CLAUDE.md`.
    *Done when:* the course shows on the home screen, its old links stop redirecting, and

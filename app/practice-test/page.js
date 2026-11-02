@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Clock, Flag, Check, X } from "lucide-react";
 import { getCourse } from "@/lib/wordbanks";
+import TrademarkNotice from "@/components/TrademarkNotice";
 import { getActivityTheme, NIGHT } from "@/lib/timeTheme";
 import { isSubscribedCached, shouldRefreshStatus, refreshSubscriptionStatus } from "@/lib/purchase";
 import {
@@ -255,6 +256,9 @@ export default function PracticeTestPage() {
         {phase === "results" && test && finalResult && (
           <ResultsScreen test={test} result={finalResult} answers={answers} courseId={course.id} theme={theme} />
         )}
+
+        {/* "SAT" shows on the intro and the results only. The timed screens stay as they were. */}
+        {(phase === "intro" || phase === "results") && <TrademarkNotice color={theme.subtextAA} />}
       </div>
     </main>
   );

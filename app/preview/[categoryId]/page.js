@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Check, X, ArrowLeft } from "lucide-react";
 import PassageCard from "@/components/PassageCard";
 import PassageChart from "@/components/PassageChart";
+import TrademarkNotice from "@/components/TrademarkNotice";
 import TrialLink from "@/components/TrialLink";
 import { getPreviewSample } from "@/lib/preview";
 import { courseScope } from "@/lib/courseScope";
@@ -143,6 +144,9 @@ export default function PreviewPage() {
             </Link>
           </div>
         )}
+
+        {/* The page shows "SAT Vocab" before and after the answer, so the notice is always here. */}
+        <TrademarkNotice color={theme.subtextAA} />
       </div>
     </main>
   );
