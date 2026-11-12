@@ -16,10 +16,11 @@
     "test:trademark": "node --no-warnings --import ./scripts/register-loader.mjs scripts/test-trademark.mjs",
     "test:launch": "node --no-warnings --import ./scripts/register-loader.mjs scripts/test-launch.mjs",
     "test:access": "node --no-warnings --import ./scripts/register-loader-all-courses.mjs scripts/test-access.mjs",
+    "test:unlock": "node --no-warnings --import ./scripts/register-loader.mjs scripts/test-unlock.mjs",
     "test:practice": "node --no-warnings --import ./scripts/register-loader.mjs scripts/test-practice-test.mjs",
     "test:stripe": "node --no-warnings --import ./scripts/register-loader.mjs scripts/test-stripe-routes.mjs",
     "test:browser": "for f in verify1 verify2 verify3; do node --no-warnings --import ./scripts/register-loader-all-courses.mjs scripts/browser/$f.mjs || exit 1; done; node --no-warnings --import ./scripts/register-loader.mjs scripts/browser/verify4.mjs",
-    "test": "npm run validate:contact && npm run validate:passages && npm run validate:grammar && npm run validate:vocab && npm run test:first-visit && npm run test:pages && npm run test:trademark && npm run test:launch && npm run test:access && npm run test:practice && npm run test:stripe"
+    "test": "npm run validate:contact && npm run validate:passages && npm run validate:grammar && npm run validate:vocab && npm run test:first-visit && npm run test:pages && npm run test:trademark && npm run test:launch && npm run test:access && npm run test:unlock && npm run test:practice && npm run test:stripe"
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",
