@@ -1996,6 +1996,10 @@ components/
   TrademarkNotice.js      The College Board footer for a page that shows "SAT" and has
                          no footer of its own: small, quiet, last in the column, in the
                          flow; shows TRADEMARK_NOTICE from lib/legal.js (added 2026-11-02)
+  TrialDisclosure.js      The free trial and billing card on /unlock (trial, price, automatic
+                         renewal, how to cancel, Terms and Privacy links): plain markup, so it
+                         is in the HTML that loads; its words are in lib/trialDisclosure.js
+                         (added 2026-11-12)
   SectionPills.js         The course page's sections as one scrolling row of pills
   CourseProgress.js       A thin bar and "X of N levels" (also ProgressLine, used
                          for passages): home cards + course page
@@ -2215,6 +2219,10 @@ scripts/
                          notice and the word "SAT": the wording, the component's shape,
                          the five pages that render it, every page that shows the mark
                          has a notice, and no "SAT" written as a noun (added 2026-11-02)
+  test-unlock.mjs         `npm run test:unlock` (in `npm test`): the free trial and billing
+                         card on /unlock: the words, the component, the page (the card in
+                         every state, before each button) and, after a build, the real
+                         .next/server/app/unlock.html (added 2026-11-12)
   browser/                Real-Chromium suites (verify1–4, contrast) against a
                          running build; need `npm i --no-save playwright-core` and
                          BASE_URL — see browser/_env.mjs. `npm run test:browser`.
@@ -2282,6 +2290,56 @@ version is currently pinned to `22.x` (down from `24.x`, changed while
 chasing this bug) — harmless to leave as is, since 22.x is an LTS
 version, but not the actual fix.
 
+## The /unlock disclosure (2026-11-12): the trial, the price and how to cancel, before the button
+
+**What it is.** `/unlock` shows a "Free trial and billing" card above every start-trial button. It
+says: new subscribers get the 7-day free trial and pay nothing until it ends; the price after the
+trial is $1.99/month; it renews automatically every month until you cancel, charging the payment
+method given at checkout; cancelling before the trial ends costs nothing. Then how to cancel: open
+Voco on the device you subscribed on, at the bottom of the home screen tap Manage subscription,
+Stripe's secure page opens, choose to cancel and confirm. Then what cancelling does (access until the
+end of the period already started), the email way for a different device or browser, and links to the
+Terms of Service and the Privacy Policy. The words are in `lib/trialDisclosure.js`, built from
+`TRIAL_LABEL` and `PRICE_LABEL` in `lib/purchase.js` so they are never typed twice, and rendered by
+`components/TrialDisclosure.js`. Plain short sentences, no em dashes, no "SAT".
+
+**Only what exists.** The cancel way is the one the code and Terms section 5 already have: the home
+screen's "Manage subscription" button, which calls `/api/create-portal-session` and opens Stripe's
+billing portal. The owner verified it live on 2026-09-22 (see "Paid unlock" above). The email way is
+the one Terms section 5 offers, and it depends on someone answering that inbox. The card does not name
+a button inside Stripe's own page (that label is Stripe's, is not in this repo and was not verified) and
+does not promise a Stripe email (the Terms say such an email "may" exist). Keep it matching the Terms:
+`test:unlock` checks that the two tell the same story.
+
+**In the HTML that loads.** `/unlock` is a client page that starts in a "checking" state and only then
+decides what to show. So before this change its HTML was just "Voco, One moment..., and the College
+Board notice": no trial, no price, no cancel steps, no links. The card is now in that first state and in
+every later one (verifying, success, error, already, pitch), so it is in `.next/server/app/unlock.html`
+and a reader that does not run JavaScript sees it. The start-trial button still appears only after the
+short check, not in the HTML, on purpose: showing it before the page knows whether someone has just come
+back from Stripe could invite a second checkout. In the two states that have a button (the failure state
+and the pitch) the card comes before it, and the trial terms line (`TRIAL_TERMS`) still sits under it, now
+in a legible colour (`#9B97C4`, 5.99:1) instead of `#6E699B` (3.27:1).
+
+**The address.** The contact address now shows in two places on /unlock, both built from `lib/contact.js`:
+the failure state's support line and the "email us to cancel" line in the card. `test:access` says so.
+
+**Tests.** `scripts/test-unlock.mjs` (`npm run test:unlock`, in `npm test`): the words (trial, price,
+automatic renewal, the steps, access after cancelling, the email way, the links; every sentence 20 words
+or fewer; no em dash; matches the Terms), the component (plain markup, links, address from the constant),
+the page (the card in the first state and in every state, before each button, exactly two buttons, no
+tracking added, the free set and access rules untouched) and, after `npm run build`, the real
+`.next/server/app/unlock.html` (every sentence is in it, so are the links, and the notice follows it). Ten
+mutations and a rebuild probe were each caught. Run `npm run build` before it, or its rendered checks skip
+(or, with an old build, fail).
+
+**Not changed.** Stripe settings, keys, prices and environment variables. `lib/purchase.js`,
+`lib/access.js`, the Paywall, the API routes and analytics. The free first two levels and the question
+flow. The Terms and Privacy pages, so their "Last updated" date stays. On this page the em dashes in the
+pitch and the locked list were replaced (the long pitch sentence uses parentheses now) and nothing else in
+the pitch was reworded. **Not decided here (owner):** refund wording (`docs/BACKLOG.md` item 7). It would go
+in `lib/trialDisclosure.js`.
+
 ## Terms of Service & Privacy Policy
 
 `/terms` and `/privacy` are real routes (`app/terms/page.js`,
@@ -2294,8 +2352,9 @@ on a cleared browser or new device), billing handled entirely by Stripe
 **cookieless Vercel Web Analytics plus the three anonymous events** (Privacy §1, §4, §5 — it
 said "no analytics" from 2026-09-22 until 2026-10-05, which was wrong, and was fixed).
 **Contact info lives in one constant** — `CONTACT_EMAIL` (and `CONTACT_MAILTO`) in
-`lib/contact.js` — and both pages import it, as does the one support line in `/unlock`'s
-failure state ("Having trouble? Email us at …"; the only other place it is shown); never type
+`lib/contact.js` — and both pages import it, as do the two lines on `/unlock` (the failure
+state's "Having trouble? Email us at …" and the "email us to cancel" line in the free trial card,
+`components/TrialDisclosure.js`; the only other places it is shown); never type
 an address or a mailto link into a page, component, test or doc. `scripts/validate-contact.mjs` (`npm run validate:contact`, the
 first step of `npm test`) fails on any other email-shaped string, the address typed anywhere
 but that file, a mailto link not built from the constant, a changed value, or the previous

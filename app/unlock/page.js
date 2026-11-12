@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Lock, Check, X, Sparkles } from "lucide-react";
+import TrialDisclosure from "@/components/TrialDisclosure";
 import TrialLink from "@/components/TrialLink";
 import VocoMark from "@/components/VocoMark";
 import { TRADEMARK_NOTICE } from "@/lib/legal";
@@ -127,12 +128,18 @@ export default function UnlockPage() {
           <span className="font-display text-xl text-[#EDEBFF]">Voco</span>
         </Link>
 
+        {/* "checking" is the state the page's HTML is built in, so the free trial and billing details
+            sit here too: they are in the HTML that loads, before any JavaScript runs. They come
+            before every start-trial button in every state (components/TrialDisclosure.js). */}
         {(status === "checking" || status === "verifying") && (
-          <div className="text-center">
-            <Sparkles size={28} color="#8B85FF" className="mx-auto mb-3" />
-            <p className="text-[#EDEBFF]">
-              {status === "verifying" ? "Verifying your subscription..." : "One moment..."}
-            </p>
+          <div>
+            <div className="text-center mb-6">
+              <Sparkles size={28} color="#8B85FF" className="mx-auto mb-3" />
+              <p className="text-[#EDEBFF]">
+                {status === "verifying" ? "Verifying your subscription..." : "One moment..."}
+              </p>
+            </div>
+            <TrialDisclosure />
           </div>
         )}
 
@@ -152,6 +159,9 @@ export default function UnlockPage() {
             >
               Back to Voco
             </Link>
+            <div className="mt-6">
+              <TrialDisclosure />
+            </div>
           </div>
         )}
 
@@ -164,6 +174,9 @@ export default function UnlockPage() {
             <p className="text-sm text-[#9B97C4] mb-6">
               If you just started your trial, try refreshing this page. Otherwise, start below.
             </p>
+            <div className="mb-4">
+              <TrialDisclosure />
+            </div>
             <TrialLink
               placement="unlock-error"
               className="block w-full rounded-xl px-4 py-3 font-medium text-center mb-3"
@@ -171,7 +184,7 @@ export default function UnlockPage() {
             >
               Start {TRIAL_LABEL}
             </TrialLink>
-            <p className="text-center text-xs text-[#6E699B] mb-3">
+            <p className="text-center text-xs text-[#9B97C4] mb-3">
               {TRIAL_TERMS} One subscription gives you full access to {scope.access}.
             </p>
             <p className="text-center text-sm text-[#9B97C4] mb-3">
@@ -194,6 +207,9 @@ export default function UnlockPage() {
             <Link href="/" className="text-[#8B85FF] text-sm">
               Back home
             </Link>
+            <div className="mt-6">
+              <TrialDisclosure />
+            </div>
           </div>
         )}
 
@@ -204,10 +220,10 @@ export default function UnlockPage() {
               <p className="font-display text-xl text-[#EDEBFF] mb-2">Unlock {scope.access}</p>
               <p className="text-sm text-[#9B97C4]">
                 One subscription gives you full access to {scope.access}. The {joinList(freeTierLabels)} levels of{" "}
-                {freeTitles} stay free ({wordsIn(freeLevels)} words, with quizzes and spaced repetition); everything
-                else — {lockedCategories.length} more categories, the {joinList(lockedTierLabels)}{" "}
+                {freeTitles} stay free ({wordsIn(freeLevels)} words, with quizzes and spaced repetition). Everything
+                else ({lockedCategories.length} more categories, the {joinList(lockedTierLabels)}{" "}
                 {lockedTierLabels.length === 1 ? "level" : "levels"} of the free {freeCategories.length === 1 ? "one" : "ones"}, {lockedWordCount} more words in
-                all — unlocks together with a {TRIAL_LABEL}, then {PRICE_LABEL}.
+                all) unlocks together with a {TRIAL_LABEL}, then {PRICE_LABEL}.
                 {lockedPassageCount > 0 && ` That includes ${lockedPassageCount} reading passages`}
                 {lockedCrossTextCount > 0 && `, ${lockedCrossTextCount} cross-text pairs`}
                 {lockedGrammarQuestionCount > 0 && ` and ${lockedGrammarQuestionCount} grammar questions`}
@@ -224,7 +240,7 @@ export default function UnlockPage() {
                   {tiers.map(({ category, levels }) => (
                     <div key={category.id} className="flex items-center gap-2 text-sm text-[#EDEBFF]">
                       <Lock size={14} color="#6E699B" />
-                      {category.title} — {joinList(levels.map((l) => l.label))} ({wordsIn(levels)} words)
+                      {category.title}: {joinList(levels.map((l) => l.label))} ({wordsIn(levels)} words)
                     </div>
                   ))}
                   {locked.map((c) => (
@@ -255,6 +271,10 @@ export default function UnlockPage() {
               ))}
             </div>
 
+            <div className="mb-4">
+              <TrialDisclosure />
+            </div>
+
             <TrialLink
               placement="unlock"
               className="block w-full rounded-xl px-4 py-3 font-medium text-center mb-3"
@@ -262,11 +282,11 @@ export default function UnlockPage() {
             >
               Start {TRIAL_LABEL}
             </TrialLink>
-            <p className="text-center text-xs text-[#6E699B] mb-3">
+            <p className="text-center text-xs text-[#9B97C4] mb-3">
               {TRIAL_TERMS} One subscription gives you full access to {scope.access}.
             </p>
             <Link href="/" className="block text-center text-[#8B85FF] text-sm">
-              Not yet — back home
+              Not yet, back home
             </Link>
           </div>
         )}

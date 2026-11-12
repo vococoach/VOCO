@@ -165,15 +165,17 @@ It is not copied text.
    em dash, whether typed as the character or written as an escape code. Most are question
    content: `lib/greVocabulary.js` (54, a hidden course), `lib/wordbanks.js` (23), the passages,
    the grammar and the cross-text files.
-   Some are screen copy: the privacy, terms, unlock and practice test pages, `lib/milestones.js`,
-   `components/ShareButton.js` and the first-visit course card text in `lib/wordbanks.js`. Say
-   whether the rule covers question content as well as screen copy.
+   Some are screen copy: the privacy, terms and practice test pages, `lib/milestones.js`,
+   `components/ShareButton.js` and the first-visit course card text in `lib/wordbanks.js`. (The
+   unlock page was cleaned on 12 November.) Say whether the rule covers question content as well
+   as screen copy.
    *Done when:* a search for the em dash in `components/NightThemeExplainer.js` and
    `lib/sleepScience.js` finds nothing and `npm test` passes.
 
 7. **Write the refund policy wording before any ads.** Today nothing in the app says whether a
    payment can be refunded. Terms section 5 says cancelling stops future billing and keeps access
-   to the end of the paid period.
+   to the end of the paid period. The unlock page now has a "Free trial and billing" card
+   (`lib/trialDisclosure.js`), which is where the refund wording would go on that page.
    *Done when:* the Terms and the unlock page state the refund policy in plain words, the wording
    matches what the owner will actually do in Stripe, and the owner has approved it. No ad runs
    before that.

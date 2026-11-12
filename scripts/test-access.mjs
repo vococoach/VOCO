@@ -276,16 +276,22 @@ for (const f of ["app/passages/[passageId]/page.js", "app/cross-text/[pairId]/pa
 // ---------- the copy: computed, not hardcoded ----------
 const unlock = read("app/unlock/page.js");
 ok("/unlock computes its counts and names (no hardcoded numbers in the pitch)", /lockedWordCount/.test(unlock) && /freeTierLabels/.test(unlock) && !/\b\d+ (words|categories|questions|passages)\b/.test(unlock));
-// The one support line on /unlock lives in the failure state only, and is built from the shared constant (lib/contact.js).
+// The address shows in exactly two places on /unlock, both built from the shared constant
+// (lib/contact.js): the support line in the failure state, and the "email us to cancel" line in
+// the free trial and billing details (components/TrialDisclosure.js, which the Terms section 5 matches).
 const unlockFailure = unlock.slice(unlock.indexOf('status === "error"'), unlock.indexOf('status === "already"'));
+const disclosureSrc = read("components/TrialDisclosure.js");
 ok(
-  "/unlock: one support line in the failure state, built from the shared contact constant, and nowhere else on the page",
+  "/unlock: the address shows only in the failure state's support line and in the cancel steps, both built from the shared contact constant",
   /import \{[^}]*\bCONTACT_EMAIL\b[^}]*\} from "@\/lib\/contact"/.test(unlock) &&
     unlockFailure.includes("Having trouble?") &&
     /href=\{CONTACT_MAILTO\}/.test(unlockFailure) &&
     /\{CONTACT_EMAIL\}/.test(unlockFailure) &&
     !unlock.replace(unlockFailure, "").includes("Having trouble?") &&
-    !/href=\{CONTACT_MAILTO\}/.test(unlock.replace(unlockFailure, ""))
+    !/href=\{CONTACT_MAILTO\}/.test(unlock.replace(unlockFailure, "")) &&
+    /import \{[^}]*\bCONTACT_EMAIL\b[^}]*\} from "@\/lib\/contact"/.test(disclosureSrc) &&
+    (disclosureSrc.match(/href=\{CONTACT_MAILTO\}/g) || []).length === 1 &&
+    (disclosureSrc.match(/\{CONTACT_EMAIL\}/g) || []).length === 1
 );
 ok("the sample-question prompt names what a subscription covers from the live courses (lib/courseScope.js), not by hand", /for full access to \{scope\.access\}/.test(read("app/preview/[categoryId]/page.js")) && /unlocks \{scope\.all\}/.test(read("app/preview/[categoryId]/page.js")));
 

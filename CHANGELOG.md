@@ -734,3 +734,34 @@ paywall, the access rules, the free tier and analytics were not touched.
 - **Not done.** The share image and text, the page head and link preview, `public/og.jpg` and the
   manifest still show "SAT" with no notice. The question stems, and the one noun use that is not
   written out (`getCourseStrip` in `lib/firstVisit.js`), stay open in `docs/BACKLOG.md`.
+
+## 2026-11-12: Free trial and billing details on /unlock
+
+Branch `claude/unlock-trial-disclosure`. Stripe settings, keys, prices and environment variables were
+not touched, and neither were the free first two levels, the question flow, the access rules, the
+Paywall, the API routes, analytics or the Terms and Privacy pages.
+
+- **The problem.** The live `/unlock` page had no link to the Terms and no explanation of how to
+  cancel. Worse, its HTML held only "Voco, One moment..., and the College Board notice": the page is a
+  client page that starts in a "checking" state, so the whole offer (the trial, the price, the button)
+  appeared only after JavaScript ran, and an automated check that reads the HTML saw none of it.
+- **The card.** New `components/TrialDisclosure.js`, with its words in `lib/trialDisclosure.js` (built
+  from `TRIAL_LABEL` and `PRICE_LABEL`), says: new subscribers get a 7-day free trial and pay nothing
+  until it ends; after the trial the price is $1.99/month; it renews automatically every month until you
+  cancel, charging the payment method given at checkout; cancel before the trial ends and you pay nothing.
+  Then how to cancel: open Voco on the device you subscribed on, at the bottom of the home screen tap
+  Manage subscription, Stripe's secure page opens, choose to cancel and confirm. Then what cancelling does
+  to access, the email way for a different device or browser (the one Terms section 5 offers), and links
+  to the Terms of Service and the Privacy Policy.
+- **Where.** In the page's first state (the one its HTML is built in) and in every later state, always
+  above the start-trial button where there is one. The button still appears only after the short check, so
+  nobody coming back from Stripe sees it for a moment.
+- **Only what exists.** The cancel way is the home screen's "Manage subscription" button, which opens
+  Stripe's billing portal (verified live by the owner on 2026-09-22), plus the Terms' email way. The card
+  does not name a button inside Stripe's own page and does not promise a Stripe email.
+- **Also on the page.** The trial terms line under each button was `#6E699B` (3.27:1) and is now
+  `#9B97C4` (5.99:1). The four em dashes in the pitch, the locked list and the back link were replaced.
+- **Tests.** New `test:unlock` (in `npm test`): the words, the component, the page, and the real built
+  `unlock.html` (run `npm run build` first). `test:access` now says the contact address shows in two
+  places on /unlock. Ten mutations and a rebuild probe were each caught.
+- **Not done.** Refund wording, which is the owner's call (`docs/BACKLOG.md` item 7).

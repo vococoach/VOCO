@@ -103,7 +103,8 @@ npm run test:browser   # real-Chromium suites; needs a running build, see script
 `npm test` runs `validate:contact`, `validate:passages`, `validate:grammar`,
 `validate:vocab`, `test:first-visit`, `test:pages` (the home screen and course pages), `test:trademark` (the College Board notice and how
 "SAT" is used), `test:launch` (which
-courses are live; it builds a scratch copy with a hidden course switched on), `test:access`, `test:practice` and
+courses are live; it builds a scratch copy with a hidden course switched on), `test:access`, `test:unlock` (the free trial
+and billing details on `/unlock`, including the built HTML), `test:practice` and
 `test:stripe`. The validators catch mechanical problems only; new content still
 needs a close read.
 
@@ -151,7 +152,8 @@ app/          Routes: home, courses/, sets/[setId]/study + quiz, review/, passag
 components/   Shared UI: first-visit screen (chip, headline, one real question,
               course line), the Voco mark (VocoMark.js, used in every header),
               category/passage/grammar lists, results and milestone cards, share
-              dialog, the College Board footer (TrademarkNotice.js), loading state
+              dialog, the College Board footer (TrademarkNotice.js), the free trial and
+              billing card on /unlock (TrialDisclosure.js), loading state
 lib/          Content (wordbanks.js and the per-course files), progress and spaced
               repetition (progress.js), the free-set / subscription rules
               (purchase.js, access.js), time-of-day logic and themes, sleep-science
